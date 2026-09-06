@@ -2,7 +2,9 @@
 
 This fully offline Android edition records shifts, breaks, gross earnings, estimated net earnings, forecasts, settings, and language choice without an internet connection.
 
-## Version 1.4.0
+## Version 1.4.1
+
+This update fixes the mobile bottom navigation so the floating add button no longer covers Expenses. In shift selection mode, the full row is now tappable, and Deselect all appears whenever at least one shift is selected.
 
 - Tap any exact dates in a month-by-month calendar and add the same shift to all selected dates.
 - Long-press a logged shift to enter multi-selection mode and delete selected shifts together.
