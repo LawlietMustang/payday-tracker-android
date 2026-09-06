@@ -2,6 +2,12 @@
 
 This fully offline Android edition records shifts, breaks, gross earnings, estimated net earnings, forecasts, settings, and language choice without an internet connection.
 
+## Version 1.1.0
+
+- Add the same shift to multiple selected weekdays across a date range.
+- Export the selected month's shifts through Android's native CSV save dialog.
+- Show confirmations, warnings, and deletion prompts in the selected language.
+
 ## Privacy and storage
 
 - The manifest contains no Internet permission.
