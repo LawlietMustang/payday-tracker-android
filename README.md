@@ -2,7 +2,9 @@
 
 This fully offline Android edition records shifts, breaks, gross earnings, estimated net earnings, forecasts, settings, and language choice without an internet connection.
 
-## Version 1.7.0
+## Version 1.7.1
+
+Version 1.7.1 reorganizes the Add shift screen into a compact mobile-first layout. Related time fields now share rows, template management is visually secondary, and the Cancel/Save actions remain accessible while scrolling.
 
 Version 1.7 adds reusable shift templates and bulk editing. Users can save named schedules, apply them while logging shifts, and update the time, break, status, wage, note, or template for multiple selected shifts in one operation.
 
