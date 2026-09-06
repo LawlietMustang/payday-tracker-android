@@ -2,7 +2,9 @@
 
 This fully offline Android edition records shifts, breaks, gross earnings, estimated net earnings, forecasts, settings, and language choice without an internet connection.
 
-## Version 1.7.1
+## Version 1.8.0
+
+Version 1.8 adds a persistent offline time clock. Users can start work, begin and end breaks, finish a timed shift, or discard an accidental session. The timer survives app closure and saves the completed session directly into work hours.
 
 Version 1.7.1 reorganizes the Add shift screen into a compact mobile-first layout. Related time fields now share rows, template management is visually secondary, and the Cancel/Save actions remain accessible while scrolling.
 
