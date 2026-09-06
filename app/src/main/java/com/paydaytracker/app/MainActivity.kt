@@ -2,8 +2,11 @@ package com.paydaytracker.app
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
 import android.util.Base64
 import android.view.View
@@ -25,6 +28,29 @@ class MainActivity : Activity() {
                 window.statusBarColor = if (dark) Color.rgb(7, 23, 35) else getColor(R.color.navy)
                 window.navigationBarColor = if (dark) Color.rgb(16, 24, 32) else getColor(R.color.white)
                 window.decorView.systemUiVisibility = if (dark) 0 else View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+            }
+        }
+
+        @JavascriptInterface
+        fun updateTimerNotification(state: String, elapsedMs: Double, language: String) {
+            runOnUiThread {
+                if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                    requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 902)
+                }
+                val intent = Intent(this@MainActivity, TimerNotificationService::class.java).apply {
+                    action = TimerNotificationService.ACTION_UPDATE
+                    putExtra(TimerNotificationService.EXTRA_STATE, state)
+                    putExtra(TimerNotificationService.EXTRA_ELAPSED, elapsedMs.toLong())
+                    putExtra(TimerNotificationService.EXTRA_LANGUAGE, language)
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent) else startService(intent)
+            }
+        }
+
+        @JavascriptInterface
+        fun stopTimerNotification() {
+            runOnUiThread {
+                startService(Intent(this@MainActivity, TimerNotificationService::class.java).apply { action = TimerNotificationService.ACTION_STOP })
             }
         }
 
