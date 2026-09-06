@@ -2,12 +2,15 @@
 
 This fully offline Android edition records shifts, breaks, gross earnings, estimated net earnings, forecasts, settings, and language choice without an internet connection.
 
-## Version 1.3.0
+## Version 1.4.0
 
 - Tap any exact dates in a month-by-month calendar and add the same shift to all selected dates.
-- Select multiple logged shifts and delete them together.
+- Long-press a logged shift to enter multi-selection mode and delete selected shifts together.
 - Record expenses such as rent, utilities, health insurance, groceries, transport, and custom costs.
 - Mark an expense as recurring to add it automatically in each applicable month.
+- Set a monthly savings target and track progress after expenses.
+- Choose light, dark, or system-default appearance.
+- Use a compact month label and a time-based sun or moon greeting icon.
 - Export the selected month's shifts through Android's native CSV save dialog.
 - Show confirmations, warnings, and deletion prompts in the selected language.
 
