@@ -2,7 +2,9 @@
 
 This fully offline Android edition records shifts, breaks, gross earnings, estimated net earnings, forecasts, settings, and language choice without an internet connection.
 
-## Version 1.4.1
+## Version 1.5.0
+
+The Android interface now uses a dedicated slide-out menu inspired by Material navigation drawers. Profile, language, and light/dark/system appearance controls live in the drawer, while the bottom bar has five evenly spaced positions without overlap.
 
 This update fixes the mobile bottom navigation so the floating add button no longer covers Expenses. In shift selection mode, the full row is now tappable, and Deselect all appears whenever at least one shift is selected.
 
