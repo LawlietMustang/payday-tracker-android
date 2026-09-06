@@ -2,7 +2,9 @@
 
 This fully offline Android edition records shifts, breaks, gross earnings, estimated net earnings, forecasts, settings, and language choice without an internet connection.
 
-## Version 1.5.0
+## Version 1.7.0
+
+Version 1.7 adds reusable shift templates and bulk editing. Users can save named schedules, apply them while logging shifts, and update the time, break, status, wage, note, or template for multiple selected shifts in one operation.
 
 The Android interface now uses a dedicated slide-out menu inspired by Material navigation drawers. Profile, language, and light/dark/system appearance controls live in the drawer, while the bottom bar has five evenly spaced positions without overlap.
 
