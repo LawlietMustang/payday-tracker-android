@@ -44,7 +44,7 @@ class TimerNotificationService : Service() {
         val onBreak = state == "break"
         val status = if (english) { if (onBreak) "On break" else "Working" } else { if (onBreak) "Pause läuft" else "Arbeitszeit läuft" }
         val openApp = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            this.flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val notification = Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.app_icon)
