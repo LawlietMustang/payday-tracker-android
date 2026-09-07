@@ -1,0 +1,10 @@
+.gradle/
+**/build/
+local.properties
+*.jks
+*.keystore
+*.p12
+*.pfx
+.payday-tracker-signing/
+node_modules/
+test-results/

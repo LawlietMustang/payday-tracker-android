@@ -22,6 +22,23 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      - name: Restore permanent signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.PAYDAY_KEYSTORE_BASE64 }}
+          PAYDAY_KEYSTORE_PASSWORD: ${{ secrets.PAYDAY_KEYSTORE_PASSWORD }}
+          PAYDAY_CERT_SHA256: ${{ secrets.PAYDAY_CERT_SHA256 }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$KEYSTORE_BASE64" || -z "$PAYDAY_KEYSTORE_PASSWORD" || -z "$PAYDAY_CERT_SHA256" ]]; then
+            echo "::error::Permanent signing is not configured. Follow docs/SIGNING.md; refusing to generate a replacement key."
+            exit 1
+          fi
+          umask 077
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/payday-release.p12"
+          keytool -exportcert -keystore "$RUNNER_TEMP/payday-release.p12" -alias payday -storepass:env PAYDAY_KEYSTORE_PASSWORD -file "$RUNNER_TEMP/payday-cert.der"
+          actual=$(sha256sum "$RUNNER_TEMP/payday-cert.der" | cut -d ' ' -f 1)
+          [[ "$actual" == "$PAYDAY_CERT_SHA256" ]] || { echo "::error::Signing certificate mismatch"; exit 1; }
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
@@ -41,13 +58,31 @@ jobs:
           path: test-results/
           if-no-files-found: ignore
 
-      - name: Build debug APK
-        run: gradle --no-daemon assembleDebug
+      - name: Build signed release APK
+        env:
+          PAYDAY_KEYSTORE_PATH: ${{ runner.temp }}/payday-release.p12
+          PAYDAY_KEYSTORE_PASSWORD: ${{ secrets.PAYDAY_KEYSTORE_PASSWORD }}
+        run: gradle --no-daemon assembleRelease
+
+      - name: Verify APK signing certificate
+        env:
+          PAYDAY_CERT_SHA256: ${{ secrets.PAYDAY_CERT_SHA256 }}
+        run: |
+          set -euo pipefail
+          apksigner=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)
+          "$apksigner" verify --verbose --print-certs app/build/outputs/apk/release/app-release.apk > "$RUNNER_TEMP/apk-certificate.txt"
+          actual=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/apk-certificate.txt")
+          [[ "$actual" == "$PAYDAY_CERT_SHA256" ]] || { echo "::error::APK signing certificate mismatch"; exit 1; }
+
+      - name: Remove signing material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/payday-release.p12" "$RUNNER_TEMP/payday-cert.der"
+
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: PaydayTracker-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: PaydayTracker-release-apk
+          path: app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 30
