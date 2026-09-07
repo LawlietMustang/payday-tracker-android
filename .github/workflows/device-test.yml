@@ -1,0 +1,48 @@
+name: Android device smoke test
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  device:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Enable emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - run: gradle --no-daemon assembleDebug assembleDebugAndroidTest
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          script: |
+            adb install app/build/outputs/apk/debug/app-debug.apk
+            adb install app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+            adb shell pm grant com.paydaytracker.app.debug android.permission.POST_NOTIFICATIONS
+            adb shell am instrument -w com.paydaytracker.app.debug.test/com.paydaytracker.app.DeviceSmoke | tee device-smoke.txt
+            adb logcat -d > device-logcat.txt
+            adb pull /sdcard/Android/data/com.paydaytracker.app.debug/files/device-smoke.png device-smoke.png || true
+            grep -q 'PAYDAY_SMOKE_PASS' device-smoke.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Android-device-evidence
+          path: |
+            device-smoke.txt
+            device-logcat.txt
+            device-smoke.png
