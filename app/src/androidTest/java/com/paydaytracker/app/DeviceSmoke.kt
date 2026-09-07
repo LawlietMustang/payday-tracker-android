@@ -90,7 +90,8 @@ class DeviceSmoke : Instrumentation() {
             uiAutomation.dropShellPermissionIdentity();Thread.sleep(1000)
             runOnMainSync { check(hostView.findViewById<android.widget.TextView>(R.id.widget_status)?.text.toString()=="On break") { "Widget RemoteViews did not render break status" };host.deleteAppWidgetId(widgetId);host.stopListening() }
             // Configure a test-only emulator PIN, then complete the actual system credential prompt.
-            check(shell("locksettings set-pin 2468").contains("success",true)) { "Could not configure emulator PIN" }
+            shell("locksettings set-pin 2468")
+            check(targetContext.getSystemService(android.app.KeyguardManager::class.java).isDeviceSecure) { "Could not configure emulator PIN" }
             js("Android.setAppLock(true)");Thread.sleep(1500)
             shell("input text 2468");shell("input keyevent 66");Thread.sleep(1500)
             requireJS("JSON.parse(Android.deviceSettings()).lock===true")
