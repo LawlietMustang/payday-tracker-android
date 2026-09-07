@@ -31,7 +31,7 @@ const server=http.createServer((req,res)=>{const file=path.join(root,req.url==='
  }
  // Exercise the native bridge UI contract without pretending to authenticate in a browser.
  await page.evaluate(()=>{window.nativeTest={lock:false,reminder:false,hour:20,minute:0,days:62,notifications:false};window.Android={deviceSettings:()=>JSON.stringify(window.nativeTest),saveReminder:(enabled,h,m,days)=>{Object.assign(window.nativeTest,{reminder:enabled,hour:h,minute:m,days});refreshDeviceSettings()},setAppLock:v=>{window.lockRequested=v},addWidget:()=>{window.pinRequested=true},notificationSettings:()=>{},syncWidget:()=>{}};localStorage.setItem('lohnzeit-language','en');show('device')});
- await page.check('#reminderEnabled');for(const box of await page.locator('.reminder-days input:checked').all())await box.uncheck();await page.click('#reminderForm button');assert.match(await page.locator('#reminderError').innerText(),/weekday/);
+ await page.check('#reminderEnabled');for(const box of await page.locator('.reminder-days input').all())await box.uncheck();await page.click('#reminderForm button');assert.match(await page.locator('#reminderError').innerText(),/weekday/);
  await page.check('.reminder-days input[value="1"]');await page.fill('#reminderTime','19:30');await page.click('#reminderForm button');assert.equal(await page.evaluate(()=>window.nativeTest.days),2);assert.equal(await page.evaluate(()=>window.nativeTest.hour),19);
  await page.click('#biometricLock');assert.equal(await page.evaluate(()=>window.lockRequested),true);assert.equal(await page.isChecked('#biometricLock'),false);
  await page.click('#pinWidget');assert.equal(await page.evaluate(()=>window.pinRequested),true);
