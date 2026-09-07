@@ -74,6 +74,7 @@ class DeviceSmoke : Instrumentation() {
             // Dispatch a real reminder notification and inspect Android's active notifications.
             targetContext.getSharedPreferences("device",0).edit().putBoolean("reminder",true).apply()
             runOnMainSync { ReminderReceiver().onReceive(targetContext,Intent(ReminderReceiver.ACTION)) }
+            for (i in 0..20) { if (targetContext.getSystemService(android.app.NotificationManager::class.java).activeNotifications.any { it.id==221 }) break; Thread.sleep(100) }
             check(targetContext.getSystemService(android.app.NotificationManager::class.java).activeNotifications.any { it.id==221 }) { "Reminder notification was not posted" }
             // Bind a real widget in the emulator's test host and inspect its rendered RemoteViews.
             uiAutomation.adoptShellPermissionIdentity("android.permission.BIND_APPWIDGET")
@@ -103,6 +104,8 @@ class DeviceSmoke : Instrumentation() {
             uiAutomation.takeScreenshot()?.let { bitmap -> java.io.File(targetContext.getExternalFilesDir(null),"device-smoke.png").outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it) } }
             finish(Activity.RESULT_OK, Bundle().apply { putString("stream", "PAYDAY_SMOKE_PASS: real touch workplace creation, reminder notification delivery, rendered widget, PIN authentication and cancellation/background privacy\n") })
         } catch (e: Throwable) {
+            uiAutomation.takeScreenshot()?.let { bitmap -> java.io.File(targetContext.getExternalFilesDir(null),"device-smoke.png").outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it) } }
+            android.util.Log.e("PaydaySmoke", "Active window: ${uiAutomation.rootInActiveWindow}")
             android.util.Log.e("PaydaySmoke", "Failure", e)
             finish(Activity.RESULT_CANCELED, Bundle().apply { putString("stream", "PAYDAY_SMOKE_FAIL: ${e.stackTraceToString()}\n") })
         }
