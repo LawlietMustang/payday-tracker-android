@@ -39,7 +39,7 @@ function setupPlanningUI(){
   dialog.innerHTML='<form id="planningForm"><div class="dialoghead"><h2 id="planningTitle"></h2><button type="button" id="planningClose" aria-label="Close">×</button></div><div id="planningFields" class="formgrid"></div><p id="planningError" class="error" role="alert"></p><div class="dialogactions"><button id="planningCancel" class="secondary" type="button"></button><button id="planningSave" class="primary"></button></div></form>';
   document.body.append(dialog); q('#planningClose').onclick=q('#planningCancel').onclick=()=>dialog.close();
   q('#shiftWorkplace').onchange=preview;
-  q('#language').addEventListener('change',()=>{renderPlaces();renderPlanning();labelPlanningNav()});
+  q('#language').addEventListener('change',()=>{renderPlaces();renderPlanning();labelPlanningNav();const active=q('.view.active')?.id;if(['workplaces','planning'].includes(active))show(active)});
   labelPlanningNav(); renderPlaces(); renderPlanning();
 }
 function labelPlanningNav(){qa('.v21-nav').forEach(b=>b.textContent=b.dataset.icon+' '+(b.dataset.view==='workplaces'?msg('Arbeitsplätze','Workplaces'):msg('Budgets & Sparziele','Budgets & goals')))}
@@ -80,6 +80,7 @@ function renderPlanning(){if(!q('#planning'))return;
  q('#editBudget').onclick=editBudget;q('#addGoal').onclick=()=>editGoal();qa('[data-goal-edit]').forEach(b=>b.onclick=()=>editGoal(b.dataset.goalEdit));qa('[data-goal-delete]').forEach(b=>b.onclick=()=>removeGoal(b.dataset.goalDelete));
 }
 const originalShow=show;
+preview=function(){const min=calcMinutes(q('#date').value,q('#start').value,q('#end').value,q('#break').value),old=data.shifts.find(e=>e.id===q('#editId').value),id=q('#shiftWorkplace').value,wage=old&&old.workplaceId===id?old.wage:workplace(id).wage;q('#previewTime').textContent=min>0?duration(min):'0 h';q('#previewMoney').textContent=min>0?money(min*wage/60)+' '+msg('Grundlohn','base pay'):msg('Bitte Zeiten prüfen','Check working times')};
 const originalRenderWorkplaces=renderWorkplaces;
 renderWorkplaces=function(){
  if(!q('#placesContent'))return originalRenderWorkplaces();
