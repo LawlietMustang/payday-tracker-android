@@ -24,8 +24,15 @@ function spendingProjection(key, now=new Date()) {
 }
 function planningLabel(text, field){return '<label>'+text+field+'</label>'}
 function setupPlanningUI(){
+  document.head.insertAdjacentHTML('beforeend','<link rel="stylesheet" href="./enhancements.css">');
   migratePlanning();
   const picker=q('.workplace-picker'); picker.classList.add('panel'); q('header').after(picker);
+  for(const [container,prefix] of [[picker,'header'],[q('#shiftWorkplace').parentElement,'shift']]){
+    const actions=document.createElement('div');actions.className='place-actions';actions.dataset.localized='true';
+    actions.innerHTML='<button type="button" class="secondary" id="'+prefix+'AddPlace"></button><button type="button" class="secondary" id="'+prefix+'ManagePlaces"></button>';container.after(actions);
+    q('#'+prefix+'AddPlace').onclick=()=>editPlace();
+    q('#'+prefix+'ManagePlaces').onclick=()=>{q('#dialog').close();show('workplaces')};
+  }
   const manager=q('.workplace-manager');
   const places=document.createElement('section'); places.id='workplaces'; places.className='view'; places.dataset.localized='true';
   q('main').append(places); places.append(manager); manager.innerHTML='<div id="placesContent"></div>';
@@ -42,7 +49,7 @@ function setupPlanningUI(){
   q('#language').addEventListener('change',()=>{renderPlaces();renderPlanning();labelPlanningNav();const active=q('.view.active')?.id;if(['workplaces','planning'].includes(active))show(active)});
   labelPlanningNav(); renderPlaces(); renderPlanning();
 }
-function labelPlanningNav(){qa('.v21-nav').forEach(b=>b.textContent=b.dataset.icon+' '+(b.dataset.view==='workplaces'?msg('Arbeitsplätze','Workplaces'):msg('Budgets & Sparziele','Budgets & goals')))}
+function labelPlanningNav(){qa('.v21-nav').forEach(b=>b.textContent=b.dataset.icon+' '+(b.dataset.view==='workplaces'?msg('Arbeitsplätze','Workplaces'):msg('Budgets & Sparziele','Budgets & goals')));for(const prefix of ['header','shift']){q('#'+prefix+'AddPlace').textContent='+ '+msg('Arbeitsplatz','New workplace');q('#'+prefix+'ManagePlaces').textContent=msg('Verwalten','Manage workplaces')}}
 function openPlanningDialog(title,fields,onSave){
   q('#planningTitle').textContent=title; q('#planningFields').innerHTML=fields; q('#planningError').textContent='';
   q('#planningCancel').textContent=msg('Abbrechen','Cancel');q('#planningSave').textContent=msg('Speichern','Save');
@@ -57,13 +64,27 @@ function editPlace(id){
     planningLabel(msg('Stundenlohn (€)','Hourly wage (€)'),'<input id="placeWage" type="number" min="0.01" max="10000" step="0.01" required value="'+w.wage+'">')+
     '<p class="wide muted">'+msg('Neue Löhne gelten für neue Schichten. Bestehende Einträge bleiben unverändert.','New wages apply to new shifts. Existing entries keep their recorded wage.')+'</p>',()=>{
       const name=q('#placeName').value.trim();if(!name)throw Error(msg('Name fehlt.','Enter a name.'));
-      const wage=finiteAmount('#placeWage',true);if(id){w.name=name;w.wage=wage}else data.workplaces.push({id:crypto.randomUUID(),name,wage});
+      const wage=finiteAmount('#placeWage',true);if(id){w.name=name;w.wage=wage}else{const next={id:crypto.randomUUID(),name,wage};data.workplaces.push(next);renderWorkplaces();q('#shiftWorkplace').value=next.id}preview();
     });
 }
 async function archivePlace(id){const w=workplace(id);if(!w.archived&&data.workplaces.filter(x=>!x.archived).length<2){toast(msg('Ein aktiver Arbeitsplatz muss bleiben.','Keep at least one active workplace.'));return}if(data.activeTimer?.workplaceId===id){toast(msg('Bitte zuerst die laufende Schicht beenden.','Finish the active shift first.'));return}w.archived=!w.archived;save();renderWorkplaces();renderPlaces()}
 function renderPlaces(){if(!q('#placesContent'))return;
  q('#placesContent').innerHTML='<div class="panelhead"><h2>'+msg('Arbeitsplätze','Workplaces')+'</h2><button class="primary" id="addPlaceNow">+ '+msg('Arbeitsplatz hinzufügen','Add workplace')+'</button></div><p class="muted">'+msg('Eigene Löhne, zugeordnete Schichten. Archivieren erhält alle Schichten und Abrechnungen.','Separate wages and assigned shifts. Archiving preserves all shifts and payslips.')+'</p>'+data.workplaces.map(w=>'<div class="workplace-row"><span><b>'+safe(w.name)+'</b><small>'+money(w.wage)+' / h'+(w.archived?' · '+msg('Archiviert','Archived'):'')+'</small></span><button class="secondary" data-place-edit="'+w.id+'">'+msg('Bearbeiten','Edit')+'</button><button class="secondary" data-place-archive="'+w.id+'">'+(w.archived?msg('Aktivieren','Restore'):msg('Archivieren','Archive'))+'</button></div>').join('');
  q('#addPlaceNow').onclick=()=>editPlace();qa('[data-place-edit]').forEach(b=>b.onclick=()=>editPlace(b.dataset.placeEdit));qa('[data-place-archive]').forEach(b=>b.onclick=()=>archivePlace(b.dataset.placeArchive));
+ for(const row of qa('#placesContent .workplace-row')){const id=row.querySelector('[data-place-edit]').dataset.placeEdit,b=document.createElement('button');b.type='button';b.className='secondary';b.textContent=msg('Löschen','Delete');b.dataset.placeDelete=id;b.onclick=()=>removePlace(id);row.append(b)}
+}
+function removePlace(id){
+ const others=data.workplaces.filter(w=>w.id!==id&&!w.archived);
+ if(!others.length){toast(msg('Ein aktiver Arbeitsplatz muss bleiben.','Keep at least one active workplace.'));return}
+ if(data.activeTimer?.workplaceId===id){toast(msg('Bitte zuerst die laufende Schicht beenden.','Finish the active shift first.'));return}
+ const count=data.shifts.filter(s=>s.workplaceId===id).length,pays=data.payslips.filter(p=>p.workplaceId===id).length;
+ openPlanningDialog(msg('Arbeitsplatz löschen','Delete workplace'),'<p class="wide">'+safe(workplace(id).name)+' · '+count+' '+msg('Schichten','shifts')+' · '+pays+' '+msg('Abrechnungen','payslips')+'</p><p class="wide">'+msg('Einträge bleiben erhalten und werden dem gewählten Arbeitsplatz zugeordnet.','Records will be kept and moved to the selected workplace.')+'</p>'+planningLabel(msg('Einträge verschieben nach','Move records to'),'<select id="movePlace">'+others.map(w=>'<option value="'+w.id+'">'+safe(w.name)+'</option>').join('')+'</select>'),()=>{
+  if(data.activeTimer?.workplaceId===id)throw Error(msg('Bitte zuerst die laufende Schicht beenden.','Finish the active shift first.'));
+  const target=q('#movePlace').value;
+  if(data.payslips.some(p=>p.workplaceId===id&&data.payslips.some(x=>x.workplaceId===target&&x.month===p.month)))throw Error(msg('Im Ziel existiert bereits eine Abrechnung für denselben Monat. Wähle einen anderen Arbeitsplatz oder archiviere diesen.','The destination already has a payslip for the same month. Choose another workplace or archive this one.'));
+  for(const list of [data.shifts,data.payslips])list.forEach(x=>{if(x.workplaceId===id)x.workplaceId=target});
+  data.workplaces=data.workplaces.filter(w=>w.id!==id);if(workplaceFilter===id)workplaceFilter='all';data.workplaceFilter=workplaceFilter;
+ });q('#planningSave').textContent=msg('Löschen und verschieben','Delete and move');
 }
 function editBudget(){const b=data.budgets[selected]||{};
  openPlanningDialog(msg('Monatsbudget: ','Monthly budget: ')+selected,planningLabel(msg('Gesamtbudget (€)','Overall budget (€)'),'<input id="budgetTotal" type="number" min="0" step="0.01" value="'+Number(b.total||0)+'">')+planningCategories.map(c=>planningLabel(categoryName(c)+' (€)','<input id="budget_'+c+'" type="number" min="0" step="0.01" value="'+Number(b[c]||0)+'">')).join('')+'<p class="wide muted">'+msg('0 = kein Limit. Kategorien sind Teil des Gesamtbudgets, keine zusätzlichen Ausgaben.','0 = no limit. Category limits are part of the overall budget, not extra spending.')+'</p>',()=>{const next={total:finiteAmount('#budgetTotal')};planningCategories.forEach(c=>next[c]=finiteAmount('#budget_'+c));data.budgets[selected]=next});

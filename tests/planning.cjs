@@ -7,9 +7,14 @@ const server=http.createServer((req,res)=>{const file=path.join(root,req.url==='
  const browser=await chromium.launch({headless:true});const page=await browser.newPage({viewport:{width:360,height:800}});let errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto(url);await page.waitForSelector('#planning',{state:'attached'});
  await page.evaluate(()=>{localStorage.setItem('lohnzeit-language','en');data.settings.theme='dark';data.shifts.push({id:'legacy',date:'2026-09-01',start:'08:00',end:'16:00',minutes:480,breakMin:0,wage:15,status:'completed',created:1});save()});await page.reload();
- await page.click('#menuOpen');await page.click('#drawer [data-view="workplaces"]');await page.click('#addPlaceNow');
+ await page.click('#headerAddPlace');
  await page.fill('#placeName','Second job');await page.fill('#placeWage','20');await page.click('#planningSave');
  assert.equal(await page.evaluate(()=>data.workplaces.length),2);assert.equal(await page.locator('#placesContent').innerText().then(s=>s.includes('Second job')),true);
+ await page.click('#headerManagePlaces');await page.locator('[data-place-edit]').last().click();await page.fill('#placeName','Evening job');await page.click('#planningSave');
+ assert.equal(await page.evaluate(()=>data.workplaces[1].name),'Evening job');
+ await page.evaluate(()=>openDialog());await page.click('#shiftAddPlace');await page.fill('#placeName','Temporary job');await page.fill('#placeWage','22');await page.click('#planningSave');
+ assert.equal(await page.locator('#shiftWorkplace option:checked').innerText(),'Temporary job');
+ await page.click('#shiftManagePlaces');await page.locator('[data-place-delete]').last().click();await page.click('#planningSave');assert.equal(await page.evaluate(()=>data.workplaces.length),2);
  await page.click('#menuOpen');await page.click('#drawer [data-view="planning"]');
  await page.click('#editBudget');await page.fill('#budgetTotal','1000');await page.fill('#budget_groceries','200');await page.click('#planningSave');
  await page.click('#addGoal');await page.fill('#goalName','Laptop');await page.fill('#goalTarget','1200');await page.fill('#goalSaved','250');await page.click('#planningSave');
