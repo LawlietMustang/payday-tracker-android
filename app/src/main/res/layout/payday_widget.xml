@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/widget_root" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:gravity="center_vertical" android:padding="18dp" android:background="@drawable/widget_background">
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Payday Tracker" android:textColor="#99CCD9" android:textSize="14sp" />
+    <TextView android:id="@+id/widget_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold" android:layout_marginTop="6dp" />
+    <Chronometer android:id="@+id/widget_clock" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#FFFFFF" android:textSize="26sp" />
+    <TextView android:id="@+id/widget_open" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#99CCD9" android:textSize="12sp" android:layout_marginTop="6dp" />
+</LinearLayout>

@@ -2,7 +2,7 @@ plugins { id("com.android.application"); id("org.jetbrains.kotlin.android") }
 android {
     namespace = "com.paydaytracker.app"
     compileSdk = 35
-    defaultConfig { applicationId = "com.paydaytracker.app"; minSdk = 26; targetSdk = 35; versionCode = 17; versionName = "2.1.1" }
+    defaultConfig { applicationId = "com.paydaytracker.app"; minSdk = 26; targetSdk = 35; versionCode = 18; versionName = "2.2.0" }
     signingConfigs {
         create("permanent") {
             System.getenv("PAYDAY_KEYSTORE_PATH")?.let { storeFile = file(it) }

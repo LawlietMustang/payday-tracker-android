@@ -26,8 +26,15 @@ const server=http.createServer((req,res)=>{const file=path.join(root,req.url==='
  fs.mkdirSync('test-results',{recursive:true});
  for(const width of [320,360,412,768])for(const lang of ['de','en'])for(const theme of ['light','dark']){
   await page.setViewportSize({width,height:850});await page.evaluate(({lang,theme})=>{localStorage.setItem('lohnzeit-language',lang);q('#language').value=lang;data.settings.theme=theme;applyTheme();q('#language').dispatchEvent(new Event('change'))},{lang,theme});
-  for(const view of ['dashboard','workplaces','planning','history','settings']){await page.evaluate(v=>show(v),view);await page.waitForTimeout(30);const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1);assert.equal(overflow,false,`overflow ${width} ${lang} ${theme} ${view}`);}
+  for(const view of ['dashboard','workplaces','planning','history','settings','device']){await page.evaluate(v=>show(v),view);await page.waitForTimeout(30);const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1);assert.equal(overflow,false,`overflow ${width} ${lang} ${theme} ${view}`);}
   if(width===360&&lang==='en'){await page.evaluate(()=>show('planning'));await page.screenshot({path:`test-results/planning-${theme}.png`,fullPage:true});await page.evaluate(()=>show('workplaces'));await page.screenshot({path:`test-results/workplaces-${theme}.png`,fullPage:true})}
  }
- assert.deepEqual(errors,[]);console.log('PASS: startup, workplace creation, migration, budget and goal persistence, forecast, 80 responsive view checks');await browser.close();server.close();
+ // Exercise the native bridge UI contract without pretending to authenticate in a browser.
+ await page.evaluate(()=>{window.nativeTest={lock:false,reminder:false,hour:20,minute:0,days:62,notifications:false};window.Android={deviceSettings:()=>JSON.stringify(window.nativeTest),saveReminder:(enabled,h,m,days)=>{Object.assign(window.nativeTest,{reminder:enabled,hour:h,minute:m,days});refreshDeviceSettings()},setAppLock:v=>{window.lockRequested=v},addWidget:()=>{window.pinRequested=true},notificationSettings:()=>{},syncWidget:()=>{}};localStorage.setItem('lohnzeit-language','en');show('device')});
+ await page.check('#reminderEnabled');for(const box of await page.locator('.reminder-days input:checked').all())await box.uncheck();await page.click('#reminderForm button');assert.match(await page.locator('#reminderError').innerText(),/weekday/);
+ await page.check('.reminder-days input[value="1"]');await page.fill('#reminderTime','19:30');await page.click('#reminderForm button');assert.equal(await page.evaluate(()=>window.nativeTest.days),2);assert.equal(await page.evaluate(()=>window.nativeTest.hour),19);
+ await page.check('#biometricLock');assert.equal(await page.evaluate(()=>window.lockRequested),true);assert.equal(await page.isChecked('#biometricLock'),false);
+ await page.click('#pinWidget');assert.equal(await page.evaluate(()=>window.pinRequested),true);
+ await page.screenshot({path:'test-results/device-settings.png',fullPage:true});
+ assert.deepEqual(errors,[]);console.log('PASS: workplace CRUD, migration, planning persistence, forecast, native UI contracts, 96 responsive view checks');await browser.close();server.close();
 })().catch(e=>{console.error(e);server.close();process.exit(1)});
