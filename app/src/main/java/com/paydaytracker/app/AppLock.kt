@@ -21,6 +21,8 @@ class AppLock(private val activity: Activity, root: FrameLayout, private val con
     private val prefs = activity.getSharedPreferences("device", Context.MODE_PRIVATE)
     private val cover = LinearLayout(activity)
     private val title = TextView(activity)
+    private val unlock = Button(activity)
+    private val pin = Button(activity)
     private var signal: CancellationSignal? = null
     private var busy = false
     private var authenticated = false
@@ -32,8 +34,8 @@ class AppLock(private val activity: Activity, root: FrameLayout, private val con
         cover.orientation = LinearLayout.VERTICAL; cover.gravity = Gravity.CENTER
         cover.setPadding(32, 32, 32, 32); cover.setBackgroundColor(Color.rgb(13, 30, 43))
         title.setTextColor(Color.WHITE); title.textSize = 22f; cover.addView(title)
-        cover.addView(Button(activity).apply { this.text = text("Entsperren", "Unlock"); setOnClickListener { authenticate() } })
-        cover.addView(Button(activity).apply { this.text = text("PIN / Passwort verwenden", "Use PIN / password"); setOnClickListener { credential() } })
+        unlock.setOnClickListener { authenticate() }; cover.addView(unlock)
+        pin.setOnClickListener { credential() }; cover.addView(pin)
         root.addView(cover, FrameLayout.LayoutParams(-1, -1))
         refresh()
     }
@@ -42,6 +44,8 @@ class AppLock(private val activity: Activity, root: FrameLayout, private val con
         cover.visibility = if (blocked) View.VISIBLE else View.GONE
         content.visibility = if (blocked) View.INVISIBLE else View.VISIBLE
         title.text = text("Payday Tracker gesperrt", "Payday Tracker locked")
+        unlock.text = text("Entsperren", "Unlock")
+        pin.text = text("PIN / Passwort verwenden", "Use PIN / password")
         if (enabled || pendingChange != null) activity.window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         else activity.window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
     }
