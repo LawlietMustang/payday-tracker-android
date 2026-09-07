@@ -2,9 +2,9 @@
 
 This fully offline Android edition records shifts, breaks, gross earnings, estimated net earnings, forecasts, settings, and language choice without an internet connection.
 
-## Version 1.8.1
+## Version 1.9.0
 
-Version 1.8.1 replaces browser-generated prompts with branded in-app dialogs, displays a live accumulated break counter while paused, and adds an Android foreground timer notification for background work and break tracking.
+Version 1.9.0 includes the German net-label correction and replaces browser-generated prompts with branded in-app dialogs, displays a live accumulated break counter while paused, and adds an Android foreground timer notification for background work and break tracking.
 
 Version 1.8 adds a persistent offline time clock. Users can start work, begin and end breaks, finish a timed shift, or discard an accidental session. The timer survives app closure and saves the completed session directly into work hours.
 
