@@ -38,7 +38,10 @@ class MainActivity : Activity() {
             put("hour", devicePrefs.getInt("reminderHour", 20))
             put("minute", devicePrefs.getInt("reminderMinute", 0))
             put("days", devicePrefs.getInt("reminderDays", 62))
-            put("notifications", getSystemService(NotificationManager::class.java).areNotificationsEnabled())
+            put("notifications", ReminderReceiver.notificationsAllowed(this@MainActivity))
+            put("nextReminder", devicePrefs.getLong("nextReminder", 0))
+            put("exact", Build.VERSION.SDK_INT < 31 || getSystemService(android.app.AlarmManager::class.java).canScheduleExactAlarms())
+            put("screenLock", getSystemService(android.app.KeyguardManager::class.java).isDeviceSecure)
         }.toString()
 
         @JavascriptInterface
@@ -57,6 +60,23 @@ class MainActivity : Activity() {
 
         @JavascriptInterface
         fun notificationSettings() { runOnUiThread { startActivity(Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, packageName)) } }
+
+        @JavascriptInterface
+        fun testReminder() { runOnUiThread {
+            val ok = ReminderReceiver.post(this@MainActivity, true)
+            val en = devicePrefs.getString("language", "de") == "en"
+            Toast.makeText(this@MainActivity, if (ok) { if (en) "Test sent. Check your notifications." else "Test gesendet. Prüfe deine Benachrichtigungen." } else { if (en) "Notifications are blocked. Allow them in phone settings." else "Benachrichtigungen sind gesperrt. Bitte in den Telefoneinstellungen erlauben." }, Toast.LENGTH_LONG).show()
+            if (!ok && Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 224)
+            nativeChanged()
+        } }
+
+        @JavascriptInterface
+        fun exactReminderSettings() { runOnUiThread {
+            if (Build.VERSION.SDK_INT >= 31) startActivity(Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, android.net.Uri.parse("package:$packageName")))
+        } }
+
+        @JavascriptInterface
+        fun backgroundSettings() { runOnUiThread { startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:$packageName"))) } }
 
         @JavascriptInterface
         fun addWidget() { runOnUiThread {
@@ -146,6 +166,7 @@ class MainActivity : Activity() {
         root.addView(webView, FrameLayout.LayoutParams(-1, -1))
         appLock = AppLock(this, root, webView) { nativeChanged() }
         setContentView(root)
+        ReminderReceiver.deliverDue(this)
         ReminderReceiver.schedule(this)
         webView.loadUrl("file:///android_asset/index.html")
     }
@@ -155,7 +176,7 @@ class MainActivity : Activity() {
         if (webView.canGoBack()) webView.goBack() else super.onBackPressed()
     }
 
-    override fun onResume() { super.onResume(); if (::appLock.isInitialized) appLock.resume(); if (::webView.isInitialized) nativeChanged() }
+    override fun onResume() { super.onResume(); if (::appLock.isInitialized) appLock.resume(); ReminderReceiver.deliverDue(this); ReminderReceiver.schedule(this); if (::webView.isInitialized) nativeChanged() }
     override fun onPause() { if (::appLock.isInitialized) appLock.pause(); super.onPause() }
     override fun onDestroy() { appLock.destroy(); webView.destroy(); super.onDestroy() }
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) { super.onRequestPermissionsResult(requestCode, permissions, grantResults); nativeChanged() }

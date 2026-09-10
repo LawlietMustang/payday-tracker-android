@@ -72,10 +72,23 @@ class DeviceSmoke : Instrumentation() {
             Thread.sleep(500)
             requireJS("JSON.parse(Android.deviceSettings()).lock===false")
             // Dispatch a real reminder notification and inspect Android's active notifications.
-            targetContext.getSharedPreferences("device",0).edit().putBoolean("reminder",true).apply()
+            targetContext.getSharedPreferences("device",0).edit().putBoolean("reminder",true).putLong("nextReminder",System.currentTimeMillis()-1000).apply()
             runOnMainSync { ReminderReceiver().onReceive(targetContext,Intent(ReminderReceiver.ACTION)) }
             for (i in 0..20) { if (targetContext.getSystemService(android.app.NotificationManager::class.java).activeNotifications.any { it.id==221 }) break; Thread.sleep(100) }
             check(targetContext.getSystemService(android.app.NotificationManager::class.java).activeNotifications.any { it.id==221 }) { "Reminder notification was not posted" }
+            // Let Android deliver a scheduled reminder through AlarmManager, without invoking the receiver.
+            shell("appops set com.paydaytracker.app.debug SCHEDULE_EXACT_ALARM allow")
+            val nextMinute=java.util.Calendar.getInstance().apply { add(java.util.Calendar.MINUTE,1);set(java.util.Calendar.SECOND,0);set(java.util.Calendar.MILLISECOND,0) }
+            targetContext.getSystemService(android.app.NotificationManager::class.java).cancel(221)
+            js("Android.saveReminder(true,${nextMinute.get(java.util.Calendar.HOUR_OF_DAY)},${nextMinute.get(java.util.Calendar.MINUTE)},127,'en')")
+            Thread.sleep(500)
+            val expected=targetContext.getSharedPreferences("device",0).getLong("nextReminder",0)
+            check(expected==nextMinute.timeInMillis) { "Scheduled time did not match saved reminder" }
+            shell("input keyevent 3")
+            for (i in 0..300) { if (targetContext.getSystemService(android.app.NotificationManager::class.java).activeNotifications.any { it.id==221 }) break;Thread.sleep(250) }
+            check(targetContext.getSystemService(android.app.NotificationManager::class.java).activeNotifications.any { it.id==221 }) { "Scheduled reminder never arrived while backgrounded" }
+            check(targetContext.getSharedPreferences("device",0).getLong("lastReminder",0)==expected) { "Wrong reminder delivered" }
+            shell("am start -n com.paydaytracker.app.debug/com.paydaytracker.app.MainActivity");Thread.sleep(500)
             // Bind a real widget in the emulator's test host and inspect its rendered RemoteViews.
             uiAutomation.adoptShellPermissionIdentity("android.permission.BIND_APPWIDGET")
             lateinit var host: android.appwidget.AppWidgetHost
@@ -92,7 +105,8 @@ class DeviceSmoke : Instrumentation() {
             // Configure a test-only emulator PIN, then complete the actual system credential prompt.
             shell("locksettings set-pin 2468")
             check(targetContext.getSystemService(android.app.KeyguardManager::class.java).isDeviceSecure) { "Could not configure emulator PIN" }
-            js("Android.setAppLock(true)");Thread.sleep(1500)
+            js("q('#drawer [data-panel=lock]').click()");requireJS("!q('#appLockCard').hidden")
+            tap("#biometricLock");Thread.sleep(1500)
             shell("input text 2468");shell("input keyevent 66");Thread.sleep(1500)
             requireJS("JSON.parse(Android.deviceSettings()).lock===true")
             shell("input keyevent 3");Thread.sleep(500)

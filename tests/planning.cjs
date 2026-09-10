@@ -35,6 +35,7 @@ const server=http.createServer((req,res)=>{const file=path.join(root,req.url==='
  await page.check('.reminder-days input[value="1"]');await page.fill('#reminderTime','19:30');await page.click('#reminderForm button');assert.equal(await page.evaluate(()=>window.nativeTest.days),2);assert.equal(await page.evaluate(()=>window.nativeTest.hour),19);
  await page.click('#biometricLock');assert.equal(await page.evaluate(()=>window.lockRequested),true);assert.equal(await page.isChecked('#biometricLock'),false);
  await page.click('#pinWidget');assert.equal(await page.evaluate(()=>window.pinRequested),true);
+ await page.evaluate(()=>q('#drawer [data-panel=lock]').click());assert.equal(await page.locator('#biometricLock').isVisible(),true);assert.equal(await page.locator('#reminderForm').isVisible(),false);
  await page.screenshot({path:'test-results/device-settings.png',fullPage:true});
  assert.deepEqual(errors,[]);console.log('PASS: workplace CRUD, migration, planning persistence, forecast, native UI contracts, 96 responsive view checks');await browser.close();server.close();
 })().catch(e=>{console.error(e);server.close();process.exit(1)});
