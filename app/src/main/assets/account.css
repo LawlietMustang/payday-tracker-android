@@ -1,0 +1,17 @@
+.account-stack{max-width:680px;display:grid;gap:18px;margin:0 auto}
+.account-stack .panel{min-width:0;margin:0}
+.account-stack label{display:grid;gap:8px;margin-top:16px;font-weight:600}
+.account-stack input,.account-stack select{box-sizing:border-box;width:100%;min-width:0;background:var(--card,#fff);color:inherit;border:1px solid var(--line,#d4dfe3);border-radius:12px;padding:13px;font:inherit}
+.account-grid{display:grid;grid-template-columns:1fr 2fr;gap:12px}
+.account-menu{padding:0!important;overflow:hidden}
+.account-row,.account-menu summary{display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%;padding:22px;text-align:left;font:inherit;font-weight:600;border:0;border-bottom:1px solid var(--line,#d4dfe3);border-radius:0;background:transparent;color:inherit;cursor:pointer;box-sizing:border-box}
+.account-menu summary{display:list-item;list-style-position:inside}
+#appearanceControls{padding:0 22px 22px}
+.account-unavailable{padding:22px;display:grid;gap:8px}
+.account-unavailable small{color:var(--muted,#6c7c84);line-height:1.5}
+.account-danger{color:#c53945}
+.account-nav{display:block;width:100%;padding:15px 14px;min-height:48px;text-align:left;border:0;border-radius:12px;background:transparent;color:inherit;font:inherit;cursor:pointer}
+.account-nav.active{background:rgba(30,110,230,.12);color:#2478ec}
+main.personal-view>.workplace-picker,main.personal-view>.place-actions,main.personal-view header .actions{display:none}
+[data-theme="dark"] .account-stack input,[data-theme="dark"] .account-stack select{background:#182630;color:#e5edf2}
+@media(max-width:380px){.account-grid{grid-template-columns:1fr}.account-row,.account-menu summary,.account-unavailable{padding:18px}}

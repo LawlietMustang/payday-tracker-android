@@ -32,6 +32,12 @@ class MainActivity : Activity() {
 
     inner class AndroidBridge {
         @JavascriptInterface
+        fun clearAppData() = runOnUiThread {
+            // Android clears this app's private data and stops its processes/alarms.
+            val accepted = getSystemService(android.app.ActivityManager::class.java).clearApplicationUserData()
+            if (!accepted) Toast.makeText(this@MainActivity, if (devicePrefs.getString("language", "de") == "en") "Could not delete data. Try again." else "Daten konnten nicht gelöscht werden. Bitte erneut versuchen.", Toast.LENGTH_LONG).show()
+        }
+        @JavascriptInterface
         fun deviceSettings(): String = JSONObject().apply {
             put("lock", devicePrefs.getBoolean("lock", false))
             put("reminder", devicePrefs.getBoolean("reminder", false))

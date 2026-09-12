@@ -35,7 +35,15 @@ const server=http.createServer((req,res)=>{const file=path.join(root,req.url==='
  await page.check('.reminder-days input[value="1"]');await page.fill('#reminderTime','19:30');await page.click('#reminderForm button');assert.equal(await page.evaluate(()=>window.nativeTest.days),2);assert.equal(await page.evaluate(()=>window.nativeTest.hour),19);
  await page.click('#biometricLock');assert.equal(await page.evaluate(()=>window.lockRequested),true);assert.equal(await page.isChecked('#biometricLock'),false);
  await page.click('#pinWidget');assert.equal(await page.evaluate(()=>window.pinRequested),true);
- await page.evaluate(()=>q('#drawer [data-panel=lock]').click());assert.equal(await page.locator('#biometricLock').isVisible(),true);assert.equal(await page.locator('#reminderForm').isVisible(),false);
+ await page.evaluate(()=>{show('appSettings');q('#settingsLock').click()});assert.equal(await page.locator('#biometricLock').isVisible(),true);assert.equal(await page.locator('#reminderForm').isVisible(),false);
+ await page.evaluate(()=>show('profile'));await page.fill('#profile_name','Test Person');await page.fill('#profile_street','Example Street 1');await page.click('#profileForm button[type=submit]');await page.reload();await page.evaluate(()=>show('profile'));assert.equal(await page.inputValue('#profile_name'),'Test Person');assert.equal(await page.inputValue('#profile_street'),'Example Street 1');
+ for(const lang of ['de','en'])for(const theme of ['light','dark']){
+  await page.evaluate(({lang,theme})=>{q('#language').value=lang;q('#language').dispatchEvent(new Event('change'));data.settings.theme=theme;applyTheme()},{lang,theme});
+  await page.setViewportSize({width:360,height:800});
+  for(const view of ['profile','appSettings']){await page.evaluate(v=>show(v),view);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);await page.screenshot({path:`test-results/${view}-${lang}-${theme}.png`,fullPage:true})}
+ }
+ await page.click('#settingsDelete');await page.click('#confirmCancel');assert.equal(await page.evaluate(()=>data.profile.name),'Test Person');
+ await page.evaluate(()=>{window.Android={clearAppData:()=>window.deleted=true};show('appSettings')});await page.click('#settingsDelete');await page.click('#confirmOk');assert.equal(await page.evaluate(()=>window.deleted),true);
  await page.screenshot({path:'test-results/device-settings.png',fullPage:true});
  assert.deepEqual(errors,[]);console.log('PASS: workplace CRUD, migration, planning persistence, forecast, native UI contracts, 96 responsive view checks');await browser.close();server.close();
 })().catch(e=>{console.error(e);server.close();process.exit(1)});

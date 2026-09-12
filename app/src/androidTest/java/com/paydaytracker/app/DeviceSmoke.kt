@@ -105,7 +105,7 @@ class DeviceSmoke : Instrumentation() {
             // Configure a test-only emulator PIN, then complete the actual system credential prompt.
             shell("locksettings set-pin 2468")
             check(targetContext.getSystemService(android.app.KeyguardManager::class.java).isDeviceSecure) { "Could not configure emulator PIN" }
-            js("q('#drawer [data-panel=lock]').click()");requireJS("!q('#appLockCard').hidden")
+            js("show('appSettings');q('#settingsLock').click()");requireJS("!q('#appLockCard').hidden")
             tap("#biometricLock");Thread.sleep(1500)
             shell("input text 2468");shell("input keyevent 66");Thread.sleep(1500)
             requireJS("JSON.parse(Android.deviceSettings()).lock===true")
