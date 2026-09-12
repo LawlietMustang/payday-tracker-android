@@ -13,5 +13,6 @@
 .account-nav{display:block;width:100%;padding:15px 14px;min-height:48px;text-align:left;border:0;border-radius:12px;background:transparent;color:inherit;font:inherit;cursor:pointer}
 .account-nav.active{background:rgba(30,110,230,.12);color:#2478ec}
 main.personal-view>.workplace-picker,main.personal-view>.place-actions,main.personal-view header .actions{display:none}
+main.personal-view header .month-picker,main.personal-view header .add{display:none!important}
 [data-theme="dark"] .account-stack input,[data-theme="dark"] .account-stack select{background:#182630;color:#e5edf2}
 @media(max-width:380px){.account-grid{grid-template-columns:1fr}.account-row,.account-menu summary,.account-unavailable{padding:18px}}
