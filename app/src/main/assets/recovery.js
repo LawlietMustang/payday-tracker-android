@@ -15,8 +15,17 @@ function validateBackup(text){
   for(const row of x[key]){if(!row||typeof row!=='object'||Array.isArray(row))throw Error('record');for(const [k,v] of Object.entries(row)){if(/^(id|workplaceId|recurringId)$/.test(k)&&v!=null&&(typeof v!=='string'||! /^[a-zA-Z0-9_-]{1,100}$/.test(v)))throw Error('id');if(typeof v==='number'&&!Number.isFinite(v))throw Error('number')}}
  }
  for(const row of x.shifts)if(!/^\d{4}-\d{2}-\d{2}$/.test(row.date)||!/^\d{2}:\d{2}$/.test(row.start)||!/^\d{2}:\d{2}$/.test(row.end)||!Number.isFinite(row.minutes))throw Error('shift');
+ for(const key of ['shifts','expenses','recurringExpenses','templates','workplaces','payslips','savingsGoals'])for(const row of x[key]||[]){
+  if(typeof row.id!=='string')throw Error('id');
+  for(const [k,v] of Object.entries(row)){
+   if(v!==null&&typeof v==='object')throw Error('nested record');
+   if(['minutes','breakMin','wage','amount','target','saved','actualGross','actualNet','created','day'].includes(k)&&typeof v!=='number')throw Error('number');
+   if(['name','note','date','start','end','status','category','due','month'].includes(k)&&typeof v!=='string')throw Error('text');
+  }
+ }
  if(x.profile!==undefined&&(!x.profile||typeof x.profile!=='object'||Array.isArray(x.profile)||Object.values(x.profile).some(v=>typeof v!=='string')))throw Error('profile');
  if(x.budgets!==undefined&&(!x.budgets||typeof x.budgets!=='object'||Array.isArray(x.budgets)))throw Error('budgets');
+ for(const [month,budget] of Object.entries(x.budgets||{}))if(!/^\d{4}-\d{2}$/.test(month)||!budget||typeof budget!=='object'||Array.isArray(budget)||Object.values(budget).some(v=>typeof v!=='number'||!Number.isFinite(v)||v<0))throw Error('budget');
  x.activeTimer=null;return doc;
 }
 window.backupResult=ok=>toast(ok?msg('Sicherung gespeichert','Backup saved'):msg('Datei konnte nicht verarbeitet werden. Bitte erneut versuchen.','Could not process the file. Please try again.'));
