@@ -48,6 +48,11 @@ class DeviceSmoke : Instrumentation() {
             for (i in 0..40) { if (js("!!document.querySelector('#device')") == "true") break; Thread.sleep(250) }
             requireJS("!!document.querySelector('#device')")
             requireJS("deviceAvailable()")
+            runOnMainSync {
+                val position = IntArray(2); web.getLocationOnScreen(position)
+                val inset = activity.window.decorView.rootWindowInsets.getInsets(android.view.WindowInsets.Type.statusBars()).top
+                check(position[1] >= inset) { "WebView overlaps status bar" }
+            }
             requireJS("JSON.parse(Android.deviceSettings()).lock === false")
             js("localStorage.setItem('lohnzeit-language','en');q('#language').value='en';q('#language').dispatchEvent(new Event('change'))")
             tap("#headerAddPlace")

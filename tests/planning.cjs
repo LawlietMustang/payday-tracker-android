@@ -44,6 +44,14 @@ const server=http.createServer((req,res)=>{const file=path.join(root,req.url==='
  }
  await page.click('#settingsDelete');await page.click('#confirmCancel');assert.equal(await page.evaluate(()=>data.profile.name),'Test Person');
  await page.evaluate(()=>{window.Android={clearAppData:()=>window.deleted=true};show('appSettings')});await page.click('#settingsDelete');await page.click('#confirmOk');assert.equal(await page.evaluate(()=>window.deleted),true);
+ await page.evaluate(()=>{delete window.Android;show('expenses')});assert.equal(await page.locator('#workplaceFilter').isVisible(),false);await page.screenshot({path:'test-results/expenses-clean.png',fullPage:true});
+ await page.evaluate(()=>show('dashboard'));assert.equal(await page.locator('#workplaceFilter').isVisible(),true);
+ const snapshot=await page.evaluate(()=>backupDocument());assert.equal(await page.evaluate(s=>validateBackup(s).data.profile.name,snapshot),'Test Person');
+ assert.equal(await page.evaluate(()=>{try{validateBackup('{"app":"Wrong"}');return false}catch(e){return true}}),true);
+ await page.evaluate(()=>{data.profile.name='Changed';save();show('recovery')});await page.screenshot({path:'test-results/recovery.png',fullPage:true});
+ await page.evaluate(s=>{void receiveBackup(s)},snapshot);await page.click('#confirmCancel');assert.equal(await page.evaluate(()=>data.profile.name),'Changed');
+ await page.evaluate(s=>{void receiveBackup(s)},snapshot);await page.click('#confirmOk');await page.waitForFunction(()=>typeof data!=='undefined'&&data.profile?.name==='Test Person');
+ await page.evaluate(()=>{show('device');widgetPinResult(false)});assert.equal(await page.locator('#widgetHome').isVisible(),true);
  await page.screenshot({path:'test-results/device-settings.png',fullPage:true});
  assert.deepEqual(errors,[]);console.log('PASS: workplace CRUD, migration, planning persistence, forecast, native UI contracts, 96 responsive view checks');await browser.close();server.close();
 })().catch(e=>{console.error(e);server.close();process.exit(1)});

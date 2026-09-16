@@ -24,6 +24,8 @@ import org.json.JSONObject
 
 class MainActivity : Activity() {
     private lateinit var webView: WebView
+    private lateinit var contentRoot: FrameLayout
+    private var pendingBackup: ByteArray? = null
     private var pendingCsv: ByteArray? = null
     private val createCsvRequest = 901
     private lateinit var appLock: AppLock
@@ -31,6 +33,23 @@ class MainActivity : Activity() {
     private fun nativeChanged() { if (!isDestroyed) webView.evaluateJavascript("window.refreshDeviceSettings && window.refreshDeviceSettings()", null) }
 
     inner class AndroidBridge {
+        @JavascriptInterface
+        fun exportBackup(json: String) { runOnUiThread {
+            if (json.toByteArray().size > 10 * 1024 * 1024) return@runOnUiThread
+            pendingBackup = json.toByteArray(Charsets.UTF_8)
+            startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+                addCategory(Intent.CATEGORY_OPENABLE); type = "application/json"
+                putExtra(Intent.EXTRA_TITLE, "PaydayTracker-${java.time.LocalDate.now()}.json")
+            }, 903)
+        } }
+        @JavascriptInterface
+        fun importBackup() { runOnUiThread {
+            startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                addCategory(Intent.CATEGORY_OPENABLE); type = "*/*"
+            }, 904)
+        } }
+        @JavascriptInterface
+        fun openHome() { runOnUiThread { startActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)) } }
         @JavascriptInterface
         fun clearAppData() = runOnUiThread {
             // Android clears this app's private data and stops its processes/alarms.
@@ -87,8 +106,8 @@ class MainActivity : Activity() {
         @JavascriptInterface
         fun addWidget() { runOnUiThread {
             val manager = AppWidgetManager.getInstance(this@MainActivity)
-            if (manager.isRequestPinAppWidgetSupported) manager.requestPinAppWidget(ComponentName(this@MainActivity, PaydayWidget::class.java), null, null)
-            else Toast.makeText(this@MainActivity, if (devicePrefs.getString("language", "de") == "en") "Long-press your home screen and choose Widgets → Payday Tracker." else "Startbildschirm gedrückt halten und Widgets → Payday Tracker wählen.", Toast.LENGTH_LONG).show()
+            val accepted = try { manager.isRequestPinAppWidgetSupported && manager.requestPinAppWidget(ComponentName(this@MainActivity, PaydayWidget::class.java), null, null) } catch (_: Exception) { false }
+            webView.evaluateJavascript("window.widgetPinResult && window.widgetPinResult($accepted)", null)
         } }
 
         @JavascriptInterface
@@ -100,9 +119,12 @@ class MainActivity : Activity() {
         @JavascriptInterface
         fun setDarkMode(dark: Boolean) {
             runOnUiThread {
-                window.statusBarColor = if (dark) Color.rgb(7, 23, 35) else getColor(R.color.navy)
+                val background = if (dark) Color.rgb(14, 24, 31) else Color.rgb(243, 246, 248)
+                window.statusBarColor = background
+                window.decorView.setBackgroundColor(background)
+                if (::contentRoot.isInitialized) contentRoot.setBackgroundColor(background)
                 window.navigationBarColor = if (dark) Color.rgb(16, 24, 32) else getColor(R.color.white)
-                window.decorView.systemUiVisibility = if (dark) 0 else View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+                window.decorView.systemUiVisibility = if (dark) 0 else View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
             }
         }
 
@@ -148,9 +170,10 @@ class MainActivity : Activity() {
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        window.statusBarColor = getColor(R.color.navy)
+        window.statusBarColor = Color.rgb(243, 246, 248)
         window.navigationBarColor = getColor(R.color.white)
-        window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+        window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+        if (Build.VERSION.SDK_INT >= 30) window.setDecorFitsSystemWindows(false)
         webView = WebView(this).apply {
             setBackgroundColor(getColor(R.color.app_background))
             webViewClient = WebViewClient()
@@ -169,9 +192,19 @@ class MainActivity : Activity() {
             overScrollMode = View.OVER_SCROLL_NEVER
         }
         val root = FrameLayout(this)
+        contentRoot = root
+        root.setBackgroundColor(Color.rgb(243, 246, 248))
+        root.setOnApplyWindowInsetsListener { v, insets ->
+            if (Build.VERSION.SDK_INT >= 30) {
+                val bars = insets.getInsets(android.view.WindowInsets.Type.systemBars() or android.view.WindowInsets.Type.displayCutout() or android.view.WindowInsets.Type.ime())
+                v.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+                android.view.WindowInsets.CONSUMED
+            } else insets
+        }
         root.addView(webView, FrameLayout.LayoutParams(-1, -1))
         appLock = AppLock(this, root, webView) { nativeChanged() }
         setContentView(root)
+        root.requestApplyInsets()
         ReminderReceiver.deliverDue(this)
         ReminderReceiver.schedule(this)
         webView.loadUrl("file:///android_asset/index.html")
@@ -191,6 +224,38 @@ class MainActivity : Activity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, resultData: Intent?) {
         super.onActivityResult(requestCode, resultCode, resultData)
         if (appLock.result(requestCode, resultCode)) return
+        if (requestCode == 903 || requestCode == 904) {
+            if (resultCode != RESULT_OK || resultData?.data == null) { pendingBackup = null; return }
+            val uri = resultData.data!!
+            val bytes = pendingBackup
+            pendingBackup = null
+            Thread {
+                try {
+                    if (requestCode == 903) {
+                        requireNotNull(bytes)
+                        requireNotNull(contentResolver.openOutputStream(uri, "wt")).use { it.write(bytes) }
+                        runOnUiThread { webView.evaluateJavascript("window.backupResult(true)", null) }
+                    } else {
+                        val input = requireNotNull(contentResolver.openInputStream(uri))
+                        val payload = input.use { stream ->
+                            val output = java.io.ByteArrayOutputStream()
+                            val buffer = ByteArray(8192)
+                            while (true) {
+                                val count = stream.read(buffer)
+                                if (count < 0) break
+                                require(output.size() + count <= 10 * 1024 * 1024)
+                                output.write(buffer, 0, count)
+                            }
+                            output.toByteArray()
+                        }
+                        require(payload.size <= 10 * 1024 * 1024)
+                        val json = JSONObject.quote(String(payload, Charsets.UTF_8))
+                        runOnUiThread { webView.evaluateJavascript("window.receiveBackup($json)", null) }
+                    }
+                } catch (_: Exception) { runOnUiThread { webView.evaluateJavascript("window.backupResult(false)", null) } }
+            }.start()
+            return
+        }
         if (requestCode != createCsvRequest) return
         var success = false
         if (resultCode == RESULT_OK) {
