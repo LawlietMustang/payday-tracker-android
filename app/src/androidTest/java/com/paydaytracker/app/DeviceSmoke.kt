@@ -54,6 +54,18 @@ class DeviceSmoke : Instrumentation() {
                 check(position[1] >= inset) { "WebView overlaps status bar" }
             }
             requireJS("JSON.parse(Android.deviceSettings()).lock === false")
+            js("show('dashboard');show('shifts');show('expenses')")
+            shell("input keyevent 4"); Thread.sleep(500)
+            requireJS("q('.view.active').id==='shifts'")
+            shell("input keyevent 4"); Thread.sleep(500)
+            requireJS("q('.view.active').id==='dashboard'")
+            js("openExpenseDialog()")
+            shell("input keyevent 4"); Thread.sleep(500)
+            requireJS("!q('#expenseDialog').open && q('.view.active').id==='dashboard'")
+            shell("input keyevent 4"); Thread.sleep(500)
+            check(!activity.hasWindowFocus()) { "Home Back did not background the app" }
+            shell("am start -n com.paydaytracker.app.debug/com.paydaytracker.app.MainActivity")
+            Thread.sleep(700)
             js("localStorage.setItem('lohnzeit-language','en');q('#language').value='en';q('#language').dispatchEvent(new Event('change'))")
             tap("#headerAddPlace")
             requireJS("q('#planningDialog').open")

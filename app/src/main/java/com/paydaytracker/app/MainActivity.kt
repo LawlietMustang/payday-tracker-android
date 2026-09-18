@@ -170,6 +170,7 @@ class MainActivity : Activity() {
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (Build.VERSION.SDK_INT >= 33) onBackInvokedDispatcher.registerOnBackInvokedCallback(android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT) { navigateBack() }
         window.statusBarColor = Color.rgb(243, 246, 248)
         window.navigationBarColor = getColor(R.color.white)
         window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
@@ -212,7 +213,16 @@ class MainActivity : Activity() {
 
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
-        if (webView.canGoBack()) webView.goBack() else super.onBackPressed()
+        navigateBack()
+    }
+    private var backPending = false
+    private fun navigateBack() {
+        if (!::webView.isInitialized || webView.visibility != View.VISIBLE || backPending) return
+        backPending = true
+        webView.evaluateJavascript("window.handleAppBack ? window.handleAppBack() : true") { handled ->
+            backPending = false
+            if (handled == "false") moveTaskToBack(true)
+        }
     }
 
     override fun onResume() { super.onResume(); if (::appLock.isInitialized) appLock.resume(); ReminderReceiver.deliverDue(this); ReminderReceiver.schedule(this); if (::webView.isInitialized) nativeChanged() }
