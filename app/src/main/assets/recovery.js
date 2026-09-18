@@ -1,4 +1,4 @@
-function backupDocument(){const copy=JSON.parse(JSON.stringify(data));copy.activeTimer=null;return JSON.stringify({app:'PaydayTracker',version:1,created:new Date().toISOString(),language:language(),data:copy})}
+function backupDocument(){const copy=JSON.parse(JSON.stringify(data));copy.activeTimer=null;if(copy.shiftReminders)copy.shiftReminders.enabled=false;return JSON.stringify({app:'PaydayTracker',version:1,created:new Date().toISOString(),language:language(),data:copy})}
 function validateBackup(text){
  if(typeof text!=='string'||text.length>10485760)throw Error('size');
  const doc=JSON.parse(text,(key,value)=>{if(['__proto__','constructor','prototype'].includes(key))throw Error('key');return value});
@@ -32,6 +32,7 @@ window.backupResult=ok=>toast(ok?msg('Sicherung gespeichert','Backup saved'):msg
 window.receiveBackup=async text=>{
  let doc;try{doc=validateBackup(text)}catch(e){toast(msg('Ungültige oder nicht unterstützte Sicherung. Deine Daten bleiben unverändert.','Invalid or unsupported backup. Your data is unchanged.'));return false}
  if(!await askConfirm(msg('Diese Sicherung ersetzt die aktuellen App-Daten. Fortfahren?','This backup will replace your current app data. Continue?'),msg('Sicherung wiederherstellen','Restore backup')))return false;
+ if(doc.data.shiftReminders)doc.data.shiftReminders.enabled=false;
  const previous=localStorage.getItem(KEY),oldLanguage=localStorage.getItem('lohnzeit-language');
  try{localStorage.setItem(KEY,JSON.stringify(doc.data));localStorage.setItem('lohnzeit-language',doc.language==='en'?'en':'de')}
  catch(e){if(previous!==null)localStorage.setItem(KEY,previous);else localStorage.removeItem(KEY);if(oldLanguage!==null)localStorage.setItem('lohnzeit-language',oldLanguage);window.backupResult(false);return false}

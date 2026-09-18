@@ -8,3 +8,4 @@ local.properties
 .payday-tracker-signing/
 node_modules/
 test-results/
+**/google-services.json

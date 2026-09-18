@@ -71,5 +71,27 @@ const server=http.createServer((req,res)=>{const file=path.join(root,req.url==='
  assert.equal(await page.locator('#expenseRecurring').evaluate(e=>getComputedStyle(e).outlineStyle),'none');
  await page.screenshot({path:'test-results/checkbox-clean.png',fullPage:true});await page.evaluate(()=>handleAppBack());
  for(const size of await page.locator('.mobile button').evaluateAll(es=>es.map(e=>{const s=getComputedStyle(e,'::before');return [s.width,s.height]})))assert.deepEqual(size,['24px','24px']);
- assert.deepEqual(errors,[]);console.log('PASS: navigation, ISO weeks, icons, checkbox, workplace CRUD, planning, native UI contracts, 96 responsive views');await browser.close();server.close();
+ await page.evaluate(()=>{
+  const date='2099-10-01';data.shifts.push({id:'remind-a',date,start:'12:00',end:'20:00',minutes:450,wage:15,status:'planned',workplaceId:'default'},{id:'remind-b',date,start:'18:00',end:'22:00',minutes:240,wage:15,status:'planned',workplaceId:'default'});
+  window.Android={syncShiftReminders:json=>window.shiftPayload=JSON.parse(json),shiftReminderStatus:()=>JSON.stringify({allowed:true}),requestShiftNotifications:()=>window.requested=true};deviceSection='reminders';show('device');
+ });
+ await page.check('#shiftReminderEnabled');await page.fill('#shiftReminderAmount','2');await page.selectOption('#shiftReminderUnit','days');await page.click('#shiftReminderForm button[type=submit]');
+ assert.equal(await page.evaluate(()=>window.shiftPayload.leadMinutes),2880);assert.equal(await page.evaluate(()=>window.shiftPayload.shifts.length),2);assert.equal(await page.evaluate(()=>window.requested),true);
+ await page.evaluate(()=>{data.shifts.push({id:'remind-c',date:'2099-10-02',start:'09:00',end:'17:00',minutes:480,wage:15,status:'planned',workplaceId:'default'});save()});assert.equal(await page.evaluate(()=>window.shiftPayload.shifts.length),3);
+ await page.evaluate(()=>renderDeviceSettings());await page.selectOption('#shiftReminderScope','selected');await page.check('#shiftReminderChoices input[value="remind-a"]');await page.click('#shiftReminderForm button[type=submit]');assert.deepEqual(await page.evaluate(()=>window.shiftPayload.shifts.map(x=>x.id)),['remind-a']);
+ await page.evaluate(()=>{data.shifts.find(x=>x.id==='remind-a').start='13:00';save()});assert.equal(await page.evaluate(()=>window.shiftPayload.shifts[0].start),'13:00');
+ await page.evaluate(()=>{data.shifts.find(x=>x.id==='remind-a').status='completed';save()});assert.equal(await page.evaluate(()=>window.shiftPayload.shifts.length),0);
+ await page.evaluate(()=>{data.shifts=data.shifts.filter(x=>!x.id.startsWith('remind-'));save()});assert.equal(await page.evaluate(()=>window.shiftPayload.shifts.length),0);
+ await page.selectOption('#shiftReminderScope','all');await page.selectOption('#shiftReminderUnit','hours');await page.fill('#shiftReminderAmount','3');await page.click('#shiftReminderForm button[type=submit]');
+ await page.reload();assert.equal(await page.evaluate(()=>shiftReminderConfig().amount),3);assert.equal(await page.evaluate(()=>shiftReminderConfig().enabled),true);
+ assert.equal(await page.evaluate(()=>JSON.parse(backupDocument()).data.shiftReminders.enabled),false);
+ for(const lang of ['en','de'])for(const theme of ['light','dark']){
+  await page.setViewportSize({width:360,height:800});await page.evaluate(({lang,theme})=>{q('#language').value=lang;q('#language').dispatchEvent(new Event('change'));data.settings.theme=theme;applyTheme();deviceSection='reminders';show('device')},{lang,theme});
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);await page.screenshot({path:`test-results/shift-reminders-${lang}-${theme}.png`,fullPage:true});
+ }
+ await page.evaluate(()=>{q('#language').value='en';q('#language').dispatchEvent(new Event('change'));show('appSettings')});assert.equal(await page.isDisabled('#googleSignIn'),true);
+ await page.evaluate(()=>{window.accountState={configured:true,email:'',busy:false};window.Android={googleAccountState:()=>JSON.stringify(window.accountState),googleSignIn:()=>window.signInClicked=true,googleSignOut:()=>window.signOutClicked=true};renderGoogleAccount()});await page.click('#googleSignIn');assert.equal(await page.evaluate(()=>window.signInClicked),true);
+ await page.evaluate(()=>{window.accountState.email='example@example.com';googleAccountChanged('signedIn')});assert.equal(await page.locator('#googleAccountInfo').innerText(),'example@example.com');await page.click('#googleSignIn');assert.equal(await page.evaluate(()=>window.signOutClicked),true);
+ await page.evaluate(()=>{delete window.Android;renderGoogleAccount();show('dashboard');data.settings.theme='light';applyTheme()});await page.screenshot({path:'test-results/euro-icon.png'});
+ assert.deepEqual(errors,[]);console.log('PASS: shift reminder all/selected/edit/delete/persistence, Google UI states, navigation, ISO weeks, icons, responsive views');await browser.close();server.close();
 })().catch(e=>{console.error(e);server.close();process.exit(1)});

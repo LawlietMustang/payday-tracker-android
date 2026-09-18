@@ -54,6 +54,37 @@ class DeviceSmoke : Instrumentation() {
                 check(position[1] >= inset) { "WebView overlaps status bar" }
             }
             requireJS("JSON.parse(Android.deviceSettings()).lock === false")
+            requireJS("JSON.parse(Android.googleAccountState()).configured === false")
+            js("Android.googleSignIn()")
+            Thread.sleep(300)
+            requireJS("JSON.parse(Android.googleAccountState()).email === ''")
+            // Native alarm delivery while the app is in the background, plus cancellation.
+            shell("appops set com.paydaytracker.app.debug SCHEDULE_EXACT_ALARM allow")
+            val start = java.time.LocalDateTime.now().plusMinutes(2).withSecond(0).withNano(0)
+            val row = org.json.JSONObject().put("id", "native-shift").put("date", start.toLocalDate().toString()).put("start", start.toLocalTime().toString()).put("workplace", "Test workplace")
+            val config = org.json.JSONObject().put("enabled", true).put("leadMinutes", 1).put("language", "en").put("shifts", org.json.JSONArray().put(row))
+            check(ShiftReminders.replace(targetContext, config.toString()))
+            val due = ShiftReminders.status(targetContext).getLong("next")
+            check(due > System.currentTimeMillis()) { "Shift reminder not scheduled" }
+            // Edited time replaces the old alarm; deleting cancels it entirely.
+            row.put("start", start.plusHours(1).toLocalTime().toString())
+            check(ShiftReminders.replace(targetContext, config.toString()))
+            check(ShiftReminders.status(targetContext).getLong("next") > due)
+            config.put("shifts", org.json.JSONArray())
+            check(ShiftReminders.replace(targetContext, config.toString()))
+            check(ShiftReminders.status(targetContext).getLong("next") == 0L)
+            row.put("start", start.toLocalTime().toString());config.put("shifts", org.json.JSONArray().put(row))
+            check(ShiftReminders.replace(targetContext, config.toString()))
+            shell("input keyevent 3")
+            val deadline = System.currentTimeMillis() + 75000
+            val manager = targetContext.getSystemService(android.app.NotificationManager::class.java)
+            while (System.currentTimeMillis() < deadline && manager.activeNotifications.none { it.id == 225 }) Thread.sleep(500)
+            val posted = manager.activeNotifications.firstOrNull { it.id == 225 } ?: error("Background shift reminder not delivered")
+            ShiftReminders.reconcile(targetContext)
+            check(manager.activeNotifications.first { it.id == 225 }.postTime == posted.postTime) { "Duplicate shift reminder" }
+            config.put("enabled", false);ShiftReminders.replace(targetContext, config.toString())
+            check(manager.activeNotifications.none { it.id == 225 })
+            shell("am start -n com.paydaytracker.app.debug/com.paydaytracker.app.MainActivity");Thread.sleep(700)
             js("show('dashboard');show('shifts');show('expenses')")
             shell("input keyevent 4"); Thread.sleep(500)
             requireJS("q('.view.active').id==='shifts'")

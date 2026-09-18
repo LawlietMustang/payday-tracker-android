@@ -29,10 +29,27 @@ class MainActivity : Activity() {
     private var pendingCsv: ByteArray? = null
     private val createCsvRequest = 901
     private lateinit var appLock: AppLock
+    private val googleAccount by lazy { GoogleAccount(this) { code ->
+        if (!isDestroyed && ::webView.isInitialized) webView.evaluateJavascript("window.googleAccountChanged && window.googleAccountChanged(" + JSONObject.quote(code) + ")", null)
+    } }
     private val devicePrefs by lazy { getSharedPreferences("device", MODE_PRIVATE) }
     private fun nativeChanged() { if (!isDestroyed) webView.evaluateJavascript("window.refreshDeviceSettings && window.refreshDeviceSettings()", null) }
 
     inner class AndroidBridge {
+        @JavascriptInterface
+        fun googleAccountState(): String = googleAccount.state()
+        @JavascriptInterface
+        fun googleSignIn() { runOnUiThread { if (webView.visibility == View.VISIBLE) googleAccount.signIn() } }
+        @JavascriptInterface
+        fun googleSignOut() { runOnUiThread { if (webView.visibility == View.VISIBLE) googleAccount.signOut() } }
+        @JavascriptInterface
+        fun shiftReminderStatus(): String = ShiftReminders.status(this@MainActivity).toString()
+        @JavascriptInterface
+        fun syncShiftReminders(json: String) { runOnUiThread { ShiftReminders.replace(this@MainActivity, json) } }
+        @JavascriptInterface
+        fun requestShiftNotifications() { runOnUiThread {
+            if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 225)
+        } }
         @JavascriptInterface
         fun exportBackup(json: String) { runOnUiThread {
             if (json.toByteArray().size > 10 * 1024 * 1024) return@runOnUiThread
@@ -189,6 +206,7 @@ class MainActivity : Activity() {
             settings.builtInZoomControls = false
             settings.displayZoomControls = false
             settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+            settings.blockNetworkLoads = true
             addJavascriptInterface(AndroidBridge(), "Android")
             overScrollMode = View.OVER_SCROLL_NEVER
         }
@@ -225,9 +243,9 @@ class MainActivity : Activity() {
         }
     }
 
-    override fun onResume() { super.onResume(); if (::appLock.isInitialized) appLock.resume(); ReminderReceiver.deliverDue(this); ReminderReceiver.schedule(this); if (::webView.isInitialized) nativeChanged() }
+    override fun onResume() { super.onResume(); if (::appLock.isInitialized) appLock.resume(); ReminderReceiver.deliverDue(this); ReminderReceiver.schedule(this); ShiftReminders.reconcile(this); if (::webView.isInitialized) nativeChanged() }
     override fun onPause() { if (::appLock.isInitialized) appLock.pause(); super.onPause() }
-    override fun onDestroy() { appLock.destroy(); webView.destroy(); super.onDestroy() }
+    override fun onDestroy() { googleAccount.destroy(); appLock.destroy(); webView.destroy(); super.onDestroy() }
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) { super.onRequestPermissionsResult(requestCode, permissions, grantResults); nativeChanged() }
 
     @Deprecated("Deprecated in Java")
