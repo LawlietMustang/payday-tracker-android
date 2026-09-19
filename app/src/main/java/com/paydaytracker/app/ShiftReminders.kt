@@ -75,7 +75,8 @@ object ShiftReminders {
         }
         val notifications = c.getSystemService(NotificationManager::class.java)
         notifications.activeNotifications.filter { it.id == 225 && it.tag !in activeKeys }.forEach { notifications.cancel(it.tag, 225) }
-        p.edit().putString("sent", keep.toString()).putInt("blocked", blocked).putInt("count", count).putLong("next", if (next == Long.MAX_VALUE) 0 else next).apply()
+        // Persist before a broadcast or short-lived process finishes.
+        p.edit().putString("sent", keep.toString()).putInt("blocked", blocked).putInt("count", count).putLong("next", if (next == Long.MAX_VALUE) 0 else next).commit()
         if (next == Long.MAX_VALUE) return
         try {
             if (Build.VERSION.SDK_INT < 31 || alarm.canScheduleExactAlarms()) alarm.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next, pending(c))
