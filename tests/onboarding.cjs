@@ -13,10 +13,10 @@ module.exports=async function(browser,url){
  fs.mkdirSync('test-results',{recursive:true});
  for(const width of [320,360,412,768])for(const lang of ['en','de'])for(const theme of ['light','dark']){
   await page.setViewportSize({width,height:800});await page.evaluate(({lang,theme})=>{localStorage.setItem('lohnzeit-language',lang);data.settings.theme=theme;applyTheme();drawSetup()},{lang,theme});
-  for(const step of [0,1,2,3]){await page.evaluate(step=>{setupStep=step;drawSetup()},step);assert.equal(await page.evaluate(()=>q('#onboarding').scrollWidth>innerWidth+1),false,`setup overflow ${width} ${lang} ${theme} ${step}`)}
+  for(const step of [0,1,2,3]){await page.evaluate(step=>{setupStep=step;drawSetup()},step);assert.equal(await page.evaluate(()=>q('#onboarding').scrollWidth>innerWidth+1),false,`setup overflow ${width} ${lang} ${theme} ${step}`);assert.equal(await page.evaluate(()=>q('#setupNext').getBoundingClientRect().bottom<=innerHeight),true,'Next remains visible')}
   if(width===360&&lang==='en'){for(const step of [0,1,2,3]){await page.evaluate(step=>{setupStep=step;drawSetup()},step);await page.screenshot({path:`test-results/setup-${step}-${theme}.png`})}}
  }
- await page.evaluate(()=>{localStorage.setItem('lohnzeit-language','en');setupStep=1;drawSetup()});await page.click('#setupNext');
+ await page.evaluate(()=>{localStorage.setItem('lohnzeit-language','en');setupStep=1;drawSetup()});await page.click('#setupNext');assert.equal(await page.evaluate(()=>window.handleAppBack()),true);assert.equal(await page.evaluate(()=>setupStep),1);await page.click('#setupNext');
  await page.fill('#setupDate','2026-01-05');await page.fill('#setupStart','09:00');await page.fill('#setupEnd','17:00');await page.click('[data-break="30"]');
  assert.match(await page.locator('#setupPreview').innerText(),/150\.00/);
  await page.fill('#setupBreak','600');await page.click('#setupNext');assert.equal(await page.evaluate(()=>setupStep),2);assert.match(await page.locator('#setupError').innerText(),/Check the times/);
