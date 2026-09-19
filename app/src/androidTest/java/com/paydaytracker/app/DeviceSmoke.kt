@@ -15,7 +15,8 @@ import org.json.JSONArray
 
 // Runs against the real file:// WebView and Java bridge, not a browser mock.
 class DeviceSmoke : Instrumentation() {
-    override fun onCreate(arguments: Bundle?) { super.onCreate(arguments); start() }
+    private var permissionMode = ""
+    override fun onCreate(arguments: Bundle?) { super.onCreate(arguments); permissionMode = arguments?.getString("mode") ?: ""; start() }
     private lateinit var activity: Activity
     private lateinit var web: WebView
     private fun findWeb(view: View): WebView? {
@@ -43,6 +44,28 @@ class DeviceSmoke : Instrumentation() {
     }
     override fun onStart() {
         try {
+            if (permissionMode == "blocked") {
+                val at = java.time.LocalDateTime.now().plusMinutes(30).withSecond(0).withNano(0)
+                val row = org.json.JSONObject().put("id", "permission-retry").put("date", at.toLocalDate().toString()).put("start", at.toLocalTime().toString()).put("workplace", "Retry test")
+                val config = org.json.JSONObject().put("enabled", true).put("leadMinutes", 60).put("language", "en").put("shifts", org.json.JSONArray().put(row))
+                check(!ShiftReminders.status(targetContext).getBoolean("allowed")) { "Permission should be denied before this test" }
+                check(ShiftReminders.replace(targetContext, config.toString()))
+                check(ShiftReminders.status(targetContext).getInt("blocked") == 1)
+                check(ShiftReminders.status(targetContext).getInt("delivered") == 0) { "Blocked reminder was marked delivered" }
+                finish(Activity.RESULT_OK, Bundle().apply { putString("stream", "PAYDAY_PERMISSION_BLOCKED_PASS\n") })
+                return
+            }
+            if (permissionMode == "granted") {
+                check(ShiftReminders.status(targetContext).getInt("blocked") == 1) { "Pending reminder did not survive process restart" }
+                check(ShiftReminders.status(targetContext).getBoolean("allowed"))
+                ShiftReminders.reconcile(targetContext)
+                val manager = targetContext.getSystemService(android.app.NotificationManager::class.java)
+                for (i in 0..20) { if (manager.activeNotifications.any { it.id == 225 }) break; Thread.sleep(100) }
+                check(manager.activeNotifications.any { it.id == 225 }) { "Reminder did not retry after permission grant" }
+                check(ShiftReminders.status(targetContext).getInt("delivered") == 1)
+                ShiftReminders.replace(targetContext, "{\"enabled\":false,\"leadMinutes\":60,\"shifts\":[]}")
+                for (i in 0..20) { if (manager.activeNotifications.none { it.id == 225 }) break; Thread.sleep(100) }
+            }
             activity = startActivitySync(Intent(targetContext, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             runOnMainSync { web = findWeb(activity.window.decorView) ?: error("Missing WebView") }
             for (i in 0..40) { if (js("!!document.querySelector('#device')") == "true") break; Thread.sleep(250) }
@@ -58,23 +81,6 @@ class DeviceSmoke : Instrumentation() {
             js("Android.googleSignIn()")
             Thread.sleep(300)
             requireJS("JSON.parse(Android.googleAccountState()).email === ''")
-            // Regression: a due reminder denied by notification permission must not be consumed.
-            val retryStart = java.time.LocalDateTime.now().plusMinutes(30).withSecond(0).withNano(0)
-            val retryRow = org.json.JSONObject().put("id", "permission-retry").put("date", retryStart.toLocalDate().toString()).put("start", retryStart.toLocalTime().toString()).put("workplace", "Retry test")
-            val retryConfig = org.json.JSONObject().put("enabled", true).put("leadMinutes", 60).put("language", "en").put("shifts", org.json.JSONArray().put(retryRow))
-            shell("appops set com.paydaytracker.app.debug POST_NOTIFICATION ignore")
-            check(!ShiftReminders.status(targetContext).getBoolean("allowed")) { "Notification blocking was not applied" }
-            check(ShiftReminders.replace(targetContext, retryConfig.toString()))
-            check(ShiftReminders.status(targetContext).getInt("blocked") == 1)
-            check(ShiftReminders.status(targetContext).getInt("delivered") == 0) { "Blocked reminder was marked delivered" }
-            shell("appops set com.paydaytracker.app.debug POST_NOTIFICATION allow")
-            ShiftReminders.reconcile(targetContext)
-            val retryManager = targetContext.getSystemService(android.app.NotificationManager::class.java)
-            for (i in 0..20) { if (retryManager.activeNotifications.any { it.id == 225 }) break; Thread.sleep(100) }
-            check(retryManager.activeNotifications.any { it.id == 225 }) { "Reminder did not retry after permission grant" }
-            check(ShiftReminders.status(targetContext).getInt("delivered") == 1)
-            retryConfig.put("enabled", false);ShiftReminders.replace(targetContext, retryConfig.toString())
-            for (i in 0..20) { if (retryManager.activeNotifications.none { it.id == 225 }) break; Thread.sleep(100) }
             // Native alarm delivery while the app is in the background, plus cancellation.
             shell("appops set com.paydaytracker.app.debug SCHEDULE_EXACT_ALARM allow")
             val start = java.time.LocalDateTime.now().plusMinutes(2).withSecond(0).withNano(0)

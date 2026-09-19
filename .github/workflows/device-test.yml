@@ -33,8 +33,11 @@ jobs:
           script: |
             adb install app/build/outputs/apk/debug/app-debug.apk
             adb install app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+            adb shell pm revoke com.paydaytracker.app.debug android.permission.POST_NOTIFICATIONS
+            adb shell am instrument -w -e mode blocked com.paydaytracker.app.debug.test/com.paydaytracker.app.DeviceSmoke | tee permission-blocked.txt
+            grep -q 'PAYDAY_PERMISSION_BLOCKED_PASS' permission-blocked.txt
             adb shell pm grant com.paydaytracker.app.debug android.permission.POST_NOTIFICATIONS
-            adb shell am instrument -w com.paydaytracker.app.debug.test/com.paydaytracker.app.DeviceSmoke | tee device-smoke.txt
+            adb shell am instrument -w -e mode granted com.paydaytracker.app.debug.test/com.paydaytracker.app.DeviceSmoke | tee device-smoke.txt
             adb logcat -d > device-logcat.txt
             adb pull /sdcard/Android/data/com.paydaytracker.app.debug/files/device-smoke.png device-smoke.png || true
             grep -q 'PAYDAY_SMOKE_PASS' device-smoke.txt
@@ -43,6 +46,7 @@ jobs:
         with:
           name: Android-device-evidence
           path: |
+            permission-blocked.txt
             device-smoke.txt
             device-logcat.txt
             device-smoke.png
