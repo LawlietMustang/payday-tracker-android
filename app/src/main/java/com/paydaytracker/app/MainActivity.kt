@@ -45,7 +45,17 @@ class MainActivity : Activity() {
         @JavascriptInterface
         fun shiftReminderStatus(): String = ShiftReminders.status(this@MainActivity).toString()
         @JavascriptInterface
-        fun syncShiftReminders(json: String) { runOnUiThread { ShiftReminders.replace(this@MainActivity, json) } }
+        fun syncShiftReminders(json: String) { runOnUiThread {
+            val ok = ShiftReminders.replace(this@MainActivity, json)
+            webView.evaluateJavascript("window.shiftReminderSyncResult && window.shiftReminderSyncResult($ok)", null)
+        } }
+        @JavascriptInterface
+        fun retryShiftReminders() { runOnUiThread { ShiftReminders.retry(this@MainActivity); nativeChanged() } }
+        @JavascriptInterface
+        fun testShiftReminder() { runOnUiThread {
+            val ok = ShiftReminders.test(this@MainActivity)
+            webView.evaluateJavascript("window.shiftReminderTestResult && window.shiftReminderTestResult($ok)", null)
+        } }
         @JavascriptInterface
         fun requestShiftNotifications() { runOnUiThread {
             if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 225)
@@ -246,7 +256,7 @@ class MainActivity : Activity() {
     override fun onResume() { super.onResume(); if (::appLock.isInitialized) appLock.resume(); ReminderReceiver.deliverDue(this); ReminderReceiver.schedule(this); ShiftReminders.reconcile(this); if (::webView.isInitialized) nativeChanged() }
     override fun onPause() { if (::appLock.isInitialized) appLock.pause(); super.onPause() }
     override fun onDestroy() { googleAccount.destroy(); appLock.destroy(); webView.destroy(); super.onDestroy() }
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) { super.onRequestPermissionsResult(requestCode, permissions, grantResults); nativeChanged() }
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) { super.onRequestPermissionsResult(requestCode, permissions, grantResults); ShiftReminders.reconcile(this); nativeChanged() }
 
     @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, resultData: Intent?) {
