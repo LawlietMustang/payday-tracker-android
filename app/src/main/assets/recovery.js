@@ -33,6 +33,7 @@ window.receiveBackup=async text=>{
  let doc;try{doc=validateBackup(text)}catch(e){toast(msg('Ungültige oder nicht unterstützte Sicherung. Deine Daten bleiben unverändert.','Invalid or unsupported backup. Your data is unchanged.'));return false}
  if(!await askConfirm(msg('Diese Sicherung ersetzt die aktuellen App-Daten. Fortfahren?','This backup will replace your current app data. Continue?'),msg('Sicherung wiederherstellen','Restore backup')))return false;
  if(doc.data.shiftReminders)doc.data.shiftReminders.enabled=false;
+ doc.data.onboardingCompleted=true;delete doc.data.onboardingDraft;
  const previous=localStorage.getItem(KEY),oldLanguage=localStorage.getItem('lohnzeit-language');
  try{localStorage.setItem(KEY,JSON.stringify(doc.data));localStorage.setItem('lohnzeit-language',doc.language==='en'?'en':'de')}
  catch(e){if(previous!==null)localStorage.setItem(KEY,previous);else localStorage.removeItem(KEY);if(oldLanguage!==null)localStorage.setItem('lohnzeit-language',oldLanguage);window.backupResult(false);return false}

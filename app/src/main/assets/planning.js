@@ -22,7 +22,7 @@ function spendingProjection(key, now=new Date()) {
   const projected=past?logged:future?logged:spent+scheduled+variable/now.getDate()*(days-now.getDate());
   return {spent,scheduled,projected,logged,past,future,hasData:list.length>0};
 }
-function planningLabel(text, field){return '<label>'+text+field+'</label>'}
+function planningLabel(text, field){text=text.replace('(€)','('+currencyCode()+')');return '<label>'+text+field+'</label>'}
 function setupPlanningUI(){
   document.head.insertAdjacentHTML('beforeend','<link rel="stylesheet" href="./enhancements.css">');
   migratePlanning();

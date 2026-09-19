@@ -71,6 +71,15 @@ class DeviceSmoke : Instrumentation() {
             for (i in 0..40) { if (js("!!document.querySelector('#device')") == "true") break; Thread.sleep(250) }
             requireJS("!!document.querySelector('#device')")
             requireJS("deviceAvailable()")
+            // Complete a fresh-install setup through the rendered controls.
+            for (i in 0..20) { if (js("typeof setupActive !== 'undefined'") == "true") break; Thread.sleep(100) }
+            if (js("setupActive") == "true") {
+                js("q('#setupNext').click()")
+                js("q('#setupName').value='Smoke workplace';q('#setupName').dispatchEvent(new Event('input'));q('#setupNext').click()")
+                requireJS("setupStep === 2")
+                js("q('#setupSkip').click();q('#setupNext').click()")
+                requireJS("data.onboardingCompleted && !setupActive")
+            }
             runOnMainSync {
                 val position = IntArray(2); web.getLocationOnScreen(position)
                 val inset = activity.window.decorView.rootWindowInsets.getInsets(android.view.WindowInsets.Type.statusBars()).top
