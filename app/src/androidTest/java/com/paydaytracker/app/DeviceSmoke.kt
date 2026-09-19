@@ -83,7 +83,8 @@ class DeviceSmoke : Instrumentation() {
             ShiftReminders.reconcile(targetContext)
             check(manager.activeNotifications.first { it.id == 225 }.postTime == posted.postTime) { "Duplicate shift reminder" }
             config.put("enabled", false);ShiftReminders.replace(targetContext, config.toString())
-            check(manager.activeNotifications.none { it.id == 225 })
+            for (i in 0..20) { if (manager.activeNotifications.none { it.id == 225 }) break; Thread.sleep(100) }
+            check(manager.activeNotifications.none { it.id == 225 }) { "Disabled shift notification was not cancelled" }
             shell("am start -n com.paydaytracker.app.debug/com.paydaytracker.app.MainActivity");Thread.sleep(700)
             js("show('dashboard');show('shifts');show('expenses')")
             shell("input keyevent 4"); Thread.sleep(500)

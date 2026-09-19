@@ -1,10 +1,14 @@
 # Payday Tracker for Android
 
-This fully offline Android edition records shifts, breaks, gross earnings, estimated net earnings, forecasts, settings, and language choice without an internet connection.
+Payday Tracker records shifts, breaks, gross earnings, estimated net earnings, forecasts, settings, and language choice without an internet connection. Optional Google sign-in uses a network connection when configured; it does not upload financial records.
 
-## Version 1.9.0
+## Version 2.2.5
 
-Version 1.9.0 includes the German net-label correction and replaces browser-generated prompts with branded in-app dialogs, displays a live accumulated break counter while paused, and adds an Android foreground timer notification for background work and break tracking.
+Upcoming-shift reminders support all planned shifts or selected shifts, with a lead time in hours or days. Android schedules them locally, including while the app is closed. The euro navigation icon is corrected. Native Google account authentication is implemented but requires the app owner's configuration before it can work: see [Google sign-in setup](docs/GOOGLE-SIGN-IN.md). It does not provide automatic Drive synchronization. See [release notes](VERSION-2.2.5.md).
+
+## Version 1.8.1
+
+Version 1.8.1 replaces browser-generated prompts with branded in-app dialogs, displays a live accumulated break counter while paused, and adds an Android foreground timer notification for background work and break tracking.
 
 Version 1.8 adds a persistent offline time clock. Users can start work, begin and end breaks, finish a timed shift, or discard an accidental session. The timer survives app closure and saves the completed session directly into work hours.
 
@@ -28,11 +32,11 @@ This update fixes the mobile bottom navigation so the floating add button no lon
 
 ## Privacy and storage
 
-- The manifest contains no Internet permission.
+- Internet permission is used by optional native Google authentication; the WebView blocks network loads.
 - Records are saved inside the app's private internal Android storage.
 - Other ordinary apps cannot read that storage.
-- Cloud backup and device-transfer backup are disabled.
-- Uninstalling the app or clearing its storage permanently removes the records.
+- Android automatic cloud backup and device-transfer backup are disabled. Manual file backup/restore is available through Settings.
+- Uninstalling the app or clearing its storage removes local records. Exported files in Documents or Drive can be selected to restore them.
 
 ## Device optimization
 
