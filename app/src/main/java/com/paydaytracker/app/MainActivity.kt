@@ -146,12 +146,12 @@ class MainActivity : Activity() {
         @JavascriptInterface
         fun setDarkMode(dark: Boolean) {
             runOnUiThread {
-                val background = if (dark) Color.rgb(14, 24, 31) else Color.rgb(243, 246, 248)
+                val background = if (dark) Color.rgb(17, 10, 38) else Color.rgb(24, 14, 51)
                 window.statusBarColor = background
                 window.decorView.setBackgroundColor(background)
                 if (::contentRoot.isInitialized) contentRoot.setBackgroundColor(background)
-                window.navigationBarColor = if (dark) Color.rgb(16, 24, 32) else getColor(R.color.white)
-                window.decorView.systemUiVisibility = if (dark) 0 else View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+                window.navigationBarColor = background
+                window.decorView.systemUiVisibility = 0
             }
         }
 

@@ -29,7 +29,7 @@ function load(){try{const x=JSON.parse(localStorage.getItem(KEY));if(!(x&&x.sett
 function save(){localStorage.setItem(KEY,JSON.stringify(data))}
 function monthKey(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')}
 function updateMonthDisplay(){let d=new Date(selected+'-01T12:00'),locale=language()==='en'?'en-GB':'de-DE';q('#monthDisplay').textContent=d.toLocaleDateString(locale,{month:'short',year:'numeric'}).replace('.','');if(q('#payslipMonth'))q('#payslipMonth').value=selected}
-function applyTheme(){let choice=data.settings.theme||'system',dark=choice==='dark'||(choice==='system'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.dataset.theme=dark?'dark':'light';document.querySelector('meta[name="theme-color"]').content=dark?'#071723':'#092238';if(window.Android&&typeof window.Android.setDarkMode==='function')window.Android.setDarkMode(dark)}
+function applyTheme(){let choice=data.settings.theme||'system',dark=choice==='dark'||(choice==='system'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.dataset.theme=dark?'dark':'light';document.querySelector('meta[name="theme-color"]').content=dark?'#110a26':'#180e33';if(window.Android&&typeof window.Android.setDarkMode==='function')window.Android.setDarkMode(dark)}
 function currencyCode(){return /^[A-Z]{3}$/.test(data.settings.currency||'')?data.settings.currency:'EUR'}
 function money(n){return new Intl.NumberFormat(language()==='en'?'en-GB':'de-DE',{style:'currency',currency:currencyCode()}).format(n||0)}
 function duration(min){let h=Math.floor(min/60),m=Math.round(min%60);return m?h+' h '+String(m).padStart(2,'0')+' min':h+' h'}
