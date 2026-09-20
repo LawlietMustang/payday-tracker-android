@@ -26,7 +26,7 @@ class PaydayWidget : AppWidgetProvider() {
                 else if (state == "working") { if (de) "Arbeitszeit läuft" else "Working" }
                 else if (state == "break") { if (de) "Pause läuft" else "On break" }
                 else { if (de) "Bereit zum Start" else "Ready to start" })
-            views.setTextViewText(R.id.widget_open, if (de) "Payday Tracker öffnen →" else "Open Payday Tracker →")
+            views.setTextViewText(R.id.widget_open, if (de) "WageTrack öffnen →" else "Open WageTrack →")
             views.setViewVisibility(R.id.widget_clock, if (active && !locked) View.VISIBLE else View.GONE)
             val elapsed = (System.currentTimeMillis() - prefs.getLong("timerBase", System.currentTimeMillis())).coerceAtLeast(0)
             views.setChronometer(R.id.widget_clock, SystemClock.elapsedRealtime() - elapsed, null, active && !locked)

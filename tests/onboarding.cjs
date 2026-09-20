@@ -4,7 +4,7 @@ module.exports=async function(browser,url){
  const page=await browser.newPage({viewport:{width:360,height:800}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto(url);await page.waitForSelector('#setupNext');
  await page.selectOption('#setupLanguage','en');
- assert.equal(await page.evaluate(()=>data.onboardingCompleted),false);
+ assert.equal(await page.evaluate(()=>data.onboardingCompleted),false);assert.match(await page.locator('.setup-brand').innerText(),/WageTrack/);
  assert.equal(await page.evaluate(()=>window.handleAppBack()),false);
  await page.click('#setupNext');await page.fill('#setupName','Evening café');await page.fill('#setupWage','20');
  await page.click('#setupCurrency');await page.fill('#currencySearch','bangladeshi');await page.click('[data-currency="BDT"]');
@@ -13,7 +13,7 @@ module.exports=async function(browser,url){
  fs.mkdirSync('test-results',{recursive:true});
  for(const width of [320,360,412,768])for(const lang of ['en','de'])for(const theme of ['light','dark']){
   await page.setViewportSize({width,height:800});await page.evaluate(({lang,theme})=>{localStorage.setItem('lohnzeit-language',lang);data.settings.theme=theme;applyTheme();drawSetup()},{lang,theme});
-  for(const step of [0,1,2,3]){await page.evaluate(step=>{setupStep=step;drawSetup()},step);assert.equal(await page.evaluate(()=>q('#onboarding').scrollWidth>innerWidth+1),false,`setup overflow ${width} ${lang} ${theme} ${step}`);assert.equal(await page.evaluate(()=>q('#setupNext').getBoundingClientRect().bottom<=innerHeight),true,'Next remains visible')}
+  for(const step of [0,1,2,3]){await page.evaluate(step=>{setupStep=step;drawSetup()},step);assert.equal(await page.evaluate(()=>q('#onboarding').scrollWidth>innerWidth+1),false,`setup overflow ${width} ${lang} ${theme} ${step}`);assert.equal(await page.evaluate(()=>q('#setupNext').getBoundingClientRect().bottom<=innerHeight),true,'Next remains visible');if(step===0)assert.equal(await page.evaluate(()=>{const r=q('#setupRestore').getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight&&document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)===q('#setupRestore')}),true,'Restore is fully visible without scrolling');if(step===1)assert.equal(await page.evaluate(()=>Math.abs(q('#setupNext').getBoundingClientRect().width-q('#setupBack').getBoundingClientRect().width)<2),true,'Balanced Back and Next widths')}
   if(width===360&&lang==='en'){for(const step of [0,1,2,3]){await page.evaluate(step=>{setupStep=step;drawSetup()},step);await page.screenshot({path:`test-results/setup-${step}-${theme}.png`})}}
  }
  await page.evaluate(()=>{localStorage.setItem('lohnzeit-language','en');setupStep=1;drawSetup()});await page.click('#setupNext');assert.equal(await page.evaluate(()=>window.handleAppBack()),true);assert.equal(await page.evaluate(()=>setupStep),1);await page.click('#setupNext');

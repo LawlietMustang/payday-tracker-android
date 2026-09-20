@@ -66,7 +66,7 @@ class MainActivity : Activity() {
             pendingBackup = json.toByteArray(Charsets.UTF_8)
             startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
                 addCategory(Intent.CATEGORY_OPENABLE); type = "application/json"
-                putExtra(Intent.EXTRA_TITLE, "PaydayTracker-${java.time.LocalDate.now()}.json")
+                putExtra(Intent.EXTRA_TITLE, "WageTrack-${java.time.LocalDate.now()}.json")
             }, 903)
         } }
         @JavascriptInterface

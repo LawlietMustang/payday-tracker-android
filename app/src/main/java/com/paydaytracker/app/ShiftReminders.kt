@@ -51,7 +51,7 @@ object ShiftReminders {
         reconcile(c)
     }
     fun test(c: Context): Boolean {
-        val row = JSONObject().put("workplace", "Payday Tracker")
+        val row = JSONObject().put("workplace", "WageTrack")
         return post(c, row, "shift-test", System.currentTimeMillis() + 3600000, c.getSharedPreferences("device", Context.MODE_PRIVATE).getString("language", "de")!!)
     }
     @Synchronized fun reconcile(c: Context, now: Long = System.currentTimeMillis()) {
@@ -93,7 +93,7 @@ object ShiftReminders {
                    else if (locked) { if (de) "Öffne die App für deine bevorstehende Schicht." else "Open the app to view your upcoming shift." }
                    else row.optString("workplace") + " · " + time
         val open = PendingIntent.getActivity(c, 225, Intent(c, MainActivity::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        val notification = Notification.Builder(c, CHANNEL).setSmallIcon(R.drawable.app_icon)
+        val notification = Notification.Builder(c, CHANNEL).setSmallIcon(R.drawable.notification_icon)
             .setContentTitle(if (de) "Bevorstehende Schicht" else "Upcoming shift").setContentText(text)
             .setStyle(Notification.BigTextStyle().bigText(text)).setContentIntent(open).setAutoCancel(true)
             .setVisibility(Notification.VISIBILITY_PRIVATE).build()

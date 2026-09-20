@@ -25,7 +25,7 @@ class TimerNotificationService : Service() {
         super.onCreate()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(CHANNEL_ID, "Active work timer", NotificationManager.IMPORTANCE_LOW).apply {
-                description = "Shows the running Payday Tracker work or break timer"
+                description = "Shows the running WageTrack work or break timer"
                 setShowBadge(false)
             }
             getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
@@ -47,8 +47,8 @@ class TimerNotificationService : Service() {
             this.flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val notification = Notification.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.app_icon)
-            .setContentTitle("Payday Tracker")
+            .setSmallIcon(R.drawable.notification_icon)
+            .setContentTitle("WageTrack")
             .setContentText(status)
             .setContentIntent(openApp)
             .setOngoing(true)

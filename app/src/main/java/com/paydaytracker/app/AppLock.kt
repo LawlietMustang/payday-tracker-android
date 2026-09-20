@@ -43,7 +43,7 @@ class AppLock(private val activity: Activity, root: FrameLayout, private val con
         val blocked = (enabled && !authenticated) || pendingChange != null
         cover.visibility = if (blocked) View.VISIBLE else View.GONE
         content.visibility = if (blocked) View.INVISIBLE else View.VISIBLE
-        title.text = text("Payday Tracker gesperrt", "Payday Tracker locked")
+        title.text = text("WageTrack gesperrt", "WageTrack locked")
         unlock.text = text("Entsperren", "Unlock")
         pin.text = text("PIN / Passwort verwenden", "Use PIN / password")
         if (enabled || pendingChange != null) activity.window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
@@ -68,7 +68,7 @@ class AppLock(private val activity: Activity, root: FrameLayout, private val con
         if (busy) return
         if (Build.VERSION.SDK_INT < 28) { credential(); return }
         busy = true; signal = CancellationSignal()
-        val builder = BiometricPrompt.Builder(activity).setTitle(text("Payday Tracker entsperren", "Unlock Payday Tracker"))
+        val builder = BiometricPrompt.Builder(activity).setTitle(text("WageTrack entsperren", "Unlock WageTrack"))
         if (Build.VERSION.SDK_INT >= 30) builder.setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
         else if (Build.VERSION.SDK_INT >= 29) builder.setDeviceCredentialAllowed(true)
         else builder.setNegativeButton(text("PIN verwenden", "Use PIN"), activity.mainExecutor) { _, _ -> busy = false; credential() }
@@ -84,7 +84,7 @@ class AppLock(private val activity: Activity, root: FrameLayout, private val con
     @Suppress("DEPRECATION")
     private fun credential() {
         if (busy) return
-        val intent = activity.getSystemService(KeyguardManager::class.java).createConfirmDeviceCredentialIntent("Payday Tracker", text("Zum Fortfahren entsperren", "Unlock to continue"))
+        val intent = activity.getSystemService(KeyguardManager::class.java).createConfirmDeviceCredentialIntent("WageTrack", text("Zum Fortfahren entsperren", "Unlock to continue"))
         if (intent == null) { failure(); return }
         busy = true; activity.startActivityForResult(intent, 223)
     }

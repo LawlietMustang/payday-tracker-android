@@ -38,7 +38,7 @@ class ReminderReceiver : BroadcastReceiver() {
         if (!notificationsAllowed(context)) return false
         val open = PendingIntent.getActivity(context, 221, Intent(context, MainActivity::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val notification = Notification.Builder(context, "reminders")
-            .setSmallIcon(R.drawable.app_icon).setContentTitle("Payday Tracker")
+            .setSmallIcon(R.drawable.notification_icon).setContentTitle("WageTrack")
             .setContentText(if (test) { if (de) "Test erfolgreich: Erinnerungen können angezeigt werden." else "Test successful: reminders can be displayed." } else if (de) "Zeit, deine Arbeitsstunden einzutragen." else "Time to log your work hours.")
             .setContentIntent(open).setAutoCancel(true).setVisibility(Notification.VISIBILITY_PRIVATE).build()
         return try { manager.notify(if (test) 222 else 221, notification); true } catch (_: SecurityException) { false }
