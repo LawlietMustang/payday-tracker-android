@@ -95,7 +95,7 @@ const server=http.createServer((req,res)=>{const file=path.join(root,req.url==='
  await page.evaluate(()=>{delete window.Android;renderGoogleAccount();show('dashboard');data.settings.theme='light';applyTheme()});await page.screenshot({path:'test-results/euro-icon.png'});
  await page.evaluate(()=>{window.Android={shiftReminderStatus:()=>JSON.stringify({allowed:false,blocked:1,exact:false}),testShiftReminder:()=>shiftReminderTestResult(false),retryShiftReminders:()=>window.retried=true};deviceSection='reminders';show('device')});
  await page.click('#reminderHelp');assert.match(await page.locator('#shiftDeliveryStatus').innerText(),/Notifications are blocked/);await page.click('#testShiftDelivery');assert.match(await page.locator('#shiftTestResult').innerText(),/Test blocked/);
- await page.click('#retryShiftDelivery');await page.click('#confirmOk');assert.equal(await page.evaluate(()=>window.retried),true);
+ await page.click('#retryShiftDelivery');await page.evaluate(()=>handleAppBack());await page.waitForFunction(()=>q('#reminderOptions').open&&!q('#confirmDialog').open);await page.click('#retryShiftDelivery');await page.click('#confirmOk');assert.equal(await page.evaluate(()=>window.retried),true);
  await page.evaluate(()=>{Android.shiftReminderStatus=()=>JSON.stringify({allowed:true,next:Date.now()+3600000,count:2,exact:true});renderShiftDeliveryStatus()});assert.match(await page.locator('#shiftDeliveryStatus').innerText(),/No matching upcoming shifts/);
  assert.deepEqual(errors,[]);console.log('PASS: shift reminder diagnostics, all/selected/edit/delete/persistence, Google UI states, navigation, ISO weeks, icons, responsive views');await browser.close();server.close();
 })().catch(e=>{console.error(e);server.close();process.exit(1)});
