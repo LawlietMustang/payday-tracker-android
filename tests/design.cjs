@@ -13,7 +13,7 @@ module.exports=async(browser,url)=>{
  await page.click('[data-calendar-date="2026-09-10"]');await page.click('#addCalendarShift');assert.equal(await page.inputValue('#date'),'2026-09-10');await page.click('#cancel');
  await page.click('[data-quick-template="early"]');assert.equal(await page.inputValue('#start'),'06:00');assert.equal(await page.inputValue('#date'),'2026-09-10');await page.click('#cancel');
  await page.click('#shiftMonthPrevious');assert.equal(await page.evaluate(()=>selected),'2026-08');await page.click('#shiftMonthNext');
- await page.evaluate(()=>show('planning'));assert.equal(await page.locator('.goal-ring').count(),2);assert.equal(await page.locator('.goal-ring').first().getAttribute('aria-label'),'68%');
+ await page.evaluate(()=>show('planning'));assert.equal(await page.locator('.workplace-picker').isVisible(),false);assert.equal(await page.locator('.goal-ring').count(),2);assert.equal(await page.locator('.goal-ring').first().getAttribute('aria-label'),'68%');
  for(const lang of ['en','de'])for(const theme of ['light','dark'])for(const width of [320,390,768]){
   await page.setViewportSize({width,height:844});await page.evaluate(({lang,theme})=>{q('#language').value=lang;q('#language').dispatchEvent(new Event('change'));data.settings.theme=theme;applyTheme()},{lang,theme});
   for(const view of ['dashboard','shifts','planning','expenses']){
@@ -21,6 +21,6 @@ module.exports=async(browser,url)=>{
    if(width===390)await page.screenshot({path:`test-results/design-${view}-${lang}-${theme}.png`,fullPage:true});
   }
  }
- await page.evaluate(()=>{data.shifts=[];data.expenses=[];data.payslips=[];data.savingsGoals=[];render();show('dashboard')});assert.equal(await page.locator('#payReceipt .receipt-stamp').count(),0);assert.equal(await page.locator('#designAvailable').innerText(),await page.evaluate(()=>money(0)));
+ await page.evaluate(()=>{data.shifts=[];data.expenses=[];data.payslips=[];data.savingsGoals=[];render();show('dashboard')});await page.click('#earningsDetails>summary');assert.equal(await page.locator('#gross').isVisible(),true);assert.equal(await page.locator('#payReceipt .receipt-stamp').count(),0);assert.equal(await page.locator('#designAvailable').innerText(),await page.evaluate(()=>money(0)));
  assert.deepEqual(errors,[]);await page.close();
 };

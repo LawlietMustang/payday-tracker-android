@@ -65,7 +65,8 @@ module.exports=async function(browser,url){
  await page.waitForTimeout(100);await page.evaluate(()=>interactionCounts.translations=0);await page.waitForTimeout(1200);
  assert.equal(await page.evaluate(()=>interactionCounts.translations),0);
  await page.locator('#clockStart').tap();await page.waitForTimeout(100);
- await page.evaluate(()=>{interactionCounts.translations=0;window.clockBefore=q('#clockTime').textContent});await page.waitForTimeout(1200);
+ await page.evaluate(()=>{interactionCounts.translations=0;window.clockBefore=q('#clockTime').textContent});
+ await page.waitForFunction(()=>q('#clockTime').textContent!==clockBefore,{},{timeout:3000});
  assert.notEqual(await page.locator('#clockTime').innerText(),await page.evaluate(()=>clockBefore));
  assert.equal(await page.evaluate(()=>interactionCounts.translations),0,'Active clock does not scan all page text');
  assert.deepEqual(errors,[]);await context.close();console.log('PASS: navigation after repeated saves, 350ms touch hold, immediate batch selection without payroll work, scroll/cancel, deletion, timer translation isolation');

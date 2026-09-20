@@ -7,6 +7,7 @@
  const composition=block('div','payComposition',q('.bonus-panel'));q('.bonus-panel .panelhead').after(composition);
  q('#timeclock').after(q('.bonus-panel'));q('.bonus-panel').after(receipt);
  const shortcuts=block('div','designShortcuts',q('#dashboard'));receipt.after(shortcuts);
+ const detail=document.createElement('details');detail.id='earningsDetails';const detailLabel=document.createElement('summary');detailLabel.dataset.localized='true';detail.append(detailLabel);q('#dashboard').append(detail);for(const selector of ['.kpis','.twocol','.recent'])detail.append(q('#dashboard '+selector));
  const calendar=block('article','shiftCalendar',q('#shifts'));calendar.className='shift-calendar';q('#shifts').prepend(calendar);
  const dayDialog=block('dialog','calendarDay',document.body);dayDialog.className='calendar-day-dialog';
  let pickedDay='';
@@ -45,6 +46,7 @@
   qa('[data-quick-template]').forEach(b=>b.onclick=()=>addOnDate(defaultDate(),b.dataset.quickTemplate));q('#calendarNewShift').onclick=()=>addOnDate(defaultDate());
  }
  function renderOverview(){
+  detailLabel.textContent=msg('Verdienst, Fortschritt & letzte Schichten','Earnings, progress & recent shifts');
   const s=summary(selected),all=summary(selected,'all'),expenses=expenseEntries(selected).reduce((a,e)=>a+Number(e.amount||0),0),available=all.est.net-expenses;
   const next=data.shifts.filter(e=>e.status==='planned'&&(workplaceFilter==='all'||e.workplaceId===workplaceFilter)&&new Date(e.date+'T'+e.start)>new Date()).sort((a,b)=>(a.date+a.start).localeCompare(b.date+b.start))[0];
   hero.innerHTML='<div class="available-card"><div class="available-top"><span>'+msg('NACH AUSGABEN VERFÜGBAR','AVAILABLE AFTER EXPENSES')+'</span><span class="estimate-pill">'+msg('GESCHÄTZT','ESTIMATE')+'</span></div><strong id="designAvailable">'+money(available)+'</strong><p>'+msg('Netto aller Arbeitsplätze minus Monatsausgaben','Net from all workplaces minus monthly expenses')+'</p></div><div class="overview-pills"><div><small>'+msg('STUNDEN DIESES MONATS','HOURS THIS MONTH')+'</small><b>'+duration(s.minutes)+'</b></div><button type="button" id="designNextShift"><small>'+msg('NÄCHSTE SCHICHT','NEXT SHIFT')+'</small><b>'+ (next?safe(localDate(next.date).toLocaleDateString(locale(),{day:'numeric',month:'short'})+' · '+next.start):msg('Schicht planen →','Plan a shift →'))+'</b></button></div>';
@@ -64,10 +66,11 @@
    const pct=Math.round(Math.max(0,Math.min(100,g.saved/g.target*100))),ring=document.createElement('div');ring.className='goal-ring';ring.style.setProperty('--goal-progress',pct+'%');ring.setAttribute('role','img');ring.setAttribute('aria-label',pct+'%');ring.innerHTML='<span>'+pct+'<small>%</small></span>';article.prepend(ring);article.classList.add('design-goal');
   });
  }
- const renderPlanningBeforeDesign=renderPlanning;renderPlanning=function(){renderPlanningBeforeDesign();decorateGoals()};
+ function arrangePlanning(){const grid=q('.goal-grid'),head=grid?.previousElementSibling,stack=q('.planning-stack');if(grid&&head&&stack){stack.prepend(head,grid)}}
+ const renderPlanningBeforeDesign=renderPlanning;renderPlanning=function(){renderPlanningBeforeDesign();decorateGoals();arrangePlanning()};
  const renderBeforeDesign=render;render=function(){renderBeforeDesign();renderOverview();renderShiftCalendar()};
  const showBeforeDesign=show;show=function(view){showBeforeDesign(view);if(view==='dashboard')renderOverview();if(view==='shifts')renderShiftCalendar();updateDesignTitle(view)};
- function updateDesignTitle(view){if(view==='dashboard')q('#title').textContent=data.profile?.name?msg('Hey ','Hey ')+data.profile.name.split(' ')[0]+' 👋':msg('Deine Übersicht','Your overview');if(view==='shifts')q('#title').textContent=msg('Schichtkalender','Shift calendar')}
+ function updateDesignTitle(view){q('main').classList.toggle('goals-view',view==='planning');if(view==='dashboard')q('#title').textContent=data.profile?.name?msg('Hey ','Hey ')+data.profile.name.split(' ')[0]+' 👋':msg('Deine Übersicht','Your overview');if(view==='shifts')q('#title').textContent=msg('Schichtkalender','Shift calendar')}
  q('#language').addEventListener('change',()=>{renderOverview();renderShiftCalendar();updateDesignTitle(q('.view.active')?.id)});
- renderOverview();renderShiftCalendar();decorateGoals();updateDesignTitle(q('.view.active')?.id);
+ renderOverview();renderShiftCalendar();decorateGoals();arrangePlanning();updateDesignTitle(q('.view.active')?.id);
 })();

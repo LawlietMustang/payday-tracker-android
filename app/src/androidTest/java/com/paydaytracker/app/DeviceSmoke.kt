@@ -110,13 +110,14 @@ class DeviceSmoke : Instrumentation() {
             val due = ShiftReminders.status(targetContext).getLong("next")
             check(due > System.currentTimeMillis()) { "Shift reminder not scheduled" }
             // Edited time replaces the old alarm; deleting cancels it entirely.
-            row.put("start", start.plusHours(1).toLocalTime().toString())
+            val editedStart = start.plusHours(1)
+            row.put("date", editedStart.toLocalDate().toString()).put("start", editedStart.toLocalTime().toString())
             check(ShiftReminders.replace(targetContext, config.toString()))
             check(ShiftReminders.status(targetContext).getLong("next") > due)
             config.put("shifts", org.json.JSONArray())
             check(ShiftReminders.replace(targetContext, config.toString()))
             check(ShiftReminders.status(targetContext).getLong("next") == 0L)
-            row.put("start", start.toLocalTime().toString());config.put("shifts", org.json.JSONArray().put(row))
+            row.put("date", start.toLocalDate().toString()).put("start", start.toLocalTime().toString());config.put("shifts", org.json.JSONArray().put(row))
             check(ShiftReminders.replace(targetContext, config.toString()))
             shell("input keyevent 3")
             val deadline = System.currentTimeMillis() + 75000

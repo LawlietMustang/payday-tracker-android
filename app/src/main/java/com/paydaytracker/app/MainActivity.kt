@@ -198,9 +198,9 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (Build.VERSION.SDK_INT >= 33) onBackInvokedDispatcher.registerOnBackInvokedCallback(android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT) { navigateBack() }
-        window.statusBarColor = Color.rgb(243, 246, 248)
-        window.navigationBarColor = getColor(R.color.white)
-        window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+        window.statusBarColor = Color.rgb(24, 14, 51)
+        window.navigationBarColor = Color.rgb(24, 14, 51)
+        window.decorView.systemUiVisibility = 0
         if (Build.VERSION.SDK_INT >= 30) window.setDecorFitsSystemWindows(false)
         webView = WebView(this).apply {
             setBackgroundColor(getColor(R.color.app_background))
@@ -222,7 +222,7 @@ class MainActivity : Activity() {
         }
         val root = FrameLayout(this)
         contentRoot = root
-        root.setBackgroundColor(Color.rgb(243, 246, 248))
+        root.setBackgroundColor(Color.rgb(24, 14, 51))
         root.setOnApplyWindowInsetsListener { v, insets ->
             if (Build.VERSION.SDK_INT >= 30) {
                 val bars = insets.getInsets(android.view.WindowInsets.Type.systemBars() or android.view.WindowInsets.Type.displayCutout() or android.view.WindowInsets.Type.ime())
