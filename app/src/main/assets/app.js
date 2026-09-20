@@ -20,6 +20,11 @@ async function deletePayslip(id){if(!await askConfirm(msg('Diesen Lohnabrechnung
 function renderPayslipComparisons(){let list=data.payslips.slice().sort((a,b)=>b.month.localeCompare(a.month));q('#payslipComparisons').innerHTML=list.length?list.map(p=>{let s=summary(p.month,p.workplaceId),grossDiff=p.actualGross-s.gross,netDiff=p.actualNet-s.est.net;return'<div class="payslip-row"><div><b>'+safe(workplaceName(p.workplaceId))+'</b><small>'+p.month+'</small></div><span><small>'+msg('Brutto Soll / Ist','Gross estimate / actual')+'</small><b>'+money(s.gross)+' / '+money(p.actualGross)+'</b><em class="'+(grossDiff>=0?'positive':'negative')+'">'+(grossDiff>=0?'+ ':'')+money(grossDiff)+'</em></span><span><small>'+msg('Netto Soll / Ist','Net estimate / actual')+'</small><b>'+money(s.est.net)+' / '+money(p.actualNet)+'</b><em class="'+(netDiff>=0?'positive':'negative')+'">'+(netDiff>=0?'+ ':'')+money(netDiff)+'</em></span><button class="rowbtn payslip-delete" data-id="'+p.id+'">×</button></div>'}).join(''):'<div class="empty"><b>'+msg('Noch keine Lohnabrechnung','No payslip recorded')+'</b>'+msg('Trage Brutto und Netto aus deiner Abrechnung ein.','Enter gross and net from your payslip.')+'</div>';qa('.payslip-delete').forEach(b=>b.onclick=()=>deletePayslip(b.dataset.id))}
 let bulkDates=new Set(),calendarMonth=new Date();
 let selectedShiftIds=new Set(),selectionMode=false;
+// Selection controls can move beneath a held finger. Consume the release click
+// before it reaches any newly exposed button; the next deliberate touch resets it.
+let suppressShiftReleaseClick=false;
+document.addEventListener('pointerdown',()=>{suppressShiftReleaseClick=false},true);
+document.addEventListener('click',e=>{if(suppressShiftReleaseClick&&e.detail>0){suppressShiftReleaseClick=false;e.preventDefault();e.stopImmediatePropagation()}},true);
 function load(){try{const x=JSON.parse(localStorage.getItem(KEY));if(!(x&&x.settings&&Array.isArray(x.shifts)))return structuredClone(DEFAULTS);if(x.onboardingCompleted===undefined)x.onboardingCompleted=true;if(!Array.isArray(x.expenses))x.expenses=[];if(!Array.isArray(x.recurringExpenses))x.recurringExpenses=[];if(!Array.isArray(x.templates))x.templates=[];if(!Array.isArray(x.workplaces)||!x.workplaces.length)x.workplaces=[{id:'default',name:'Hauptarbeitsplatz',wage:Number(x.settings.wage||15)}];if(!Array.isArray(x.payslips))x.payslips=[];if(!x.workplaceFilter)x.workplaceFilter='all';x.shifts.forEach(e=>{if(!e.workplaceId)e.workplaceId='default'});if(x.activeTimer===undefined)x.activeTimer=null;if(x.settings.savingsTarget===undefined)x.settings.savingsTarget=500;if(!x.settings.theme)x.settings.theme='system';Object.entries(DEFAULTS.settings).forEach(([k,v])=>{if(x.settings[k]===undefined)x.settings[k]=v});return x}catch(e){return structuredClone(DEFAULTS)}}
 function save(){localStorage.setItem(KEY,JSON.stringify(data))}
 function monthKey(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')}
@@ -81,7 +86,7 @@ function bindLongPress(){
    if(selectionMode)return;
    timer=setTimeout(()=>{
     if(!row.isConnected||!q('#shifts').classList.contains('active')||document.hidden)return;
-    suppressClick=true;selectionMode=true;
+    suppressClick=true;suppressShiftReleaseClick=true;selectionMode=true;
     setShiftSelected(row.dataset.shiftId,true,row);
    },350);
   };

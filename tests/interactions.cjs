@@ -35,6 +35,7 @@ module.exports=async function(browser,url){
  await page.waitForTimeout(50);
  assert.deepEqual(await page.evaluate(()=>Array.from(selectedShiftIds)),[firstId],'Releasing a hold keeps the selection');
  assert.equal(await page.evaluate(()=>originalRow===q('#all .shift')),true,'Selection preserves row DOM');
+ assert.equal(await page.evaluate(()=>!!q('dialog[open]')),false,'Hold release does not activate a button exposed by the selection toolbar');
  assert.equal(await page.evaluate(()=>interactionCounts.render),0);
  assert.equal(await page.evaluate(()=>interactionCounts.summary),0,'Selection does not recalculate earnings');
  const second=page.locator('#all .shift').nth(1),secondId=await second.getAttribute('data-shift-id');
