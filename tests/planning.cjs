@@ -51,7 +51,7 @@ const server=http.createServer((req,res)=>{const file=path.join(root,req.url==='
  await page.evaluate(()=>{data.profile.name='Changed';save();show('recovery')});await page.screenshot({path:'test-results/recovery.png',fullPage:true});
  await page.evaluate(s=>{void receiveBackup(s)},snapshot);await page.click('#confirmCancel');assert.equal(await page.evaluate(()=>data.profile.name),'Changed');
  await page.evaluate(s=>{void receiveBackup(s)},snapshot);await page.click('#confirmOk');await page.waitForFunction(()=>typeof data!=='undefined'&&data.profile?.name==='Test Person');
- await page.evaluate(()=>{show('device');widgetPinResult(false)});assert.equal(await page.locator('#widgetHome').isVisible(),true);
+ await page.evaluate(()=>{deviceSection='widget';show('device');widgetPinResult(false)});assert.equal(await page.locator('#widgetHome').isVisible(),true);
  await page.screenshot({path:'test-results/device-settings.png',fullPage:true});
  await page.evaluate(()=>{show('dashboard');show('shifts');show('expenses');show('expenses');handleAppBack()});assert.equal(await page.evaluate(()=>q('.view.active').id),'shifts');
  await page.evaluate(()=>handleAppBack());assert.equal(await page.evaluate(()=>q('.view.active').id),'dashboard');assert.equal(await page.evaluate(()=>handleAppBack()),false);
