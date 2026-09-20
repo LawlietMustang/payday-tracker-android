@@ -32,14 +32,15 @@ class DeviceSmoke : Instrumentation() {
     }
     private fun requireJS(code: String) { check(js(code) == "true") { "Failed: $code; result=${js(code)}" } }
     private fun shell(command: String): String = android.os.ParcelFileDescriptor.AutoCloseInputStream(uiAutomation.executeShellCommand(command)).bufferedReader().use { it.readText() }
-    private fun tap(selector: String) {
+    private fun tap(selector: String, holdMillis: Long = 50) {
         js("document.querySelector('$selector').scrollIntoView({block:'center'})")
         Thread.sleep(300)
         val point=JSONArray(js("(()=>{let r=document.querySelector('$selector').getBoundingClientRect();return [(r.x+r.width/2)*devicePixelRatio,(r.y+r.height/2)*devicePixelRatio]})()"))
         val offset=IntArray(2); runOnMainSync { web.getLocationOnScreen(offset) }
         val x=point.getDouble(0).toFloat()+offset[0];val y=point.getDouble(1).toFloat()+offset[1];val t=SystemClock.uptimeMillis()
         sendPointerSync(MotionEvent.obtain(t,t,MotionEvent.ACTION_DOWN,x,y,0))
-        sendPointerSync(MotionEvent.obtain(t,t+50,MotionEvent.ACTION_UP,x,y,0))
+        Thread.sleep(holdMillis)
+        sendPointerSync(MotionEvent.obtain(t,SystemClock.uptimeMillis(),MotionEvent.ACTION_UP,x,y,0))
         Thread.sleep(400)
     }
     override fun onStart() {
@@ -90,6 +91,16 @@ class DeviceSmoke : Instrumentation() {
             js("Android.googleSignIn()")
             Thread.sleep(300)
             requireJS("JSON.parse(Android.googleAccountState()).email === ''")
+            // A faded save message must not intercept a real touch on bottom navigation.
+            js("show('expenses');toast('Expense saved')")
+            Thread.sleep(2800)
+            tap(".mobile [data-view=dashboard]")
+            requireJS("q('.view.active').id === 'dashboard'")
+            // Hold with actual Android MotionEvents, then release without losing selection.
+            js("selected='2026-09';data.shifts.push({id:'native-hold',date:'2026-09-01',start:'09:00',end:'17:00',breakMin:30,minutes:450,wage:15,status:'completed',workplaceId:'default'});render();show('shifts');window.heldRow=q('#all .shift')")
+            tap("#all .shift .shiftmain", 430)
+            requireJS("selectionMode && selectedShiftIds.has('native-hold') && heldRow === q('#all .shift')")
+            js("finishSelection();data.shifts=data.shifts.filter(s=>s.id!=='native-hold');render();show('dashboard')")
             // Native alarm delivery while the app is in the background, plus cancellation.
             shell("appops set com.paydaytracker.app.debug SCHEDULE_EXACT_ALARM allow")
             val start = java.time.LocalDateTime.now().plusMinutes(2).withSecond(0).withNano(0)

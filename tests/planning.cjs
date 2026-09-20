@@ -4,7 +4,7 @@ const root=path.resolve('app/src/main/assets');
 const server=http.createServer((req,res)=>{const file=path.join(root,req.url==='/'?'index.html':req.url);if(!file.startsWith(root)){res.writeHead(404).end();return}try{res.setHeader('Content-Type',file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':file.endsWith('.svg')?'image/svg+xml':'text/html');res.end(fs.readFileSync(file))}catch{res.writeHead(404).end()}});
 (async()=>{
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const url='http://127.0.0.1:'+server.address().port;
- const browser=await chromium.launch({headless:true});await require('./onboarding.cjs')(browser,url);const page=await browser.newPage({viewport:{width:360,height:800}});let errors=[];page.on('pageerror',e=>errors.push(e.message));
+ const browser=await chromium.launch({headless:true});await require('./onboarding.cjs')(browser,url);await require('./interactions.cjs')(browser,url);const page=await browser.newPage({viewport:{width:360,height:800}});let errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto(url);await page.waitForSelector('#planning',{state:'attached'});
  await page.evaluate(()=>{localStorage.setItem('lohnzeit-language','en');delete data.onboardingCompleted;delete data.onboardingDraft;data.settings.theme='dark';data.shifts.push({id:'legacy',date:'2026-09-01',start:'08:00',end:'16:00',minutes:480,breakMin:0,wage:15,status:'completed',created:1});save()});await page.reload();
  await page.click('#headerAddPlace');
