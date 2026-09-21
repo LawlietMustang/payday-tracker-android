@@ -21,6 +21,22 @@ module.exports=async(browser,url)=>{
    if(width===390)await page.screenshot({path:`test-results/design-${view}-${lang}-${theme}.png`,fullPage:true});
   }
  }
+
+ // Regression: the reported English labels and the compact shift/card layout.
+ await page.setViewportSize({width:390,height:844});
+ await page.evaluate(()=>{localStorage.setItem('lohnzeit-language','en');q('#language').value='en';data.workplaces[0].name='Burger King';data.savingsGoals=[{id:'default-goal',name:'Mein Sparziel',target:data.settings.savingsTarget,saved:0,due:''}];render();show('dashboard');q('#earningsDetails').open=true;translatePage('en')});
+ assert.match(await page.locator('#recent .shift-time').first().innerText(),/min break/);
+ assert.doesNotMatch(await page.locator('#recent').innerText(),/Pause/);
+ assert.match(await page.locator('#confidence').innerText(),/^(HIGH|MEDIUM|LOW|NO DATA)$/);
+ await page.evaluate(()=>show('history'));assert.match(await page.locator('#historyCards').innerText(),/Shifts/);assert.doesNotMatch(await page.locator('#historyCards').innerText(),/Schichten/);
+ await page.evaluate(()=>show('planning'));assert.equal(await page.locator('.goal-grid h3').innerText(),'My savings goal');
+ await page.evaluate(()=>{data.savingsGoals[0].name='Mein eigener Urlaub';renderPlanning()});assert.equal(await page.locator('.goal-grid h3').innerText(),'Mein eigener Urlaub','Custom goal names stay unchanged');
+ for(const width of [320,390,430])for(const lang of ['en','de']){
+  await page.setViewportSize({width,height:844});await page.evaluate(lang=>{q('#language').value=lang;q('#language').dispatchEvent(new Event('change'));show('dashboard');q('#earningsDetails').open=true},lang);
+  const metrics=await page.evaluate(()=>{const row=q('#recent .shift'),t=row.querySelector('.shift-time'),parts=[...t.children].map(n=>n.getBoundingClientRect()),values=[...q('.kpis').querySelectorAll(':scope>.kpi>strong')].map(n=>n.getBoundingClientRect());return {fits:t.scrollWidth<=t.clientWidth+1,oneLine:Math.abs(parts[0].top-parts[1].top)<1,aligned:innerWidth<=360||Math.abs(values[2].top-values[3].top)<1,overflow:document.documentElement.scrollWidth>innerWidth+1}});
+  assert.equal(metrics.fits,true,'Shift time and break fit '+width+' '+lang);assert.equal(metrics.oneLine,true);assert.equal(metrics.aligned,true,'Forecast and comparison baselines align');assert.equal(metrics.overflow,false);
+  if(width===390)for(const view of ['dashboard','planning','history']){await page.evaluate(v=>show(v),view);await page.screenshot({path:`test-results/fixes-${view}-${lang}.png`,fullPage:true})}
+ }
  await page.evaluate(()=>{data.shifts=[];data.expenses=[];data.payslips=[];data.savingsGoals=[];render();show('dashboard')});await page.click('#earningsDetails>summary');assert.equal(await page.locator('#gross').isVisible(),true);assert.equal(await page.locator('#payReceipt .receipt-stamp').count(),0);assert.equal(await page.locator('#designAvailable').innerText(),await page.evaluate(()=>money(0)));
  assert.deepEqual(errors,[]);await page.close();
 };
