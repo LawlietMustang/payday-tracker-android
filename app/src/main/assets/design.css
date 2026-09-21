@@ -46,3 +46,5 @@ main.goals-view>.workplace-picker,main.goals-view>.place-actions{display:none!im
 [data-theme] header .month-picker{background:#2e1a63;color:#f3ecff}
 @media(max-width:750px){.shift,#all .shift{grid-template-columns:38px minmax(0,1fr) 76px;gap:8px}.datebox{width:38px}.shiftmain .shift-time{font-size:10px;gap:6px}.selection-mode-active #all .shift{grid-template-columns:24px 38px minmax(0,1fr)}.selection-mode-active #all .shift-actions{grid-column:3;justify-self:end}.kpis>.kpi{grid-template-rows:minmax(54px,auto) auto minmax(36px,auto)}.design-goal .panelhead button{min-height:44px}}
 @media(max-width:360px){.kpis{grid-template-columns:1fr!important}.shift,#all .shift{grid-template-columns:38px minmax(0,1fr)}.shift-actions{grid-column:2;justify-self:end}.design-goal{grid-template-columns:60px minmax(0,1fr);gap:8px 10px}.design-goal .panelhead{grid-template-columns:1fr}.design-goal .panelhead button{justify-self:start}.goal-ring{width:60px;height:60px}.goal-ring>span{width:46px;height:46px}}
+
+.kpis>.kpi.hero{border:2px solid #0e082a}

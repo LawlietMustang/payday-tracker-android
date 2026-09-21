@@ -37,6 +37,6 @@ module.exports=async(browser,url)=>{
   assert.equal(metrics.fits,true,'Shift time and break fit '+width+' '+lang);assert.equal(metrics.oneLine,true);assert.equal(metrics.aligned,true,'Forecast and comparison baselines align');assert.equal(metrics.overflow,false);
   if(width===390)for(const view of ['dashboard','planning','history']){await page.evaluate(v=>show(v),view);await page.screenshot({path:`test-results/fixes-${view}-${lang}.png`,fullPage:true})}
  }
- await page.evaluate(()=>{data.shifts=[];data.expenses=[];data.payslips=[];data.savingsGoals=[];render();show('dashboard')});await page.click('#earningsDetails>summary');assert.equal(await page.locator('#gross').isVisible(),true);assert.equal(await page.locator('#payReceipt .receipt-stamp').count(),0);assert.equal(await page.locator('#designAvailable').innerText(),await page.evaluate(()=>money(0)));
+ await page.evaluate(()=>{data.shifts=[];data.expenses=[];data.payslips=[];data.savingsGoals=[];render();show('dashboard');q('#earningsDetails').open=false});await page.click('#earningsDetails>summary');assert.equal(await page.locator('#gross').isVisible(),true);assert.equal(await page.locator('#payReceipt .receipt-stamp').count(),0);assert.equal(await page.locator('#designAvailable').innerText(),await page.evaluate(()=>money(0)));
  assert.deepEqual(errors,[]);await page.close();
 };
