@@ -60,7 +60,7 @@ function finishSetup(){
  const before=structuredClone(data),s=data.settings;s.currency=d.currency;s.taxMode=d.currency==='EUR'?d.taxMode:'manual';s.deductionPercent=Number(d.deductionPercent);s.wage=Number(d.wage);s.target=Number(d.target);
  data.workplaces[0]={...data.workplaces[0],name:d.name.trim(),wage:Number(d.wage)};
  if(!setupExisting){s.savingsTarget=0;data.savingsGoals=[];s.overtimeRate=0;s.nightRate=0;s.sundayRate=0;s.holidayRate=0}
- if(d.addShift)data.shifts.push({id:crypto.randomUUID(),workplaceId:data.workplaces[0].id,date:d.date,start:d.start,end:d.end,breakMin:Number(d.breakMin),minutes:calcMinutes(d.date,d.start,d.end,d.breakMin),wage:Number(d.wage),status:'completed',note:'',created:Date.now()});
+ if(d.addShift)data.shifts.push({id:crypto.randomUUID(),workplaceId:data.workplaces[0].id,date:d.date,start:d.start,end:d.end,breakMin:Number(d.breakMin),minutes:calcMinutes(d.date,d.start,d.end,d.breakMin),wage:Number(d.wage),status:suggestedShiftStatus(d.date,d.start),statusSource:'auto',note:'',created:Date.now()});
  data.onboardingCompleted=true;delete data.onboardingDraft;
  try{save()}catch{data=before;q('#setupError').textContent=msg('Speichern fehlgeschlagen. Bitte erneut versuchen.','Could not save. Please try again.');return}
  fillSettings();renderWorkplaces();renderPlaces();render();labelCurrencySettings();leaveSetup();toast(msg('Alles bereit!','You’re ready!'));

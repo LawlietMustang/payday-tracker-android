@@ -17,25 +17,25 @@
  function dayEntries(date){return data.shifts.filter(s=>s.date===date&&(workplaceFilter==='all'||s.workplaceId===workplaceFilter)).sort((a,b)=>a.start.localeCompare(b.start))}
  function addOnDate(date,template){
   dayDialog.close();openDialog();q('#date').value=date;bulkDates=new Set([date]);calendarMonth=localDate(date);
-  q('#status').value=date>=isoDate(new Date())?'planned':'completed';
+  updateAutoShiftStatus();
   if(template){q('#templateSelect').value=template;applyTemplateToShiftForm()}
   preview();
  }
  function openDay(date){
   pickedDay=date;const list=dayEntries(date);
-  dayDialog.innerHTML='<div class="app-dialog-body"><div class="dialoghead"><h2>'+safe(localDate(date).toLocaleDateString(locale(),{weekday:'long',day:'numeric',month:'long'}))+'</h2><button type="button" id="closeCalendarDay" aria-label="'+msg('Schließen','Close')+'">×</button></div><div class="day-shift-list">'+list.map(s=>'<button type="button" class="day-shift" data-edit-day-shift="'+safe(s.id)+'"><span><b>'+safe(s.start+'–'+s.end)+'</b><small>'+safe(workplaceName(s.workplaceId))+'</small></span><span class="tag '+safe(s.status)+'">'+(s.status==='planned'?msg('Geplant','Planned'):msg('Erledigt','Done'))+'</span></button>').join('')+(list.length?'':'<p class="muted">'+msg('Noch keine Schichten an diesem Tag.','No shifts on this day yet.')+'</p>')+'</div><button type="button" class="primary" id="addCalendarShift">+ '+msg('Schicht hinzufügen','Add shift')+'</button></div>';
+  dayDialog.innerHTML='<div class="app-dialog-body"><div class="dialoghead"><h2>'+safe(localDate(date).toLocaleDateString(locale(),{weekday:'long',day:'numeric',month:'long'}))+'</h2><button type="button" id="closeCalendarDay" aria-label="'+msg('Schließen','Close')+'">×</button></div><div class="day-shift-list">'+list.map(s=>'<button type="button" class="day-shift" data-edit-day-shift="'+safe(s.id)+'"><span><b>'+safe(s.start+'–'+s.end)+'</b><small>'+safe(workplaceName(s.workplaceId)+(s.status==='cancelled'?' · '+cancellationLabel(s.cancelledBy):''))+'</small></span><span class="tag '+safe(s.status)+'">'+shiftStatusLabel(s.status)+'</span></button>').join('')+(list.length?'':'<p class="muted">'+msg('Noch keine Schichten an diesem Tag.','No shifts on this day yet.')+'</p>')+'</div><button type="button" class="primary" id="addCalendarShift">+ '+msg('Schicht hinzufügen','Add shift')+'</button></div>';
   q('#closeCalendarDay').onclick=()=>dayDialog.close();q('#addCalendarShift').onclick=()=>addOnDate(date);
   qa('[data-edit-day-shift]').forEach(b=>b.onclick=()=>{dayDialog.close();openDialog(b.dataset.editDayShift)});dayDialog.showModal();
  }
  function renderShiftCalendar(){
   const first=localDate(selected+'-01'),start=new Date(first),today=isoDate(new Date());start.setDate(1-(first.getDay()+6)%7);
   const days=new Date(first.getFullYear(),first.getMonth()+1,0).getDate(),count=Math.ceil(((first.getDay()+6)%7+days)/7)*7;
-  const all=data.shifts.filter(s=>workplaceFilter==='all'||s.workplaceId===workplaceFilter).map(s=>({s,range:shiftRange(s)})).sort((a,b)=>a.range[0]-b.range[0]),conflicts=new Set();
+  const all=data.shifts.filter(s=>s.status!=='cancelled'&&(workplaceFilter==='all'||s.workplaceId===workplaceFilter)).map(s=>({s,range:shiftRange(s)})).sort((a,b)=>a.range[0]-b.range[0]),conflicts=new Set();
   for(let i=0;i<all.length;i++)for(let j=i+1;j<all.length&&all[j].range[0]<all[i].range[1];j++){conflicts.add(all[i].s.id);conflicts.add(all[j].s.id)}
-  const stateLabel={planned:msg('Geplant','Planned'),completed:msg('Erledigt','Done'),active:msg('Aktiv','Active'),conflict:msg('Überschneidung','Overlap')};
+  const stateLabel={planned:msg('Geplant','Planned'),completed:msg('Erledigt','Done'),active:msg('Aktiv','Active'),conflict:msg('Überschneidung','Overlap'),cancelled:msg('Abgesagt','Cancelled')};
   let cells='';for(let i=0;i<count;i++){
    const dt=new Date(start);dt.setDate(start.getDate()+i);const key=isoDate(dt),items=dayEntries(key),active=data.activeTimer&&isoDate(new Date(data.activeTimer.startedAt))===key&&(workplaceFilter==='all'||data.activeTimer.workplaceId===workplaceFilter);
-   const status=items.some(s=>conflicts.has(s.id))?'conflict':active?'active':items.some(s=>s.status==='planned')?'planned':items.length?'completed':'';
+   const status=items.some(s=>conflicts.has(s.id))?'conflict':active?'active':items.some(s=>s.status==='planned')?'planned':items.some(s=>s.status==='completed')?'completed':items.length?'cancelled':'';
    cells+='<button type="button" class="shift-day '+status+(key.slice(0,7)!==selected?' other':'')+(key===today?' today':'')+'" data-calendar-date="'+key+'" aria-label="'+safe(dt.toLocaleDateString(locale(),{day:'numeric',month:'long',year:'numeric'})+(status?' · '+stateLabel[status]:'')+' · '+items.length+' '+msg('Schichten','shifts'))+'"'+(key===today?' aria-current="date"':'')+'><span>'+dt.getDate()+'</span><small>'+('•'.repeat(Math.min(3,items.length)))+'</small></button>';
   }
   calendar.innerHTML='<div class="calendar-heading"><div><p class="eyebrow">'+msg('DEINE SCHICHTEN','YOUR SHIFTS')+'</p><h2>'+safe(first.toLocaleDateString(locale(),{month:'long',year:'numeric'}))+'</h2></div><div><button type="button" id="shiftMonthPrevious" aria-label="'+msg('Vorheriger Monat','Previous month')+'">‹</button><button type="button" id="shiftMonthNext" aria-label="'+msg('Nächster Monat','Next month')+'">›</button></div></div><div class="shift-weekdays">'+(language()==='en'?['Mon','Tue','Wed','Thu','Fri','Sat','Sun']:['Mo','Di','Mi','Do','Fr','Sa','So']).map(d=>'<span>'+d+'</span>').join('')+'</div><div class="shift-days">'+cells+'</div><div class="calendar-legend">'+Object.entries(stateLabel).map(([key,label])=>'<span><i class="'+key+'"></i>'+label+'</span>').join('')+'</div><div class="quick-templates"><p class="eyebrow">'+msg('SCHNELLE SCHICHTVORLAGEN','QUICK SHIFT TEMPLATES')+'</p><div>'+data.templates.map(t=>'<button type="button" data-quick-template="'+safe(t.id)+'"><b>'+safe(t.name)+'</b><small>'+safe(t.start+'–'+t.end)+'</small></button>').join('')+'<button type="button" id="calendarNewShift">+ '+msg('Schicht','Shift')+'</button></div></div>';

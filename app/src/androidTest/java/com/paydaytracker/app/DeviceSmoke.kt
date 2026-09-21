@@ -158,6 +158,7 @@ class DeviceSmoke : Instrumentation() {
             Thread.sleep(500)
             requireJS("JSON.parse(Android.deviceSettings()).hour===19 && JSON.parse(Android.deviceSettings()).minute===30")
             js("startWorkTimer()")
+            requireJS("!q('#clockLiveBadge').hidden && q('#clockLiveBadge').textContent.length > 0")
             Thread.sleep(500)
             check(targetContext.getSharedPreferences("device",0).getString("timerState", "") == "working") { "Widget did not receive timer" }
             js("startWorkBreak()")
