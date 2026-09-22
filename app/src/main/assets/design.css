@@ -103,3 +103,8 @@ main.goals-view>.workplace-picker,main.goals-view>.place-actions{display:none!im
 /* Backup state uses text as well as color. */
 .saved{cursor:pointer}.saved i{background:#d6364b!important}.saved.backed-up i{background:#228543!important}.saved:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 @media(min-width:361px){.kpis>.kpi>label{min-height:48px;align-content:start}}
+
+/* Keep help and edit touch targets separate, including narrow goal cards. */
+.has-card-info>.panelhead{padding-right:36px;margin-bottom:14px}
+.design-goal.has-card-info>.panelhead{padding-right:36px;margin-bottom:0}
+.kpis>.kpi>strong{align-self:flex-start}
