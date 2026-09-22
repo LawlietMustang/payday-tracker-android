@@ -27,7 +27,7 @@ function validateBackup(text){
   if(x[key]===undefined)continue;if(!Array.isArray(x[key])||x[key].length>50000)throw Error('records');
   for(const row of x[key]){if(!row||typeof row!=='object'||Array.isArray(row)||Object.values(row).some(v=>v!==null&&typeof v==='object'))throw Error('record');
    if(typeof row.id!=='string'||row.id.length>250||! /^[a-zA-Z0-9_:-]+$/.test(row.id))throw Error('id');
-   if(key==='customCategories'&&(typeof row.name!=='string'||!row.name.trim()||row.name.length>100))throw Error('category');
+   if(key==='customCategories'&&(!/^[a-zA-Z0-9_-]{1,100}$/.test(row.id)||typeof row.name!=='string'||!row.name.trim()||row.name.length>100))throw Error('category');
    if(key==='savingsLedger'&&(!Number.isFinite(row.amount)||row.amount<=0||typeof row.goalId!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(row.date)||!/^\d{4}-\d{2}-\d{2}$/.test(row.scheduled)))throw Error('ledger');
   }
   if(new Set(x[key].map(r=>r.id)).size!==x[key].length)throw Error('duplicate');
