@@ -74,7 +74,7 @@ class AppLock(private val activity: Activity, root: FrameLayout, private val con
         status.setTextColor(Color.parseColor("#B7A6DE")); status.textSize = 13f
         status.gravity = Gravity.CENTER; status.accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
         cover.addView(status, spacing(-1, -2, 16))
-        scroll.addView(cover, ScrollView.LayoutParams(-1, -1))
+        scroll.addView(cover, FrameLayout.LayoutParams(-1, -1))
         root.addView(scroll, FrameLayout.LayoutParams(-1, -1))
         refresh()
     }

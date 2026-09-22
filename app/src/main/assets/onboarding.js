@@ -25,7 +25,7 @@ function openSetup(){
  document.body.classList.add('in-setup');q('.shell').inert=true;q('.mobile').inert=true;closeDrawer();drawSetup();
 }
 function leaveSetup(){setupActive=false;setup.hidden=true;document.body.classList.remove('in-setup');q('.shell').inert=false;q('.mobile').inert=false;show('dashboard');scrollTo(0,0)}
-function setupInput(id,label,type,value,attrs=''){return '<label>'+label+'<input id="'+id+'" type="'+type+'" value="'+safe(value)+'" '+attrs+'></label>'}
+function setupInput(id,label,type,value,attrs=''){return '<label>'+label+'<input id="'+id+'" type="'+type+'" value="'+safe(String(value??''))+'" '+attrs+'></label>'}
 function setupField(id,key){q('#'+id).oninput=e=>{setupDraft[key]=e.target.type==='number'?Number(e.target.value):e.target.value;persistSetup();if(setupStep===2)updateFirstShift()}}
 function drawSetup(){
  setup.dataset.step=String(setupStep);
