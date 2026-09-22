@@ -9,7 +9,7 @@ function renderProfile(){
 }
 function labelAccount(){
  qa('[data-account-label]').forEach(el=>{const labels={profile:['Profil','Profile'],appSettings:['Einstellungen','Settings'],appearance:['App-Darstellung','App appearance'],lock:['App-Sperre','App lock'],delete:['Daten löschen','Delete data'],signin:['Anmelden','Sign In'],unavailable:['Noch nicht verfügbar · Offline-Nutzung ohne Konto','Not available yet · Use offline without an account']};const a=labels[el.dataset.accountLabel];el.textContent=msg(...a)});
- q('#appearanceLanguage').textContent=msg('Sprache','Language');q('#appearanceTheme').textContent=msg('Darstellung','Appearance');
+ q('#appearanceLanguage').textContent=msg('Sprache','Language');q('#appearanceTheme').textContent=msg('Darstellung','Appearance');q('#language').setAttribute('aria-label',msg('Sprache','Language'));for(const o of q('#theme').options)o.textContent=({system:msg('Systemeinstellung','System default'),light:msg('Hell','Light'),dark:msg('Dunkel','Dark')})[o.value];
 }
 async function deleteAccountData(){
  const message=msg('Alle Profile, Schichten, Ausgaben, Ziele und App-Einstellungen auf diesem Gerät dauerhaft löschen? Laufende Timer und Erinnerungen werden beendet. Exportierte Dateien bleiben erhalten. Die App wird geschlossen.','Permanently delete all profiles, shifts, expenses, goals and app settings on this device? Active timers and reminders will stop. Exported files remain. The app will close.');

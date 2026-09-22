@@ -61,8 +61,10 @@ class MainActivity : Activity() {
             if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 225)
         } }
         @JavascriptInterface
+        fun syncBackupStatus(dirty: Boolean, language: String) { runOnUiThread { BackupReminder.update(this@MainActivity, dirty, language) } }
+        @JavascriptInterface
         fun exportBackup(json: String) { runOnUiThread {
-            if (json.toByteArray().size > 10 * 1024 * 1024) return@runOnUiThread
+            if (json.toByteArray().size > 10 * 1024 * 1024 || webView.visibility != View.VISIBLE) { webView.evaluateJavascript("window.backupResult(false)", null); return@runOnUiThread }
             pendingBackup = json.toByteArray(Charsets.UTF_8)
             startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
                 addCategory(Intent.CATEGORY_OPENABLE); type = "application/json"
@@ -253,7 +255,7 @@ class MainActivity : Activity() {
         }
     }
 
-    override fun onResume() { super.onResume(); if (::appLock.isInitialized) appLock.resume(); ReminderReceiver.deliverDue(this); ReminderReceiver.schedule(this); ShiftReminders.reconcile(this); if (::webView.isInitialized) nativeChanged() }
+    override fun onResume() { super.onResume(); if (::appLock.isInitialized) appLock.resume(); BackupReminder.schedule(this); ReminderReceiver.deliverDue(this); ReminderReceiver.schedule(this); ShiftReminders.reconcile(this); if (::webView.isInitialized) nativeChanged() }
     override fun onPause() { if (::appLock.isInitialized) appLock.pause(); super.onPause() }
     override fun onDestroy() { googleAccount.destroy(); appLock.destroy(); webView.destroy(); super.onDestroy() }
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) { super.onRequestPermissionsResult(requestCode, permissions, grantResults); ShiftReminders.reconcile(this); nativeChanged() }
@@ -263,7 +265,7 @@ class MainActivity : Activity() {
         super.onActivityResult(requestCode, resultCode, resultData)
         if (appLock.result(requestCode, resultCode)) return
         if (requestCode == 903 || requestCode == 904) {
-            if (resultCode != RESULT_OK || resultData?.data == null) { pendingBackup = null; return }
+            if (resultCode != RESULT_OK || resultData?.data == null) { pendingBackup = null; if (requestCode == 903) webView.evaluateJavascript("window.backupResult(null)", null); return }
             val uri = resultData.data!!
             val bytes = pendingBackup
             pendingBackup = null

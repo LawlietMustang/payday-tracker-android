@@ -43,6 +43,17 @@ class DeviceSmoke : Instrumentation() {
         sendPointerSync(MotionEvent.obtain(t,SystemClock.uptimeMillis(),MotionEvent.ACTION_UP,x,y,0))
         Thread.sleep(400)
     }
+    private fun currentPinDialog(): android.app.AlertDialog {
+        val field=MainActivity::class.java.getDeclaredField("appLock").apply { isAccessible=true }
+        val lock=field.get(activity)
+        return AppLock::class.java.getDeclaredField("pinDialog").apply { isAccessible=true }.get(lock) as android.app.AlertDialog
+    }
+    private fun enterAppPin(value: String) { runOnMainSync {
+        val dialog=currentPinDialog()
+        dialog.findViewById<android.widget.EditText>(android.R.id.edit)?.setText(value)
+        dialog.window!!.decorView.findViewWithTag<android.widget.EditText>("app-pin-input").setText(value)
+        dialog.getButton(-1).performClick()
+    };Thread.sleep(150) }
     override fun onStart() {
         try {
             if (permissionMode == "blocked") {
@@ -75,8 +86,8 @@ class DeviceSmoke : Instrumentation() {
             // Complete a fresh-install setup through the rendered controls.
             for (i in 0..20) { if (js("typeof setupActive !== 'undefined'") == "true") break; Thread.sleep(100) }
             if (js("setupActive") == "true") {
-                js("q('#setupNext').click()")
-                js("q('#setupCountry').value='DE';q('#setupCountry').dispatchEvent(new Event('change'));q('#setupName').value='Smoke workplace';q('#setupName').dispatchEvent(new Event('input'));q('#setupNext').click()")
+                js("q('#setupPersonalName').value='Alex';q('#setupPersonalName').dispatchEvent(new Event('input'));q('#setupBasicsCountry').value='DE';q('#setupBasicsCountry').dispatchEvent(new Event('change'));q('#setupNext').click()")
+                js("q('#setupCountry').value='DE';q('#setupCountry').dispatchEvent(new Event('change'));q('#setupName').value='Smoke workplace';q('#setupName').dispatchEvent(new Event('input'));q('#setupWage').value='20';q('#setupWage').dispatchEvent(new Event('input'));q('#setupTarget').value='80';q('#setupTarget').dispatchEvent(new Event('input'));q('#setupNext').click()")
                 requireJS("setupStep === 2")
                 js("q('#setupSkip').click();q('#setupNext').click()")
                 requireJS("data.onboardingCompleted && !setupActive")
@@ -164,10 +175,21 @@ class DeviceSmoke : Instrumentation() {
             js("startWorkBreak()")
             Thread.sleep(500)
             check(targetContext.getSharedPreferences("device",0).getString("timerState", "") == "break") { "Widget did not receive break" }
-            // The test device initially has no PIN. Enabling must not silently turn the lock on.
-            js("Android.setAppLock(true)")
-            Thread.sleep(500)
+            // Cancelled PIN setup cannot enable the lock.
+            js("Android.setAppLock(true)");Thread.sleep(500)
+            runOnMainSync { currentPinDialog().getButton(-2).performClick() }
             requireJS("JSON.parse(Android.deviceSettings()).lock===false")
+            // Backup nudges wait 48h and repeat no more than weekly.
+            BackupReminder.update(targetContext, true, "en")
+            val backupPrefs = targetContext.getSharedPreferences("device",0)
+            check(backupPrefs.getLong("backupDue",0) > System.currentTimeMillis()+47L*3600000)
+            val originalDue = backupPrefs.getLong("backupDue",0)
+            BackupReminder.update(targetContext,true,"en");check(originalDue==backupPrefs.getLong("backupDue",0))
+            backupPrefs.edit().putLong("backupDue",System.currentTimeMillis()-1000).commit()
+            BackupReminder().onReceive(targetContext,Intent())
+            check(targetContext.getSystemService(android.app.NotificationManager::class.java).activeNotifications.any { it.id==226 })
+            check(backupPrefs.getLong("backupDue",0)>System.currentTimeMillis()+6L*86400000)
+            BackupReminder.update(targetContext,false,"en")
             // Dispatch a real reminder notification and inspect Android's active notifications.
             targetContext.getSharedPreferences("device",0).edit().putBoolean("reminder",true).putLong("nextReminder",System.currentTimeMillis()-1000).apply()
             runOnMainSync { ReminderReceiver().onReceive(targetContext,Intent(ReminderReceiver.ACTION)) }
@@ -199,12 +221,13 @@ class DeviceSmoke : Instrumentation() {
             }
             uiAutomation.dropShellPermissionIdentity();Thread.sleep(1000)
             runOnMainSync { check(hostView.findViewById<android.widget.TextView>(R.id.widget_status)?.text.toString()=="On break") { "Widget RemoteViews did not render break status" };host.deleteAppWidgetId(widgetId);host.stopListening() }
-            // Configure a test-only emulator PIN, then complete the actual system credential prompt.
-            shell("locksettings set-pin 2468")
-            check(targetContext.getSystemService(android.app.KeyguardManager::class.java).isDeviceSecure) { "Could not configure emulator PIN" }
+            // Create and confirm a real app PIN, without a phone PIN dependency.
             js("show('appSettings');q('#settingsLock').click()");requireJS("!q('#appLockCard').hidden")
-            tap("#biometricLock");Thread.sleep(1500)
-            shell("input text 2468");shell("input keyevent 66");Thread.sleep(1500)
+            tap("#biometricLock");Thread.sleep(500)
+            enterAppPin("246810")
+            enterAppPin("135790") // mismatch must keep the gate closed
+            requireJS("JSON.parse(Android.deviceSettings()).lock===false")
+            enterAppPin("246810");Thread.sleep(500)
             requireJS("JSON.parse(Android.deviceSettings()).lock===true")
             shell("input keyevent 3");Thread.sleep(500)
             shell("am start -n com.paydaytracker.app.debug/com.paydaytracker.app.MainActivity");Thread.sleep(1500)
@@ -220,19 +243,21 @@ class DeviceSmoke : Instrumentation() {
                 check(greeting in listOf("Good Morning", "Good Afternoon", "Good Evening"))
                 check(root.findViewWithTag<android.widget.TextView>("lock-masked-name").text.toString() == "••••••")
                 check(root.findViewWithTag<View>("lock-fingerprint").isClickable)
-                // Test-only screenshot of the masked gate; production retains FLAG_SECURE.
-                activity.window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+                val bitmap = android.graphics.Bitmap.createBitmap(gate.width,gate.height,android.graphics.Bitmap.Config.ARGB_8888)
+                gate.draw(android.graphics.Canvas(bitmap))
+                java.io.File(targetContext.getExternalFilesDir(null),"lock-screen.png").outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it) }
+                root.findViewWithTag<View>("lock-pin").performClick()
             }
-            Thread.sleep(300)
-            uiAutomation.takeScreenshot()?.let { bitmap -> java.io.File(targetContext.getExternalFilesDir(null),"lock-screen.png").outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it) } }
-            runOnMainSync {
-                activity.window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
-                activity.window.decorView.findViewWithTag<View>("lock-pin").performClick()
-            }
-            Thread.sleep(1200);shell("input text 2468");shell("input keyevent 66");Thread.sleep(1500)
+            Thread.sleep(500);enterAppPin("111111")
+            runOnMainSync { check(web.visibility != View.VISIBLE) { "Wrong PIN unlocked app" } }
+            enterAppPin("246810");Thread.sleep(500)
             runOnMainSync { check(web.visibility == View.VISIBLE) { "PIN fallback did not unlock app" } }
-            // Remove test-only PIN after checking cancellation; release users are never affected.
-            shell("locksettings clear --old 2468")
+            val verifier=AppPin(targetContext)
+            repeat(5) { check(!verifier.verify("000000")) }
+            check(verifier.waitSeconds>0);check(!verifier.verify("246810"))
+            targetContext.getSharedPreferences("app-pin",0).edit().putLong("until",0).commit()
+            check(verifier.verify("246810"))
+            check(!targetContext.getSharedPreferences("app-pin",0).all.values.contains("246810"))
             uiAutomation.takeScreenshot()?.let { bitmap -> java.io.File(targetContext.getExternalFilesDir(null),"device-smoke.png").outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it) } }
             finish(Activity.RESULT_OK, Bundle().apply { putString("stream", "PAYDAY_SMOKE_PASS: real touch workplace creation, reminder notification delivery, rendered widget, PIN authentication and cancellation/background privacy\n") })
         } catch (e: Throwable) {

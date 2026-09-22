@@ -70,3 +70,36 @@ main.goals-view>.workplace-picker,main.goals-view>.place-actions{display:none!im
 #calendar button.selected{outline:3px solid #cfff3d;outline-offset:-3px;opacity:1;z-index:1}
 #calendar .selection-check{position:absolute;right:-2px;top:-4px;display:grid;place-items:center;width:16px;height:16px;line-height:1;border-radius:50%;background:#cfff3d;color:#180e33;font-size:11px;border:1px solid #180e33}
 #calendar button:focus-visible{outline:3px solid #fff;outline-offset:2px}
+
+/* 2.4.5: consistent spacing, compact statistics and clear setup. */
+#earningsDetails{margin-bottom:24px;scroll-margin-top:16px}
+#earningsDetails[open]>summary{margin-bottom:20px}
+.kpis>.kpi{min-height:0;display:flex;flex-direction:column;justify-content:flex-start;gap:14px;padding:18px}
+.kpis>.kpi>label{min-height:0;height:auto;flex:0 0 auto;align-items:center;margin:0}
+.kpis>.kpi>strong{margin:0;line-height:1.2;font-size:clamp(22px,3vw,32px)}
+.kpis>.kpi>footer{margin:0;padding:0;min-height:0;gap:6px}
+.kpis>.kpi>footer span{line-height:1.45}
+#setupSkip{justify-self:center;text-align:center;width:100%;display:flex;align-items:center;justify-content:center}
+#onboarding .setup-intro{display:flex;gap:14px;text-align:left;justify-content:flex-start}
+#onboarding .setup-intro .setup-logo{width:48px;height:48px;flex-shrink:0}
+.setup-basics{gap:14px}.setup-basics label{font-size:14px}
+#onboarding .setup-overnight{display:flex;align-items:center;justify-content:space-between;gap:12px}
+#onboarding .setup-overnight input{width:22px;height:22px;min-height:22px;accent-color:#5831bd}
+.drawer-link.v21-nav,.device-nav{display:flex;align-items:center;gap:12px}
+.v21-nav::before,.device-nav[data-panel="reminders"]::before{content:'';width:24px;height:24px;flex:0 0 24px;background:currentColor;mask:center/contain no-repeat;-webkit-mask:center/contain no-repeat}
+.v21-nav[data-view="planning"]::before{mask-image:url('budgets-goals.svg');-webkit-mask-image:url('budgets-goals.svg')}
+.v21-nav[data-view="workplaces"]::before{mask-image:url('workplaces.svg');-webkit-mask-image:url('workplaces.svg')}
+.device-nav[data-panel="reminders"]::before{mask-image:url('reminders-widget.svg');-webkit-mask-image:url('reminders-widget.svg')}
+:is(.planning-stack,.account-stack,.device-settings){gap:20px}
+:is(.planning-stack,.account-stack,.device-settings) .panel{padding:20px;border-radius:22px}
+.panel h2{font-size:20px;line-height:1.25}.panel h3{font-size:17px;line-height:1.3}
+.panelhead{gap:12px;align-items:center}.panelhead h2,.panelhead h3{margin:0}
+.panel p{line-height:1.5}.panelhead button{flex-shrink:0}
+@media(max-width:600px){.kpis>.kpi{padding:14px;gap:12px}.kpis>.kpi>label{font-size:10px}.kpis>.kpi>strong{font-size:22px}.panelhead{flex-wrap:wrap}.panelhead button{max-width:100%}.planning-stack .panel{padding:16px}}
+
+.has-card-info{position:relative}.card-info{position:absolute;right:12px;top:10px;width:32px;height:32px;border:0;background:transparent;color:var(--card-muted);padding:5px;display:grid;place-items:center;cursor:pointer}.card-info svg{width:22px;height:22px}.has-card-info>.panelhead{padding-right:25px}.has-card-info>h2{padding-right:30px}.goal-actions{display:flex;gap:8px;flex-wrap:wrap}.goal-actions button{min-height:40px;padding:8px 12px;font-size:12px}.goal-auto-status{font-size:12px;margin:4px 0 12px;line-height:1.4}.design-goal .goal-actions,.design-goal .goal-auto-status{grid-column:2}.design-goal>.card-info{grid-column:auto}.design-goal .panelhead{padding-right:14px}#goalAutoFields{margin:0;gap:14px}#goalAuto{width:22px;height:22px;accent-color:#5831bd}.reminder-tabs #reminderDiagnostics{flex:0 0 44px;min-width:44px;padding:8px;font-size:23px}
+@media(max-width:420px){.design-goal .goal-actions,.design-goal .goal-auto-status{grid-column:1/-1}.design-goal .panelhead{display:flex}.design-goal .panelhead button{padding:8px}.design-goal h3{font-size:17px}}
+
+/* Backup state uses text as well as color. */
+.saved{cursor:pointer}.saved i{background:#d6364b!important}.saved.backed-up i{background:#228543!important}.saved:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+@media(min-width:361px){.kpis>.kpi>label{min-height:48px;align-content:start}}

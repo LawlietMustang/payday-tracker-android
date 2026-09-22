@@ -24,6 +24,8 @@ import android.graphics.drawable.GradientDrawable
 // A native gate covers the WebView before loading and whenever the app loses focus.
 class AppLock(private val activity: Activity, root: FrameLayout, private val content: View, private val changed: () -> Unit) {
     private val prefs = activity.getSharedPreferences("device", Context.MODE_PRIVATE)
+    private val appPin = AppPin(activity)
+    private var pinDialog: android.app.AlertDialog? = null
     private val cover = LinearLayout(activity)
     private val title = TextView(activity)
     private val unlock = ImageButton(activity)
@@ -99,13 +101,56 @@ class AppLock(private val activity: Activity, root: FrameLayout, private val con
     fun pause() { if (enabled) { authenticated = false; refresh() } }
     fun change(value: Boolean) {
         if (busy) return
-        if (!activity.getSystemService(KeyguardManager::class.java).isDeviceSecure) {
-            android.widget.Toast.makeText(activity, text("Richte zuerst eine Displaysperre ein.", "Set up a phone screen lock first."), android.widget.Toast.LENGTH_LONG).show(); changed(); return
+        pendingChange = value; refresh()
+        if (value && !enabled && !appPin.configured) setupPin() else authenticate()
+    }
+    private fun setupPin() {
+        busy = true
+        var first = ""
+        val input = android.widget.EditText(activity).apply {
+            tag = "app-pin-input"; inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_VARIATION_PASSWORD
+            filters = arrayOf(android.text.InputFilter.LengthFilter(6)); setSingleLine(true)
+            setPadding(dp(24), dp(16), dp(24), dp(16))
+            importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
         }
-        pendingChange = value; refresh(); authenticate()
+        val dialog = android.app.AlertDialog.Builder(activity).setTitle(text("6-stellige PIN erstellen", "Create a 6-digit PIN"))
+            .setMessage(text("Merke dir diese App-PIN. Sie ist unabhängig von deiner Geräte-PIN.", "Remember this app PIN. It is separate from your phone PIN."))
+            .setView(input).setPositiveButton(text("Weiter", "Next"), null).setNegativeButton(text("Abbrechen", "Cancel")) { _, _ -> failure() }.create()
+        pinDialog = dialog; dialog.setOnCancelListener { failure() }; dialog.show()
+        dialog.window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val value = input.text.toString()
+            if (!value.matches(Regex("[0-9]{6}"))) input.error = text("Genau 6 Ziffern eingeben", "Enter exactly 6 digits")
+            else if (first.isEmpty()) { first = value; input.text.clear(); dialog.setTitle(text("PIN bestätigen", "Confirm PIN")); dialog.getButton(-1).text = text("Aktivieren", "Enable") }
+            else if (value != first) { input.text.clear(); input.error = text("PINs stimmen nicht überein", "PINs do not match") }
+            else try { appPin.create(value); first = ""; input.text.clear(); dialog.dismiss(); pinDialog = null; success() }
+            catch (_: Exception) { first = ""; input.text.clear(); dialog.dismiss(); failure(); status.text = text("PIN konnte nicht gespeichert werden", "Could not save PIN") }
+        }
+        input.requestFocus()
+    }
+    private fun enterPin() {
+        if (busy) return
+        busy = true
+        val input = android.widget.EditText(activity).apply {
+            tag = "app-pin-input"; inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_VARIATION_PASSWORD
+            filters = arrayOf(android.text.InputFilter.LengthFilter(6)); setSingleLine(true)
+            setPadding(dp(24), dp(16), dp(24), dp(16)); importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
+        }
+        val dialog = android.app.AlertDialog.Builder(activity).setTitle(text("App-PIN eingeben", "Enter app PIN"))
+            .setView(input).setPositiveButton(text("Entsperren", "Unlock"), null).setNegativeButton(text("Abbrechen", "Cancel")) { _, _ -> failure() }.create()
+        pinDialog = dialog; dialog.setOnCancelListener { failure() }; dialog.show()
+        dialog.window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        dialog.getButton(-1).setOnClickListener {
+            if (appPin.waitSeconds > 0) input.error = text("Bitte warten: ", "Please wait: ") + appPin.waitSeconds + " s"
+            else if (appPin.verify(input.text.toString())) { input.text.clear(); dialog.dismiss(); pinDialog = null; success() }
+            else { input.text.clear(); input.error = text("Falsche PIN", "Incorrect PIN") }
+        }
+        input.requestFocus()
     }
     private fun success() {
-        busy = false; authenticated = true
+        busy = false
+        if (!appPin.configured && pendingChange != false && (enabled || pendingChange == true)) { setupPin(); return }
+        authenticated = true
         pendingChange?.let { prefs.edit().putBoolean("lock", it).commit() }
         pendingChange = null; refresh(); PaydayWidget.update(activity); changed()
     }
@@ -115,12 +160,12 @@ class AppLock(private val activity: Activity, root: FrameLayout, private val con
         if (Build.VERSION.SDK_INT < 28) { credential(); return }
         busy = true; signal = CancellationSignal()
         val builder = BiometricPrompt.Builder(activity).setTitle(text("WageTrack entsperren", "Unlock WageTrack"))
-        if (Build.VERSION.SDK_INT >= 30) builder.setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
-        else if (Build.VERSION.SDK_INT >= 29) builder.setDeviceCredentialAllowed(true)
-        else builder.setNegativeButton(text("PIN verwenden", "Use PIN"), activity.mainExecutor) { _, _ -> busy = false; credential() }
+        if (Build.VERSION.SDK_INT >= 30) builder.setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
+        builder.setNegativeButton(text("PIN verwenden", "Use PIN"), activity.mainExecutor) { _, _ -> busy = false; credential() }
         builder.build().authenticate(signal!!, activity.mainExecutor, object : BiometricPrompt.AuthenticationCallback() {
             override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) = success()
             override fun onAuthenticationError(code: Int, message: CharSequence) {
+                if (code == BiometricPrompt.BIOMETRIC_ERROR_NEGATIVE_BUTTON) return
                 // On older devices without enrolled biometrics, use the existing screen credential.
                 if (code == BiometricPrompt.BIOMETRIC_ERROR_NO_BIOMETRICS || code == BiometricPrompt.BIOMETRIC_ERROR_HW_NOT_PRESENT) { busy = false; credential(); return }
                 failure(); status.text = message
@@ -130,6 +175,7 @@ class AppLock(private val activity: Activity, root: FrameLayout, private val con
     @Suppress("DEPRECATION")
     private fun credential() {
         if (busy) return
+        if (appPin.configured) { enterPin(); return }
         val intent = activity.getSystemService(KeyguardManager::class.java).createConfirmDeviceCredentialIntent("WageTrack", text("Zum Fortfahren entsperren", "Unlock to continue"))
         if (intent == null) { failure(); return }
         busy = true; activity.startActivityForResult(intent, 223)
@@ -139,5 +185,5 @@ class AppLock(private val activity: Activity, root: FrameLayout, private val con
         if (result == Activity.RESULT_OK) success() else failure()
         return true
     }
-    fun destroy() { signal?.cancel() }
+    fun destroy() { signal?.cancel(); pinDialog?.dismiss() }
 }

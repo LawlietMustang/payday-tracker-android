@@ -23,12 +23,51 @@ function validateBackup(text){
    if(['name','note','date','start','end','status','category','due','month'].includes(k)&&typeof v!=='string')throw Error('text');
   }
  }
+ for(const key of ['customCategories','savingsLedger']){
+  if(x[key]===undefined)continue;if(!Array.isArray(x[key])||x[key].length>50000)throw Error('records');
+  for(const row of x[key]){if(!row||typeof row!=='object'||Array.isArray(row)||Object.values(row).some(v=>v!==null&&typeof v==='object'))throw Error('record');
+   if(typeof row.id!=='string'||row.id.length>250||! /^[a-zA-Z0-9_:-]+$/.test(row.id))throw Error('id');
+   if(key==='customCategories'&&(typeof row.name!=='string'||!row.name.trim()||row.name.length>100))throw Error('category');
+   if(key==='savingsLedger'&&(!Number.isFinite(row.amount)||row.amount<=0||typeof row.goalId!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(row.date)||!/^\d{4}-\d{2}-\d{2}$/.test(row.scheduled)))throw Error('ledger');
+  }
+  if(new Set(x[key].map(r=>r.id)).size!==x[key].length)throw Error('duplicate');
+ }
+ for(const g of x.savingsGoals||[]){
+  if(g.auto!==undefined&&typeof g.auto!=='boolean')throw Error('auto');
+  for(const k of ['autoAmount','autoOverdue'])if(g[k]!==undefined&&(!Number.isFinite(g[k])||g[k]<0))throw Error('auto amount');
+  if(g.auto&&(!['weekly','monthly','yearly'].includes(g.autoInterval)||!/^\d{4}-\d{2}-\d{2}$/.test(g.autoNext)||!Number.isInteger(g.autoAnchor)||g.autoAnchor<1||g.autoAnchor>31||typeof g.autoEpoch!=='string'))throw Error('schedule');
+ }
  if(x.profile!==undefined&&(!x.profile||typeof x.profile!=='object'||Array.isArray(x.profile)||Object.values(x.profile).some(v=>typeof v!=='string')))throw Error('profile');
  if(x.budgets!==undefined&&(!x.budgets||typeof x.budgets!=='object'||Array.isArray(x.budgets)))throw Error('budgets');
  for(const [month,budget] of Object.entries(x.budgets||{}))if(!/^\d{4}-\d{2}$/.test(month)||!budget||typeof budget!=='object'||Array.isArray(budget)||Object.values(budget).some(v=>typeof v!=='number'||!Number.isFinite(v)||v<0))throw Error('budget');
  x.activeTimer=null;return doc;
 }
-window.backupResult=ok=>toast(ok?msg('Sicherung gespeichert','Backup saved'):msg('Datei konnte nicht verarbeitet werden. Bitte erneut versuchen.','Could not process the file. Please try again.'));
+let pendingBackupHash=null,backupCheckGeneration=0;
+const BACKUP_STATUS_KEY='wagetrack-backup-status';
+function backupSnapshot(){const doc=JSON.parse(backupDocument());delete doc.data.onboardingDraft;return JSON.stringify({language:doc.language,data:doc.data})}
+async function backupHash(snapshot){const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(snapshot));return [...new Uint8Array(bytes)].map(v=>v.toString(16).padStart(2,'0')).join('')}
+async function refreshBackupStatus(){
+ const generation=++backupCheckGeneration;let backed=false;
+ try{backed=(await backupHash(backupSnapshot()))===localStorage.getItem(BACKUP_STATUS_KEY)}catch(e){}
+ if(generation!==backupCheckGeneration)return;
+ qa('.saved').forEach(el=>{el.dataset.localized='true';el.classList.toggle('backed-up',backed);el.innerHTML='<i></i><span><b>'+msg(backed?'Gesichert':'Nicht gesichert',backed?'Backed up':'Not backed up')+'</b><small>'+msg('Sicherung verwalten','Manage backup')+'</small></span>';el.setAttribute('role','button');el.tabIndex=0;el.onclick=()=>show('recovery');el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();show('recovery')}}});
+ const meaningful=!!(data.shifts.length||data.expenses.length||data.profile?.name);
+ if(typeof Android!=='undefined'&&typeof Android.syncBackupStatus==='function')Android.syncBackupStatus(!backed&&meaningful,language());
+}
+async function startBackupExport(){
+ if(pendingBackupHash)return;
+ if(typeof Android==='undefined'||typeof Android.exportBackup!=='function'){toast(msg('Bitte die Android-App verwenden.','Please use the Android app.'));return}
+ const snapshot=backupSnapshot(),document=backupDocument();pendingBackupHash=backupHash(snapshot);q('#saveBackup')?.setAttribute('disabled','');
+ try{await pendingBackupHash;Android.exportBackup(document)}catch(e){window.backupResult(false)}
+}
+window.backupResult=async ok=>{
+ const snapshot=pendingBackupHash;pendingBackupHash=null;q('#saveBackup')?.removeAttribute('disabled');
+ if(ok&&snapshot)try{localStorage.setItem(BACKUP_STATUS_KEY,await snapshot)}catch(e){ok=false}
+ await refreshBackupStatus();
+ if(ok!==null)toast(ok?msg('Sicherung gespeichert','Backup saved'):msg('Datei konnte nicht verarbeitet werden. Bitte erneut versuchen.','Could not process the file. Please try again.'));
+};
+const saveBeforeBackup=save;save=function(){saveBeforeBackup();void refreshBackupStatus()};
+q('#language').addEventListener('change',()=>void refreshBackupStatus());void refreshBackupStatus();
 window.receiveBackup=async text=>{
  let doc;try{doc=validateBackup(text)}catch(e){toast(msg('Ungültige oder nicht unterstützte Sicherung. Deine Daten bleiben unverändert.','Invalid or unsupported backup. Your data is unchanged.'));return false}
  if(!await askConfirm(msg('Diese Sicherung ersetzt die aktuellen App-Daten. Fortfahren?','This backup will replace your current app data. Continue?'),msg('Sicherung wiederherstellen','Restore backup')))return false;
@@ -42,7 +81,7 @@ window.receiveBackup=async text=>{
 };
 function renderRecovery(){
  q('#recovery').innerHTML='<div class="account-stack"><article class="panel"><h2>'+msg('Sichern & wiederherstellen','Backup & restore')+'</h2><p>'+msg('Speichere deine Daten vor einer Deinstallation in Dokumente oder in Google Drive über die Dateiauswahl. Wähle nach der Neuinstallation hier die gespeicherte Datei aus.','Before uninstalling, save your data to Documents or Google Drive through the file picker. After reinstalling, select that saved file here.')+'</p><p class="muted">'+msg('Enthält gespeicherte Schichten, Ausgaben, Arbeitsplätze, Ziele, Profil und Einstellungen. Laufende Timer, App-Sperre und Erinnerungen werden nicht übernommen. Die Datei ist unverschlüsselt; bewahre sie privat auf.','Includes saved shifts, expenses, workplaces, goals, profile and settings. Running timers, app lock and reminders are not transferred. The file is unencrypted; keep it private.')+'</p><div class="device-settings"><button id="saveBackup" class="primary">'+msg('Sicherungsdatei speichern','Save backup file')+'</button><button id="restoreBackup" class="secondary">'+msg('Aus Datei / Drive wiederherstellen','Restore from file / Drive')+'</button></div><p class="muted">'+msg('Drive erscheint, wenn es als Dateianbieter verfügbar ist. Eine Internetverbindung kann erforderlich sein. Dies ist keine automatische Synchronisierung und keine Anmeldung in WageTrack.','Drive appears when available as a file provider. An internet connection may be required. This is not automatic sync or a WageTrack account sign-in.')+'</p></article></div>';
- q('#saveBackup').onclick=()=>{if(typeof Android!=='undefined'&&typeof Android.exportBackup==='function')Android.exportBackup(backupDocument());else toast(msg('Bitte die Android-App verwenden.','Please use the Android app.'))};
+ q('#saveBackup').onclick=startBackupExport;
  q('#restoreBackup').onclick=()=>{if(typeof Android!=='undefined'&&typeof Android.importBackup==='function')Android.importBackup();else toast(msg('Bitte die Android-App verwenden.','Please use the Android app.'))};
 }
 const recovery=document.createElement('section');recovery.id='recovery';recovery.className='view';recovery.dataset.localized='true';q('main').append(recovery);

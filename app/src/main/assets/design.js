@@ -7,7 +7,7 @@
  const composition=block('div','payComposition',q('.bonus-panel'));q('.bonus-panel .panelhead').after(composition);
  q('#timeclock').after(q('.bonus-panel'));q('.bonus-panel').after(receipt);
  const shortcuts=block('div','designShortcuts',q('#dashboard'));receipt.after(shortcuts);
- const detail=document.createElement('details');detail.id='earningsDetails';const detailLabel=document.createElement('summary');detailLabel.dataset.localized='true';detail.append(detailLabel);receipt.before(detail);for(const selector of ['.kpis','.twocol','.recent'])detail.append(q('#dashboard '+selector));
+ const detail=document.createElement('details');detail.id='earningsDetails';const detailLabel=document.createElement('summary');detailLabel.dataset.localized='true';detail.append(detailLabel);receipt.before(detail);detail.addEventListener('toggle',()=>{if(detail.open)requestAnimationFrame(()=>detail.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'}))});for(const selector of ['.kpis','.twocol','.recent'])detail.append(q('#dashboard '+selector));
  const calendar=block('article','shiftCalendar',q('#shifts'));calendar.className='shift-calendar';q('#shifts').prepend(calendar);
  const dayDialog=block('dialog','calendarDay',document.body);dayDialog.className='calendar-day-dialog';
  let pickedDay='';
