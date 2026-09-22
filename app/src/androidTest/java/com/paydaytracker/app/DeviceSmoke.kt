@@ -24,10 +24,10 @@ class DeviceSmoke : Instrumentation() {
         if (view is ViewGroup) for (i in 0 until view.childCount) findWeb(view.getChildAt(i))?.let { return it }
         return null
     }
-    private fun js(code: String): String {
+    private fun js(code: String, timeout: Long = 10): String {
         val latch = CountDownLatch(1); var value = ""
         runOnMainSync { web.evaluateJavascript(code) { value = it; latch.countDown() } }
-        check(latch.await(10, TimeUnit.SECONDS)) { "JavaScript timeout: $code" }
+        check(latch.await(timeout, TimeUnit.SECONDS)) { "JavaScript timeout: $code" }
         return value
     }
     private fun requireJS(code: String) { check(js(code) == "true") { "Failed: $code; result=${js(code)}" } }
@@ -80,9 +80,10 @@ class DeviceSmoke : Instrumentation() {
             }
             activity = startActivitySync(Intent(targetContext, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             runOnMainSync { web = findWeb(activity.window.decorView) ?: error("Missing WebView") }
-            for (i in 0..40) { if (js("!!document.querySelector('#device')") == "true") break; Thread.sleep(250) }
+            for (i in 0..40) { if (js("!!document.querySelector('#device')",30) == "true") break; Thread.sleep(250) }
             requireJS("!!document.querySelector('#device')")
             requireJS("deviceAvailable()")
+            requireJS("getComputedStyle(q('.v21-nav[data-view=planning]'),'::before').maskImage.includes('data:image/svg+xml;base64,')")
             // Complete a fresh-install setup through the rendered controls.
             for (i in 0..20) { if (js("typeof setupActive !== 'undefined'") == "true") break; Thread.sleep(100) }
             if (js("setupActive") == "true") {
