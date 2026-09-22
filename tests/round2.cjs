@@ -1,7 +1,7 @@
 const assert=require('node:assert/strict');
 module.exports=async(browser,url)=>{
  const page=await browser.newPage({viewport:{width:390,height:844}}),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto(url);
- await page.evaluate(()=>{data.onboardingCompleted=true;data.settings.taxMode='manual';data.settings.deductionPercent=0;data.settings.nightRate=0;data.settings.sundayRate=0;data.settings.holidayRate=0;data.settings.overtimeRate=0;data.shifts=[];data.expenses=[];data.recurringExpenses=[];data.savingsGoals=[];localStorage.setItem('lohnzeit-language','en');save()});await page.reload();
+ await page.evaluate(()=>{data.onboardingCompleted=true;data.profile={name:'Alex'};data.settings.taxMode='manual';data.settings.deductionPercent=0;data.settings.nightRate=0;data.settings.sundayRate=0;data.settings.holidayRate=0;data.settings.overtimeRate=0;data.shifts=[];data.expenses=[];data.recurringExpenses=[];data.savingsGoals=[];localStorage.setItem('lohnzeit-language','en');save()});await page.reload();
  const schedule=await page.evaluate(()=>[nextSavingsDate('2026-01-31','monthly',31),nextSavingsDate('2026-02-28','monthly',31),nextSavingsDate('2024-02-29','yearly',29),nextSavingsDate('2026-12-29','weekly',29)]);
  assert.deepEqual(schedule,['2026-02-28','2026-03-31','2025-02-28','2027-01-05']);
  const ledger=await page.evaluate(()=>{

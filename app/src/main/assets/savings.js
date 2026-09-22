@@ -9,7 +9,9 @@ function savingsAvailable(now=new Date()){
  // Include unmaterialized recurring costs as well as explicitly entered expenses.
  let expenses=data.expenses.filter(e=>e.date<=today).reduce((s,e)=>s+cents(e.amount),0);
  for(const t of data.recurringExpenses){let key=t.startMonth;for(let i=0;key<=monthKey(now)&&i<1200;i++){const [y,m]=key.split('-').map(Number),day=Math.min(t.day,new Date(y,m,0).getDate()),date=key+'-'+String(day).padStart(2,'0');if(date<=today&&!data.expenses.some(e=>e.recurringId===t.id&&e.date.slice(0,7)===key))expenses+=cents(t.amount);key=monthKey(new Date(y,m,1))}}
- return income-expenses-data.savingsLedger.reduce((s,e)=>s+cents(e.amount),0);
+ const allocated=data.savingsLedger.reduce((s,e)=>s+cents(e.amount),0);
+ const manual=(data.savingsGoals||[]).reduce((s,g)=>s+Math.max(0,cents(g.saved)-data.savingsLedger.filter(e=>e.goalId===g.id).reduce((n,e)=>n+cents(e.amount),0)),0);
+ return income-expenses-allocated-manual;
 }
 function reconcileSavings(now=new Date()){
  planningData();const today=isoDate(now);let available=savingsAvailable(now),changed=false;

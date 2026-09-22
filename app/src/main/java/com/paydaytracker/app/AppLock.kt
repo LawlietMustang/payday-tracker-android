@@ -165,7 +165,7 @@ class AppLock(private val activity: Activity, root: FrameLayout, private val con
         builder.build().authenticate(signal!!, activity.mainExecutor, object : BiometricPrompt.AuthenticationCallback() {
             override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) = success()
             override fun onAuthenticationError(code: Int, message: CharSequence) {
-                if (code == BiometricPrompt.BIOMETRIC_ERROR_NEGATIVE_BUTTON) return
+                if (pinDialog?.isShowing == true) return
                 // On older devices without enrolled biometrics, use the existing screen credential.
                 if (code == BiometricPrompt.BIOMETRIC_ERROR_NO_BIOMETRICS || code == BiometricPrompt.BIOMETRIC_ERROR_HW_NOT_PRESENT) { busy = false; credential(); return }
                 failure(); status.text = message
