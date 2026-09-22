@@ -40,6 +40,7 @@ jobs:
             adb shell am instrument -w -e mode granted com.paydaytracker.app.debug.test/com.paydaytracker.app.DeviceSmoke | tee device-smoke.txt
             adb logcat -d > device-logcat.txt
             adb pull /sdcard/Android/data/com.paydaytracker.app.debug/files/device-smoke.png device-smoke.png || true
+            adb pull /sdcard/Android/data/com.paydaytracker.app.debug/files/lock-screen.png lock-screen.png || true
             grep -q 'PAYDAY_SMOKE_PASS' device-smoke.txt
       - uses: actions/upload-artifact@v4
         if: always()
@@ -50,3 +51,4 @@ jobs:
             device-smoke.txt
             device-logcat.txt
             device-smoke.png
+            lock-screen.png

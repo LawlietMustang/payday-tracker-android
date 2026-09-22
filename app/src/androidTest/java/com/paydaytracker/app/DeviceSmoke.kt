@@ -76,7 +76,7 @@ class DeviceSmoke : Instrumentation() {
             for (i in 0..20) { if (js("typeof setupActive !== 'undefined'") == "true") break; Thread.sleep(100) }
             if (js("setupActive") == "true") {
                 js("q('#setupNext').click()")
-                js("q('#setupName').value='Smoke workplace';q('#setupName').dispatchEvent(new Event('input'));q('#setupNext').click()")
+                js("q('#setupCountry').value='DE';q('#setupCountry').dispatchEvent(new Event('change'));q('#setupName').value='Smoke workplace';q('#setupName').dispatchEvent(new Event('input'));q('#setupNext').click()")
                 requireJS("setupStep === 2")
                 js("q('#setupSkip').click();q('#setupNext').click()")
                 requireJS("data.onboardingCompleted && !setupActive")
@@ -211,6 +211,26 @@ class DeviceSmoke : Instrumentation() {
             runOnMainSync { check(web.visibility!=View.VISIBLE) { "App contents exposed before authentication" } }
             shell("input keyevent 4");Thread.sleep(500)
             runOnMainSync { check(web.visibility!=View.VISIBLE) { "Cancel bypassed app lock" } }
+            runOnMainSync {
+                val root = activity.window.decorView
+                val gate = root.findViewWithTag<View>("wagetrack-lock")
+                check(gate.visibility == View.VISIBLE) { "Missing branded lock screen" }
+                check((gate.background as android.graphics.drawable.ColorDrawable).color == android.graphics.Color.parseColor("#180E33"))
+                val greeting = root.findViewWithTag<android.widget.TextView>("lock-greeting").text.toString()
+                check(greeting in listOf("Good Morning", "Good Afternoon", "Good Evening"))
+                check(root.findViewWithTag<android.widget.TextView>("lock-masked-name").text.toString() == "••••••")
+                check(root.findViewWithTag<View>("lock-fingerprint").isClickable)
+                // Test-only screenshot of the masked gate; production retains FLAG_SECURE.
+                activity.window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+            }
+            Thread.sleep(300)
+            uiAutomation.takeScreenshot()?.let { bitmap -> java.io.File(targetContext.getExternalFilesDir(null),"lock-screen.png").outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it) } }
+            runOnMainSync {
+                activity.window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+                activity.window.decorView.findViewWithTag<View>("lock-pin").performClick()
+            }
+            Thread.sleep(1200);shell("input text 2468");shell("input keyevent 66");Thread.sleep(1500)
+            runOnMainSync { check(web.visibility == View.VISIBLE) { "PIN fallback did not unlock app" } }
             // Remove test-only PIN after checking cancellation; release users are never affected.
             shell("locksettings clear --old 2468")
             uiAutomation.takeScreenshot()?.let { bitmap -> java.io.File(targetContext.getExternalFilesDir(null),"device-smoke.png").outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it) } }

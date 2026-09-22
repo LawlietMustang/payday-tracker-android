@@ -48,3 +48,25 @@ main.goals-view>.workplace-picker,main.goals-view>.place-actions{display:none!im
 @media(max-width:360px){.kpis{grid-template-columns:1fr!important}.shift,#all .shift{grid-template-columns:38px minmax(0,1fr)}.shift-actions{grid-column:2;justify-self:end}.design-goal{grid-template-columns:60px minmax(0,1fr);gap:8px 10px}.design-goal .panelhead{grid-template-columns:1fr}.design-goal .panelhead button{justify-self:start}.goal-ring{width:60px;height:60px}.goal-ring>span{width:46px;height:46px}}
 
 .kpis>.kpi.hero{border:2px solid #0e082a}
+
+/* Final onboarding and calendar polish. Keep state colors under the selection ring. */
+#onboarding .setup-actions .primary,#onboarding[data-step="0"] .setup-actions .primary{justify-content:center;gap:8px;white-space:nowrap}
+#onboarding[data-step="3"] .setup-actions{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px}
+#onboarding[data-step="3"] .setup-actions button{min-width:0;padding:11px 12px;font-size:14px}
+#onboarding .setup-reminder-icon{background:#2e1a63;color:#cfff3d;border:1px solid #59437c;box-shadow:none}
+.setup-reminder-icon svg{width:40px;height:40px}
+#confirmDialog .brand-info{background:#2e1a63;color:#cfff3d;border-radius:13px}
+.brand-info svg{width:26px;height:26px}
+#calendarNewShift{place-items:center;text-align:center}
+.setup-tax-card fieldset{min-width:0;border:0;padding:0;margin:0}
+.setup-tax-card legend{font-size:14px;font-weight:650;margin-bottom:10px}
+.tax-class-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.tax-class-options button{min-width:0;padding:8px;min-height:44px}
+.tax-class-options button[aria-pressed="true"]{background:#cfff3d!important;color:#180e33!important;border:2px solid #5831bd;box-shadow:none}
+#calendar button{position:relative;background:#2e1a63;color:#f3ecff;box-shadow:none;overflow:visible;border:1px solid #59437c}
+#calendar button.planned{background:#263e79;color:#d3e3ff;border-color:#4c8cff}
+#calendar button.completed{background:#164939;color:#d0ffe4;border-color:#35d07f}
+#calendar button.cancelled{background:#3c304b;color:#dcc3d1;border-style:dashed}
+#calendar button.selected{outline:3px solid #cfff3d;outline-offset:-3px;opacity:1;z-index:1}
+#calendar .selection-check{position:absolute;right:-2px;top:-4px;display:grid;place-items:center;width:16px;height:16px;line-height:1;border-radius:50%;background:#cfff3d;color:#180e33;font-size:11px;border:1px solid #180e33}
+#calendar button:focus-visible{outline:3px solid #fff;outline-offset:2px}
