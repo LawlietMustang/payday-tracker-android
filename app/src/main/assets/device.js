@@ -1,13 +1,13 @@
 // Native features stay on the device; no account or network connection is needed.
 function deviceAvailable(){return typeof Android!=='undefined'&&typeof Android.deviceSettings==='function'}
 let deviceSection='all';
+function deviceTabsHtml(section){return '<nav class="device-tabs" aria-label="'+msg('Gerätefunktionen','Device features')+'">'+[['lock',msg('App-Sperre','App lock')],['reminders',msg('Erinnerungen','Reminders')],['widget',msg('Widget','Widget')]].map(([key,label])=>'<button type="button" data-device-section="'+key+'" '+(key===section?'class="active" aria-current="page"':'')+'>'+label+'</button>').join('')+'</nav>'}
+function bindDeviceTabs(){qa('#device [data-device-section]').forEach(b=>b.onclick=()=>{deviceSection=b.dataset.deviceSection;show('device')})}
 function organizeDeviceSettings(s,native){
  const cards=qa('#device .device-settings>article');cards[0].dataset.section='widget';cards[1].dataset.section='reminders';cards[2].dataset.section='lock';
  cards[2].id='appLockCard';cards[2].parentElement.prepend(cards[2]);
  cards.forEach(c=>c.hidden=deviceSection!=='all'&&c.dataset.section!==deviceSection);
- const actions=document.createElement('div');actions.className='place-actions';actions.style.margin='0';
- for(const [key,label] of [['lock',msg('App-Sperre','App lock')],['reminders',msg('Erinnerungen','Reminders')],['widget',msg('Widget','Widget')]]){const b=document.createElement('button');b.type='button';b.className=key===deviceSection?'primary':'secondary';b.textContent=label;b.onclick=()=>{deviceSection=key;show('device')};actions.append(b)}
- q('#device .device-settings').prepend(actions);
+ q('#device .device-settings').insertAdjacentHTML('afterbegin',deviceTabsHtml(deviceSection));bindDeviceTabs();
  const next=s.nextReminder?new Date(s.nextReminder).toLocaleString(language()==='en'?'en-GB':'de-DE',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):msg('Nicht geplant','Not scheduled');
  cards[1].insertAdjacentHTML('beforeend','<p><b>'+msg('Nächste Erinnerung: ','Next reminder: ')+safe(next)+'</b></p><p class="muted">'+(s.exact?msg('Zeitgenaue Erinnerungen erlaubt.','Precise-time reminders allowed.'):msg('Ohne Zeitfreigabe kann Android Erinnerungen verzögern.','Without timing permission, Android may delay reminders.'))+'</p><div class="device-settings"><button id="testNotification" type="button" class="primary">'+msg('Testbenachrichtigung senden','Send test notification')+'</button><button id="exactNotifications" type="button" class="secondary">'+msg('Zeitgenaue Erinnerungen erlauben','Allow precise-time reminders')+'</button><button id="backgroundNotifications" type="button" class="secondary">'+msg('Hintergrundaktivität prüfen','Check background settings')+'</button></div><p class="muted">'+msg('Falls Xiaomi Erinnerungen blockiert: In den App-Einstellungen Hintergrundaktivität und Autostart erlauben und den Energiesparmodus für diese App prüfen.','If Xiaomi blocks reminders, check this app’s background activity, autostart and battery-saving settings.')+'</p>');
  q('#testNotification').onclick=()=>Android.testReminder();q('#exactNotifications').onclick=()=>Android.exactReminderSettings();q('#backgroundNotifications').onclick=()=>Android.backgroundSettings();

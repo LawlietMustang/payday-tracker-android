@@ -25,6 +25,7 @@ import org.json.JSONObject
 class MainActivity : Activity() {
     private lateinit var webView: WebView
     private lateinit var contentRoot: FrameLayout
+    private val autoBackup by lazy { AutoBackup.get(this) }
     private var pendingBackup: ByteArray? = null
     private var pendingCsv: ByteArray? = null
     private val createCsvRequest = 901
@@ -62,6 +63,21 @@ class MainActivity : Activity() {
         } }
         @JavascriptInterface
         fun syncBackupStatus(dirty: Boolean, language: String) { runOnUiThread { BackupReminder.update(this@MainActivity, dirty, language) } }
+        @JavascriptInterface
+        fun autoBackupState(): String = autoBackup.state()
+        @JavascriptInterface
+        fun queueAutoBackup(document: String, hash: String) { autoBackup.enqueue(document, hash) }
+        @JavascriptInterface
+        fun retryAutoBackup() { autoBackup.retry() }
+        @JavascriptInterface
+        fun disableAutoBackup() { runOnUiThread { if (webView.visibility == View.VISIBLE) autoBackup.disable() } }
+        @JavascriptInterface
+        fun chooseBackupFolder() { runOnUiThread {
+            if (webView.visibility != View.VISIBLE) return@runOnUiThread
+            startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION or Intent.FLAG_GRANT_PREFIX_URI_PERMISSION)
+            }, 905)
+        } }
         @JavascriptInterface
         fun exportBackup(json: String) { runOnUiThread {
             if (json.toByteArray().size > 10 * 1024 * 1024 || webView.visibility != View.VISIBLE) { webView.evaluateJavascript("window.backupResult(false)", null); return@runOnUiThread }
@@ -234,6 +250,7 @@ class MainActivity : Activity() {
         }
         root.addView(webView, FrameLayout.LayoutParams(-1, -1))
         appLock = AppLock(this, root, webView) { nativeChanged() }
+        autoBackup.changed = { if (!isDestroyed && ::webView.isInitialized) webView.evaluateJavascript("window.autoBackupChanged && window.autoBackupChanged()", null) }
         setContentView(root)
         root.requestApplyInsets()
         ReminderReceiver.deliverDue(this)
@@ -256,14 +273,19 @@ class MainActivity : Activity() {
     }
 
     override fun onResume() { super.onResume(); if (::appLock.isInitialized) appLock.resume(); BackupReminder.schedule(this); ReminderReceiver.deliverDue(this); ReminderReceiver.schedule(this); ShiftReminders.reconcile(this); if (::webView.isInitialized) nativeChanged() }
-    override fun onPause() { if (::appLock.isInitialized) appLock.pause(); super.onPause() }
-    override fun onDestroy() { googleAccount.destroy(); appLock.destroy(); webView.destroy(); super.onDestroy() }
+    override fun onPause() { autoBackup.flush(); if (::appLock.isInitialized) appLock.pause(); super.onPause() }
+    override fun onDestroy() { autoBackup.changed = null; googleAccount.destroy(); appLock.destroy(); webView.destroy(); super.onDestroy() }
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) { super.onRequestPermissionsResult(requestCode, permissions, grantResults); ShiftReminders.reconcile(this); nativeChanged() }
 
     @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, resultData: Intent?) {
         super.onActivityResult(requestCode, resultCode, resultData)
         if (appLock.result(requestCode, resultCode)) return
+        if (requestCode == 905) {
+            if (resultCode == RESULT_OK && resultData?.data != null) autoBackup.configure(resultData.data!!, resultData.flags)
+            else webView.evaluateJavascript("window.autoBackupChanged && window.autoBackupChanged()", null)
+            return
+        }
         if (requestCode == 903 || requestCode == 904) {
             if (resultCode != RESULT_OK || resultData?.data == null) { pendingBackup = null; if (requestCode == 903) webView.evaluateJavascript("window.backupResult(null)", null); return }
             val uri = resultData.data!!

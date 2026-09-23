@@ -118,3 +118,24 @@ main.goals-view>.workplace-picker,main.goals-view>.place-actions{display:none!im
 .kpis>.kpi>footer span{line-height:1.4}
 @media(max-width:600px){.kpis>.kpi{padding:14px;gap:8px}.kpis>.kpi>label{min-height:28px;font-size:10px;line-height:14px}.kpis>.kpi>label em{padding:2px 5px;font-size:8px;line-height:12px}}
 @media(max-width:360px){.kpis>.kpi>label{min-height:16px}}
+
+/* 2.4.7: consistent device tabs, supplied info glyph and quiet backup states. */
+.device-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;width:100%;margin:0 0 12px}
+.device-tabs button{min-width:0;min-height:44px;padding:10px 6px;border:1px solid #59437c;border-radius:16px;background:#2e1a63;color:#f3ecff;font:700 12px/1.3 inherit;cursor:pointer}
+.device-tabs button.active{background:#cfff3d;color:#180e33;border-color:#180e33;box-shadow:2px 3px 0 #0e082a}
+.reminder-tools{display:flex;justify-content:flex-end;height:0}
+#reminderDiagnostics{position:relative;top:10px;width:40px;height:40px;display:grid;place-items:center;padding:8px;border:0;background:transparent;color:#b7a6de;cursor:pointer}
+#reminderDiagnostics svg,.card-info svg{display:block;width:20px;height:20px;flex:none}
+.card-info{display:grid;place-items:center;width:36px;height:36px;padding:8px;line-height:1}
+.has-card-info>.panelhead,.design-goal.has-card-info>.panelhead{padding-right:40px}
+.saved .backup-state-icon{width:30px;height:30px;flex:0 0 30px;border-radius:9px;border:1px solid #756197;display:grid;place-items:center;background:transparent;box-shadow:none;color:#d8cbea;font-size:19px;font-weight:700;line-height:1}
+.saved[data-backup-state="saved"] .backup-state-icon{color:#cfff3d;border-color:#8b9f45}
+.saved[data-backup-state="saving"] .backup-state-icon{color:#cab6ff;border-color:#756197}
+.saved[data-backup-state="error"] .backup-state-icon{color:#ffd477;border-color:#b59853}
+.saved small{line-height:1.4}.saved>span:last-child{min-width:0}
+.backup-actions{display:flex;flex-wrap:wrap;gap:10px}.backup-actions button{min-height:44px}
+.automatic-backup .check{display:flex;justify-content:space-between;gap:16px;align-items:center}
+.automatic-backup input[type="checkbox"]{width:22px;height:22px;flex:0 0 22px;accent-color:#5831bd}
+#autoBackupStatus{font-weight:700}#autoBackupStatus[data-state="error"]{color:#9b6100}
+#backupFolderName{overflow-wrap:anywhere}#recovery details{margin-top:16px;line-height:1.5}
+@media(max-width:360px){.device-tabs{gap:5px}.device-tabs button{font-size:11px;padding:10px 4px}}

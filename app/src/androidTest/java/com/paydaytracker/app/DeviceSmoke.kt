@@ -43,17 +43,46 @@ class DeviceSmoke : Instrumentation() {
         sendPointerSync(MotionEvent.obtain(t,SystemClock.uptimeMillis(),MotionEvent.ACTION_UP,x,y,0))
         Thread.sleep(400)
     }
-    private fun currentPinDialog(): android.app.AlertDialog {
+    private fun currentPinDialog(): android.app.Dialog {
         val field=MainActivity::class.java.getDeclaredField("appLock").apply { isAccessible=true }
         val lock=field.get(activity)
-        return AppLock::class.java.getDeclaredField("pinDialog").apply { isAccessible=true }.get(lock) as android.app.AlertDialog
+        return AppLock::class.java.getDeclaredField("pinDialog").apply { isAccessible=true }.get(lock) as android.app.Dialog
     }
     private fun enterAppPin(value: String) { runOnMainSync {
         val dialog=currentPinDialog()
-        dialog.findViewById<android.widget.EditText>(android.R.id.edit)?.setText(value)
-        dialog.window!!.decorView.findViewWithTag<android.widget.EditText>("app-pin-input").setText(value)
-        dialog.getButton(-1).performClick()
+        value.forEach { digit -> dialog.window!!.decorView.findViewWithTag<View>("pin-key-$digit").performClick() }
     };Thread.sleep(150) }
+    private fun runAutoBackupTest() {
+        runOnMainSync {activity.startActivityForResult(Intent().setComponent(android.content.ComponentName("com.paydaytracker.app.debug.test","com.paydaytracker.app.BackupFolderActivity")),905)}
+        Thread.sleep(1000)
+        fun awaitSaved() {for(i in 0..80){if(js("JSON.parse(Android.autoBackupState()).status==='saved'")=="true")return;Thread.sleep(100)};error("Automatic backup did not finish: "+js("Android.autoBackupState()"))}
+        awaitSaved()
+        val tree=android.net.Uri.parse("content://com.paydaytracker.backup.tests/tree/root")
+        val resolver=targetContext.contentResolver
+        fun read(name:String)=resolver.openInputStream(android.provider.DocumentsContract.buildDocumentUriUsingTree(tree,"root/"+name))!!.bufferedReader().use {it.readText()}
+        val first=read(AutoBackup.CURRENT)
+        check(org.json.JSONObject(first).getJSONObject("data").has("settings"))
+        js("data.profile.name='Backup burst one';save();data.profile.name='Backup burst latest';save()")
+        Thread.sleep(4000);awaitSaved()
+        check(org.json.JSONObject(read(AutoBackup.CURRENT)).getJSONObject("data").getJSONObject("profile").getString("name")=="Backup burst latest")
+        check(read(AutoBackup.PREVIOUS)==first)
+        val children=android.provider.DocumentsContract.buildChildDocumentsUriUsingTree(tree,"root")
+        resolver.query(children,arrayOf(android.provider.DocumentsContract.Document.COLUMN_DISPLAY_NAME),null,null,null)!!.use {check(it.count==2){"Backup files accumulated"}}
+        resolver.call(tree,"fail-current",null,null)
+        js("data.profile.name='Recoverable pending edit';save()")
+        Thread.sleep(4000)
+        requireJS("JSON.parse(Android.autoBackupState()).status==='error'")
+        check(org.json.JSONObject(read(AutoBackup.CURRENT)).getJSONObject("data").getJSONObject("profile").getString("name")=="Backup burst latest")
+        check(org.json.JSONObject(read(AutoBackup.PREVIOUS)).getJSONObject("data").getJSONObject("profile").getString("name")=="Backup burst latest")
+        resolver.call(tree,"allow-writes",null,null)
+        js("Android.retryAutoBackup()")
+        Thread.sleep(500);awaitSaved()
+        check(org.json.JSONObject(read(AutoBackup.CURRENT)).getJSONObject("data").getJSONObject("profile").getString("name")=="Recoverable pending edit")
+        js("Android.disableAutoBackup()")
+        Thread.sleep(500)
+        requireJS("JSON.parse(Android.autoBackupState()).enabled===false")
+        check(read(AutoBackup.CURRENT).isNotEmpty())
+    }
     override fun onStart() {
         try {
             if (permissionMode == "blocked") {
@@ -176,9 +205,11 @@ class DeviceSmoke : Instrumentation() {
             js("startWorkBreak()")
             Thread.sleep(500)
             check(targetContext.getSharedPreferences("device",0).getString("timerState", "") == "break") { "Widget did not receive break" }
+            // Exercise real persisted SAF writes, rotation and write-failure recovery.
+            runAutoBackupTest()
             // Cancelled PIN setup cannot enable the lock.
             js("Android.setAppLock(true)");Thread.sleep(500)
-            runOnMainSync { currentPinDialog().getButton(-2).performClick() }
+            runOnMainSync { currentPinDialog().window!!.decorView.findViewWithTag<View>("pin-back").performClick() }
             requireJS("JSON.parse(Android.deviceSettings()).lock===false")
             // Backup nudges wait 48h and repeat no more than weekly.
             BackupReminder.update(targetContext, true, "en")
@@ -225,7 +256,15 @@ class DeviceSmoke : Instrumentation() {
             // Create and confirm a real app PIN, without a phone PIN dependency.
             js("show('appSettings');q('#settingsLock').click()");requireJS("!q('#appLockCard').hidden")
             tap("#biometricLock");Thread.sleep(500)
+            runOnMainSync {
+                val screen=currentPinDialog().window!!.decorView
+                check(screen.findViewWithTag<android.widget.TextView>("pin-step").text.toString()=="STEP 1 OF 2")
+                val bitmap=android.graphics.Bitmap.createBitmap(screen.width,screen.height,android.graphics.Bitmap.Config.ARGB_8888)
+                screen.draw(android.graphics.Canvas(bitmap))
+                java.io.File(targetContext.getExternalFilesDir(null),"pin-setup.png").outputStream().use {bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it)}
+            }
             enterAppPin("246810")
+            runOnMainSync {check(currentPinDialog().window!!.decorView.findViewWithTag<android.widget.TextView>("pin-step").text.toString()=="STEP 2 OF 2")}
             enterAppPin("135790") // mismatch must keep the gate closed
             requireJS("JSON.parse(Android.deviceSettings()).lock===false")
             enterAppPin("246810");Thread.sleep(500)

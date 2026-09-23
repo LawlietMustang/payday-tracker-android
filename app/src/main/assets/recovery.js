@@ -46,13 +46,36 @@ let pendingBackupHash=null,backupCheckGeneration=0;
 const BACKUP_STATUS_KEY='wagetrack-backup-status';
 function backupSnapshot(){const doc=JSON.parse(backupDocument());delete doc.data.onboardingDraft;return JSON.stringify({language:doc.language,data:doc.data})}
 async function backupHash(snapshot){const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(snapshot));return [...new Uint8Array(bytes)].map(v=>v.toString(16).padStart(2,'0')).join('')}
+function nativeAutoBackup(){try{return typeof Android!=='undefined'&&typeof Android.autoBackupState==='function'?JSON.parse(Android.autoBackupState()):null}catch(e){return null}}
+let submittedBackupHash='';
+function backupStateLabel(state){return state==='error'?msg('Sicherung prüfen','Backup needs attention'):state==='saving'?msg('Sicherung wird gespeichert…','Saving backup…'):state==='saved'?msg('Gesichert','Backed up'):msg('Sicherung einrichten','Set up backup')}
 async function refreshBackupStatus(){
- const generation=++backupCheckGeneration;let backed=false;
- try{backed=(await backupHash(backupSnapshot()))===localStorage.getItem(BACKUP_STATUS_KEY)}catch(e){}
+ const generation=++backupCheckGeneration,snapshot=backupSnapshot(),document=backupDocument();let hash='';
+ try{hash=await backupHash(snapshot)}catch(e){}
  if(generation!==backupCheckGeneration)return;
- qa('.saved').forEach(el=>{el.dataset.localized='true';el.classList.toggle('backed-up',backed);el.innerHTML='<i></i><span><b>'+msg(backed?'Gesichert':'Nicht gesichert',backed?'Backed up':'Not backed up')+'</b><small>'+msg('Sicherung verwalten','Manage backup')+'</small></span>';el.setAttribute('role','button');el.tabIndex=0;el.onclick=()=>show('recovery');el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();show('recovery')}}});
+ const auto=nativeAutoBackup(),backed=!!hash&&(auto?.enabled?hash===auto.hash:hash===localStorage.getItem(BACKUP_STATUS_KEY));
+ const status=auto?.status==='error'?'error':backed?'saved':auto?.enabled?'saving':'off';
+ if(auto?.enabled&&hash&&hash!==auto.hash&&hash!==auto.queuedHash&&hash!==submittedBackupHash){
+  submittedBackupHash=hash;try{Android.queueAutoBackup(document,hash)}catch(e){submittedBackupHash=''}
+ }
+ const savedAt=auto?.enabled?auto.savedAt:Number(localStorage.getItem('wagetrack-backup-at')||0);
+ const stamp=savedAt?new Date(savedAt).toLocaleString(language()==='en'?'en-GB':'de-DE',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+ const symbol=status==='saved'?'✓':status==='error'?'!':status==='saving'?'↻':'↑';
+ qa('.saved').forEach(el=>{el.dataset.localized='true';el.dataset.backupState=status;el.classList.toggle('backed-up',status==='saved');el.innerHTML='<span class="backup-state-icon" aria-hidden="true">'+symbol+'</span><span><b>'+backupStateLabel(status)+'</b><small>'+safe(status==='saved'&&stamp?stamp:msg('Sicherung verwalten','Manage backup'))+'</small></span>';el.setAttribute('role','button');el.tabIndex=0;el.onclick=()=>show('recovery');el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();show('recovery')}}});
  const meaningful=!!(data.shifts.length||data.expenses.length||data.profile?.name);
- if(typeof Android!=='undefined'&&typeof Android.syncBackupStatus==='function')Android.syncBackupStatus(!backed&&meaningful,language());
+ if(typeof Android!=='undefined'&&typeof Android.syncBackupStatus==='function')Android.syncBackupStatus(status!=='saved'&&meaningful,language());
+ updateAutoBackupControls(auto,status,stamp);
+}
+window.autoBackupChanged=()=>{submittedBackupHash='';void refreshBackupStatus()};
+function updateAutoBackupControls(auto,status,stamp){
+ const control=q('#autoBackupToggle');if(!control)return;
+ control.checked=!!auto?.enabled;
+ q('#backupFolder').textContent=auto?.enabled?msg('Ordner ändern','Change folder'):msg('Ordner auswählen','Choose folder');
+ q('#backupFolderName').textContent=auto?.enabled?auto.folder:msg('Einmal einen Ordner auf deinem Gerät auswählen.','Choose a folder on your phone once.');
+ q('#autoBackupStatus').textContent=backupStateLabel(status)+(status==='saved'&&stamp?' · '+stamp:'');
+ q('#autoBackupStatus').dataset.state=status;
+ q('#retryAutoBackup').hidden=!(auto?.enabled&&status==='error');
+ q('#autoBackupError').hidden=status!=='error';
 }
 async function startBackupExport(){
  if(pendingBackupHash)return;
@@ -62,7 +85,7 @@ async function startBackupExport(){
 }
 window.backupResult=async ok=>{
  const snapshot=pendingBackupHash;pendingBackupHash=null;q('#saveBackup')?.removeAttribute('disabled');
- if(ok&&snapshot)try{localStorage.setItem(BACKUP_STATUS_KEY,await snapshot)}catch(e){ok=false}
+ if(ok&&snapshot)try{{localStorage.setItem(BACKUP_STATUS_KEY,await snapshot);localStorage.setItem('wagetrack-backup-at',String(Date.now()))}}catch(e){ok=false}
  await refreshBackupStatus();
  if(ok!==null)toast(ok?msg('Sicherung gespeichert','Backup saved'):msg('Datei konnte nicht verarbeitet werden. Bitte erneut versuchen.','Could not process the file. Please try again.'));
 };
@@ -80,9 +103,14 @@ window.receiveBackup=async text=>{
  location.reload();return true;
 };
 function renderRecovery(){
- q('#recovery').innerHTML='<div class="account-stack"><article class="panel"><h2>'+msg('Sichern & wiederherstellen','Backup & restore')+'</h2><p>'+msg('Speichere deine Daten vor einer Deinstallation in Dokumente oder in Google Drive über die Dateiauswahl. Wähle nach der Neuinstallation hier die gespeicherte Datei aus.','Before uninstalling, save your data to Documents or Google Drive through the file picker. After reinstalling, select that saved file here.')+'</p><p class="muted">'+msg('Enthält gespeicherte Schichten, Ausgaben, Arbeitsplätze, Ziele, Profil und Einstellungen. Laufende Timer, App-Sperre und Erinnerungen werden nicht übernommen. Die Datei ist unverschlüsselt; bewahre sie privat auf.','Includes saved shifts, expenses, workplaces, goals, profile and settings. Running timers, app lock and reminders are not transferred. The file is unencrypted; keep it private.')+'</p><div class="device-settings"><button id="saveBackup" class="primary">'+msg('Sicherungsdatei speichern','Save backup file')+'</button><button id="restoreBackup" class="secondary">'+msg('Aus Datei / Drive wiederherstellen','Restore from file / Drive')+'</button></div><p class="muted">'+msg('Drive erscheint, wenn es als Dateianbieter verfügbar ist. Eine Internetverbindung kann erforderlich sein. Dies ist keine automatische Synchronisierung und keine Anmeldung in WageTrack.','Drive appears when available as a file provider. An internet connection may be required. This is not automatic sync or a WageTrack account sign-in.')+'</p></article></div>';
+ const supported=typeof Android!=='undefined'&&typeof Android.chooseBackupFolder==='function';
+ q('#recovery').innerHTML='<div class="account-stack"><article class="panel automatic-backup"><h2>'+msg('Automatische Sicherung','Automatic backup')+'</h2><label class="check"><span>'+msg('Auf diesem Gerät sichern','Back up on this phone')+'</span><input id="autoBackupToggle" type="checkbox" role="switch" '+(!supported?'disabled':'')+'></label><p id="autoBackupStatus" role="status"></p><p id="backupFolderName" class="muted"></p><div class="backup-actions"><button id="backupFolder" class="primary" '+(!supported?'disabled':'')+'></button><button id="retryAutoBackup" class="secondary" hidden>'+msg('Erneut versuchen','Retry backup')+'</button></div><p class="muted">'+msg('Nach Änderungen automatisch speichern. Eine aktuelle Datei und eine vorherige Kopie – keine Dateisammlung.','Saved automatically after edits. One current file and one previous copy—no growing pile of files.')+'</p><p id="autoBackupError" role="alert" hidden>'+msg('Der Ordner ist nicht erreichbar oder konnte nicht beschrieben werden. Erneut versuchen oder einen Ordner neu auswählen.','The folder is unavailable or could not be written. Retry or choose a folder again.')+'</p></article><article class="panel"><h2>'+msg('Wiederherstellen & exportieren','Restore & export')+'</h2><div class="backup-actions"><button id="restoreBackup" class="primary">'+msg('Sicherung wiederherstellen','Restore a backup')+'</button><button id="saveBackup" class="secondary">'+msg('Kopie exportieren','Export a copy')+'</button></div><p class="muted">'+msg('Nach einer Neuinstallation die Sicherungsdatei über „Wiederherstellen“ auswählen. Eine lokale Sicherung schützt nicht vor dem Verlust deines Telefons.','After reinstalling, choose your saved file using Restore. A local backup does not protect against losing your phone.')+'</p><details><summary>'+msg('Was wird gesichert?','What is backed up?')+'</summary><p>'+msg('Schichten, Ausgaben, Arbeitsplätze, Ziele, Profil und Einstellungen. Laufende Timer und App-PINs werden nicht übernommen; Erinnerungen bleiben nach dem Wiederherstellen ausgeschaltet. Die Dateien sind unverschlüsselt.','Shifts, expenses, workplaces, goals, profile and settings. Running timers and app PINs are not transferred; reminders stay off after restoring. The files are unencrypted.')+'</p><p>'+msg('Für eine zusätzliche Kopie in Drive „Kopie exportieren“ wählen und Drive in der Dateiauswahl öffnen.','For an additional copy in Drive, choose Export a copy and select Drive in the file picker.')+'</p></details></article></div>';
+ q('#backupFolder').onclick=()=>Android.chooseBackupFolder();
+ q('#autoBackupToggle').onchange=async e=>{const wanted=e.target.checked;e.target.checked=!!nativeAutoBackup()?.enabled;if(wanted)Android.chooseBackupFolder();else if(await askConfirm(msg('Automatische Sicherung ausschalten? Vorhandene Dateien bleiben erhalten.','Turn off automatic backup? Existing backup files will be kept.')))Android.disableAutoBackup()};
+ q('#retryAutoBackup').onclick=()=>{submittedBackupHash='';Android.retryAutoBackup();void refreshBackupStatus()};
  q('#saveBackup').onclick=startBackupExport;
  q('#restoreBackup').onclick=()=>{if(typeof Android!=='undefined'&&typeof Android.importBackup==='function')Android.importBackup();else toast(msg('Bitte die Android-App verwenden.','Please use the Android app.'))};
+ void refreshBackupStatus();
 }
 const recovery=document.createElement('section');recovery.id='recovery';recovery.className='view';recovery.dataset.localized='true';q('main').append(recovery);
 const recoveryButton=document.createElement('button');recoveryButton.className='account-row';recoveryButton.type='button';recoveryButton.id='openRecovery';recoveryButton.onclick=()=>show('recovery');q('#settingsDelete').before(recoveryButton);
