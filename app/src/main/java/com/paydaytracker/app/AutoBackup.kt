@@ -51,7 +51,12 @@ class AutoBackup private constructor(private val context: Context) {
         if (!enabled || !hash.matches(Regex("[a-f0-9]{64}"))) return@execute
         try {
             validate(document.toByteArray(Charsets.UTF_8))
-            if (hash == prefs.getString("hash", "") && !pending.baseFile.exists()) return@execute
+            if (hash == prefs.getString("hash", "")) {
+                // An undo can return to the saved snapshot while a newer edit is queued.
+                scheduled?.cancel(false); pending.delete()
+                prefs.edit().remove("queuedHash").putString("status", "saved").commit(); notifyChanged()
+                return@execute
+            }
             if (hash == prefs.getString("queuedHash", "")) return@execute
             val bytes = JSONObject().put("hash", hash).put("document", document).toString().toByteArray(Charsets.UTF_8)
             val stream = pending.startWrite()

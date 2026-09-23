@@ -55,7 +55,7 @@ async function refreshBackupStatus(){
  if(generation!==backupCheckGeneration)return;
  const auto=nativeAutoBackup(),backed=!!hash&&(auto?.enabled?hash===auto.hash:hash===localStorage.getItem(BACKUP_STATUS_KEY));
  const status=auto?.status==='error'?'error':backed?'saved':auto?.enabled?'saving':'off';
- if(auto?.enabled&&hash&&hash!==auto.hash&&hash!==auto.queuedHash&&hash!==submittedBackupHash){
+ if(auto?.enabled&&hash&&(hash!==auto.hash||(auto.queuedHash&&hash!==auto.queuedHash))&&hash!==auto.queuedHash&&hash!==submittedBackupHash){
   submittedBackupHash=hash;try{Android.queueAutoBackup(document,hash)}catch(e){submittedBackupHash=''}
  }
  const savedAt=auto?.enabled?auto.savedAt:Number(localStorage.getItem('wagetrack-backup-at')||0);

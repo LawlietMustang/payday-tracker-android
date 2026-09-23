@@ -17,6 +17,11 @@ module.exports=async(browser,url)=>{
  assert.equal(await page.locator('.saved i').count(),0,'Old red/green lamp removed');
  await page.evaluate(()=>{backupTest.status='error';autoBackupChanged()});await page.waitForFunction(()=>q('#autoBackupStatus').dataset.state==='error');assert.equal(await page.locator('#retryAutoBackup').isVisible(),true);
  await page.evaluate(()=>{Object.assign(backupTest,{status:'saved',hash:queued.at(-1).hash,queuedHash:'',savedAt:Date.now()});autoBackupChanged()});await page.waitForFunction(()=>q('.saved.backed-up'));
+ // Returning to the saved value must supersede a different pending snapshot.
+ await page.evaluate(()=>{data.profile.name='Temporary';save()});await page.waitForFunction(()=>queued.length===3);
+ await page.evaluate(()=>{data.profile.name='Latest';save()});await page.waitForFunction(()=>queued.length===4);
+ assert.equal(await page.evaluate(()=>JSON.parse(queued.at(-1).doc).data.profile.name),'Latest');
+ await page.evaluate(()=>{Object.assign(backupTest,{status:'saved',hash:queued.at(-1).hash,queuedHash:'',savedAt:Date.now()});autoBackupChanged()});await page.waitForFunction(()=>q('.saved.backed-up'));
  const count=await page.evaluate(()=>queued.length);await page.evaluate(async()=>{await refreshBackupStatus();await refreshBackupStatus()});assert.equal(await page.evaluate(()=>queued.length),count,'No writes for unchanged data');
  for(const width of [320,390])for(const lang of ['en','de']){
   await page.setViewportSize({width,height:844});await page.evaluate(lang=>{q('#language').value=lang;q('#language').dispatchEvent(new Event('change'));deviceSection='reminders';show('device')},lang);
