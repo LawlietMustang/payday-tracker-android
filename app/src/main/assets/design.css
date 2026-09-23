@@ -108,3 +108,13 @@ main.goals-view>.workplace-picker,main.goals-view>.place-actions{display:none!im
 .has-card-info>.panelhead{padding-right:36px;margin-bottom:14px}
 .design-goal.has-card-info>.panelhead{padding-right:36px;margin-bottom:0}
 .kpis>.kpi>strong{align-self:flex-start}
+
+/* 2.4.6: compact dashboard figures with badges kept beside their headings. */
+.kpis>.kpi{gap:10px;padding:16px;justify-content:flex-start;align-content:start}
+.kpis>.kpi>label{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:6px;align-items:start;align-content:start;min-height:32px;font-size:11px;line-height:16px;letter-spacing:0;overflow-wrap:anywhere}
+.kpis>.kpi>label em{justify-self:end;align-self:start;min-width:0;margin:0;padding:3px 6px;font-size:8px;line-height:12px;letter-spacing:0;white-space:nowrap}
+.kpis>.kpi>strong{align-self:flex-start;line-height:1.2}
+.kpis>.kpi>footer{align-self:stretch;line-height:1.4;gap:4px 8px}
+.kpis>.kpi>footer span{line-height:1.4}
+@media(max-width:600px){.kpis>.kpi{padding:14px;gap:8px}.kpis>.kpi>label{min-height:28px;font-size:10px;line-height:14px}.kpis>.kpi>label em{padding:2px 5px;font-size:8px;line-height:12px}}
+@media(max-width:360px){.kpis>.kpi>label{min-height:16px}}
