@@ -219,7 +219,9 @@ class DeviceSmoke : Instrumentation() {
             BackupReminder.update(targetContext,true,"en");check(originalDue==backupPrefs.getLong("backupDue",0))
             backupPrefs.edit().putLong("backupDue",System.currentTimeMillis()-1000).commit()
             BackupReminder().onReceive(targetContext,Intent())
-            check(targetContext.getSystemService(android.app.NotificationManager::class.java).activeNotifications.any { it.id==226 })
+            // NotificationManager publishes asynchronously; wait for observable delivery.
+            for (i in 0..20) { if (targetContext.getSystemService(android.app.NotificationManager::class.java).activeNotifications.any { it.id==226 }) break; Thread.sleep(100) }
+            check(targetContext.getSystemService(android.app.NotificationManager::class.java).activeNotifications.any { it.id==226 }) { "Backup reminder was not posted" }
             check(backupPrefs.getLong("backupDue",0)>System.currentTimeMillis()+6L*86400000)
             BackupReminder.update(targetContext,false,"en")
             // Dispatch a real reminder notification and inspect Android's active notifications.
