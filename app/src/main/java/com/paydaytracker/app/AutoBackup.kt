@@ -63,10 +63,17 @@ class AutoBackup private constructor(private val context: Context) {
             try { stream.write(bytes); pending.finishWrite(stream) } catch (e: Exception) { pending.failWrite(stream); throw e }
             prefs.edit().putString("queuedHash", hash).putString("status", "pending").commit()
             notifyChanged(); schedule(3000)
-        } catch (_: Exception) { fail() }
+        } catch (_: Exception) {
+            // Retain the rejected revision too, so UI refreshes cannot form a retry loop.
+            prefs.edit().putString("queuedHash", hash).commit(); fail()
+        }
     } }
     fun flush() { worker.execute { if (enabled && pending.baseFile.exists()) schedule(0) } }
-    fun retry() = flush()
+    fun retry() { worker.execute {
+        if (!enabled) return@execute
+        if (pending.baseFile.exists()) schedule(0)
+        else { prefs.edit().remove("queuedHash").putString("status", "pending").commit(); notifyChanged() }
+    } }
     private fun schedule(delay: Long) { scheduled?.cancel(false); scheduled = worker.schedule({ writePending() }, delay, TimeUnit.MILLISECONDS) }
     private fun fail() { prefs.edit().putString("status", "error").commit(); notifyChanged() }
     private fun writePending() {
