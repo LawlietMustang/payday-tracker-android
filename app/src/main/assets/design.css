@@ -6,6 +6,7 @@
   --surface: #241452;
   --surface-raised: #2e1a63;
   --surface-line: #59437c;
+  --canvas-line: #493666;
   --on-surface: #f3ecff;
   --on-surface-muted: #b7a6de;
   --purple: #5831bd;
@@ -29,7 +30,7 @@
   --cyan: var(--pink);
   --text: var(--on-surface);
   --muted: var(--on-surface-muted);
-  --line: #493666;
+  --line: var(--canvas-line);
   --card: #fbf6ff;
   --card-text: var(--ink);
   --card-muted: #6b5b80;
@@ -43,12 +44,13 @@
   font-family: "Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
 }
 [data-theme="dark"] {
+  --danger: #ff91ad;
   --bg: #110a26;
   --navy: var(--surface);
   --blue: #bda3ff;
   --text: var(--on-surface);
   --muted: var(--on-surface-muted);
-  --line: #493666;
+  --line: var(--canvas-line);
   --card: var(--surface);
   --card-text: var(--on-surface);
   --card-muted: #c0afdF;
@@ -3411,7 +3413,7 @@ header .month-picker:after {
 }
 .menu-open {
   color: var(--on-surface);
-  border: 1px solid var(--line);
+  border: 1px solid var(--canvas-line);
   border-radius: 14px;
   font-size: 24px;
   flex-shrink: 0;
@@ -3426,16 +3428,16 @@ aside {
   background: var(--surface) !important;
 }
 .drawer {
-  border-right: 2px solid var(--line);
+  border-right: 2px solid var(--canvas-line);
 }
 .brand strong {
   letter-spacing: -.04em;
 }
 .drawer .saved {
-  border-color: var(--line);
+  border-color: var(--canvas-line);
 }
 .saved {
-  border-color: var(--line);
+  border-color: var(--canvas-line);
 }
 .drawer-link.active {
   background: var(--lime);
@@ -3815,7 +3817,7 @@ dialog::backdrop {
 .workplace-picker.panel {
   background: var(--surface);
   color: var(--on-surface);
-  border: 1px solid var(--line);
+  border: 1px solid var(--canvas-line);
   box-shadow: none;
   padding: 8px 12px;
   margin-bottom: 12px;
@@ -3843,7 +3845,7 @@ dialog::backdrop {
 main>.place-actions .secondary {
   background: var(--surface);
   color: #d5c7ed;
-  border-color: var(--line);
+  border-color: var(--canvas-line);
   font-size: 12px;
   min-height: 40px;
   padding: 7px 10px;
@@ -4227,7 +4229,7 @@ main>.place-actions .secondary {
   background: #ff4757;
 }
 .quick-templates {
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--canvas-line);
   padding-top: 14px;
 }
 .quick-templates .eyebrow {
@@ -4418,7 +4420,7 @@ progress::-moz-progress-bar {
   border-radius: 22px;
 }
 .setup-actions {
-  border-color: var(--line);
+  border-color: var(--canvas-line);
   background: var(--bg);
 }
 .setup-actions .primary {
