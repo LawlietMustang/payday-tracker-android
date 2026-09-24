@@ -25,7 +25,6 @@ function spendingProjection(key, now=new Date()) {
 }
 function planningLabel(text, field){text=text.replace('(€)','('+currencyCode()+')');return '<label>'+text+field+'</label>'}
 function setupPlanningUI(){
-  document.head.insertAdjacentHTML('beforeend','<link rel="stylesheet" href="./enhancements.css">');
   migratePlanning();
   const picker=q('.workplace-picker'); picker.classList.add('panel'); q('header').after(picker);
   for(const [container,prefix] of [[picker,'header'],[q('#shiftWorkplace').parentElement,'shift']]){
@@ -38,11 +37,6 @@ function setupPlanningUI(){
   const places=document.createElement('section'); places.id='workplaces'; places.className='view'; places.dataset.localized='true';
   q('main').append(places); places.append(manager); manager.innerHTML='<div id="placesContent"></div>';
   const plan=document.createElement('section'); plan.id='planning'; plan.className='view'; plan.dataset.localized='true'; q('main').append(plan);
-  for(const nav of [q('aside:not(.drawer) nav'),q('#drawer nav')]){
-    for(const [view,icon] of [['workplaces','▣'],['planning','◎']]){
-      const b=document.createElement('button'); b.className='drawer-link v21-nav'; b.type='button'; b.dataset.view=view; b.dataset.icon=icon; b.dataset.localized='true'; b.onclick=()=>show(view); nav.append(b);
-    }
-  }
   const dialog=document.createElement('dialog'); dialog.id='planningDialog'; dialog.dataset.localized='true';
   dialog.innerHTML='<form id="planningForm"><div class="dialoghead"><h2 id="planningTitle"></h2><button type="button" id="planningClose" aria-label="Close">×</button></div><div id="planningFields" class="formgrid"></div><p id="planningError" class="error" role="alert"></p><div class="dialogactions"><button id="planningCancel" class="secondary" type="button"></button><button id="planningSave" class="primary"></button></div></form>';
   document.body.append(dialog); q('#planningClose').onclick=q('#planningCancel').onclick=()=>dialog.close();
@@ -50,7 +44,7 @@ function setupPlanningUI(){
   q('#language').addEventListener('change',()=>{renderPlaces();renderPlanning();labelPlanningNav();const active=q('.view.active')?.id;if(['workplaces','planning'].includes(active))show(active)});
   labelPlanningNav(); renderPlaces(); renderPlanning();
 }
-function labelPlanningNav(){qa('.v21-nav').forEach(b=>b.textContent=(b.dataset.view==='workplaces'?msg('Arbeitsplätze','Workplaces'):msg('Budgets & Sparziele','Budgets & goals')));for(const prefix of ['header','shift']){q('#'+prefix+'AddPlace').textContent='+ '+msg('Arbeitsplatz','New workplace');q('#'+prefix+'ManagePlaces').textContent=msg('Verwalten','Manage workplaces')}}
+function labelPlanningNav(){for(const prefix of ['header','shift']){q('#'+prefix+'AddPlace').textContent='+ '+msg('Arbeitsplatz','New workplace');q('#'+prefix+'ManagePlaces').textContent=msg('Verwalten','Manage workplaces')}}
 function openPlanningDialog(title,fields,onSave){
   q('#planningTitle').textContent=title; q('#planningFields').innerHTML=fields; q('#planningError').textContent='';
   q('#planningCancel').textContent=msg('Abbrechen','Cancel');q('#planningSave').textContent=msg('Speichern','Save');

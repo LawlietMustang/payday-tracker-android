@@ -68,5 +68,4 @@ renderDeviceSettings=function(){if(['all','reminders'].includes(deviceSection)){
 const showBeforeCompactReminders=show;show=function(view){showBeforeCompactReminders(view);if(view==='device'&&['all','reminders'].includes(deviceSection))q('#title').textContent=msg('Erinnerungen','Reminders')};
 const saveBeforeShiftReminders=save;save=function(){saveBeforeShiftReminders();syncShiftReminders()};
 q('#language').addEventListener('change',syncShiftReminders);
-const reminderStyles=document.createElement('link');reminderStyles.rel='stylesheet';reminderStyles.href='reminders.css';document.head.append(reminderStyles);
 renderDeviceSettings();syncShiftReminders();

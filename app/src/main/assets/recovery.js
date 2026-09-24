@@ -113,10 +113,8 @@ function renderRecovery(){
  void refreshBackupStatus();
 }
 const recovery=document.createElement('section');recovery.id='recovery';recovery.className='view';recovery.dataset.localized='true';q('main').append(recovery);
-const recoveryButton=document.createElement('button');recoveryButton.className='account-row';recoveryButton.type='button';recoveryButton.id='openRecovery';recoveryButton.onclick=()=>show('recovery');q('#settingsDelete').before(recoveryButton);
-function labelRecovery(){recoveryButton.textContent=msg('Sichern & wiederherstellen','Backup & restore')+' ›'}
-const showBeforeRecovery=show;show=function(view){showBeforeRecovery(view);q('main').classList.toggle('expense-view',view==='expenses');if(view==='recovery'){q('main').classList.add('personal-view');q('#title').textContent=msg('Sichern & wiederherstellen','Backup & restore');renderRecovery()}labelRecovery()};
-q('#language').addEventListener('change',()=>{labelRecovery();if(q('#recovery').classList.contains('active'))show('recovery')});labelRecovery();
+const showBeforeRecovery=show;show=function(view){showBeforeRecovery(view);q('main').classList.toggle('expense-view',view==='expenses');if(view==='recovery'){q('main').classList.add('personal-view');q('#title').textContent=msg('Sichern & wiederherstellen','Backup & restore');renderRecovery()}labelRoutes()};
+q('#language').addEventListener('change',()=>{labelRoutes();if(q('#recovery').classList.contains('active'))show('recovery')});labelRoutes();
 window.widgetPinResult=accepted=>{
  if(!q('#pinWidget'))return; // The user may have left the widget page while the launcher replied.
  let help=q('#widgetHelp');if(!help){help=document.createElement('div');help.id='widgetHelp';help.setAttribute('role','status');q('#pinWidget').after(help)}

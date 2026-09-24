@@ -1,12 +1,11 @@
 // WageTrack 2.4: presentation only; existing records and payroll calculations stay authoritative.
 (()=>{
- const css=document.createElement('link');css.rel='stylesheet';css.href='./design.css';document.head.append(css);
  const block=(tag,id,parent)=>{const el=document.createElement(tag);el.id=id;el.dataset.localized='true';parent.append(el);return el};
  const hero=block('section','wageOverview',q('#dashboard'));q('#dashboard').prepend(hero);
  const receipt=block('button','payReceipt',q('#dashboard'));receipt.type='button';receipt.className='pay-receipt';receipt.onclick=()=>show('history');
  const composition=block('div','payComposition',q('.bonus-panel'));q('.bonus-panel .panelhead').after(composition);
  q('#timeclock').after(q('.bonus-panel'));q('.bonus-panel').after(receipt);
- const shortcuts=block('div','designShortcuts',q('#dashboard'));receipt.after(shortcuts);
+ const shortcuts=block('div','designShortcuts',q('#dashboard'));hero.after(shortcuts);
  const detail=document.createElement('details');detail.id='earningsDetails';const detailLabel=document.createElement('summary');detailLabel.dataset.localized='true';detail.append(detailLabel);receipt.before(detail);detail.addEventListener('toggle',()=>{if(detail.open)requestAnimationFrame(()=>detail.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'}))});for(const selector of ['.kpis','.twocol','.recent'])detail.append(q('#dashboard '+selector));
  const calendar=block('article','shiftCalendar',q('#shifts'));calendar.className='shift-calendar';q('#shifts').prepend(calendar);
  const dayDialog=block('dialog','calendarDay',document.body);dayDialog.className='calendar-day-dialog';
@@ -57,8 +56,8 @@
   // Only compare workplaces that actually have a saved payslip for this month.
   const expected=pays.reduce((a,p)=>a+summary(selected,p.workplaceId).est.net,0),actual=pays.reduce((a,p)=>a+Number(p.actualNet),0),diff=actual-expected;
   receipt.innerHTML='<div><span class="eyebrow">'+msg('LOHNABRECHNUNG','PAYSLIP CHECK')+'</span><h3>'+msg('Deinen Lohn vergleichen','Compare your pay')+'</h3></div>'+(pays.length?'<div class="receipt-values"><span>'+msg('Netto geschätzt','Estimated net')+'<b>'+money(expected)+'</b></span><span>'+msg('Netto laut Abrechnung','Payslip net')+'<b>'+money(actual)+'</b></span></div><span class="receipt-stamp">'+(diff>=0?'+ ':'')+money(diff)+'</span>':'<p>'+msg('Abrechnung hinzufügen und Unterschiede sehen.','Add a payslip to see the difference.')+'</p><span class="receipt-link">'+msg('Abrechnung hinzufügen →','Add payslip →')+'</span>');
-  shortcuts.innerHTML='<button class="secondary" type="button" data-design-go="planning">'+msg('Budgets & Sparziele','Budgets & goals')+' ↗</button><button class="secondary" type="button" data-design-go="device">'+msg('Erinnerungen','Reminders')+' ↗</button>';
-  qa('[data-design-go]').forEach(b=>b.onclick=()=>{if(b.dataset.designGo==='device')deviceSection='reminders';show(b.dataset.designGo)});
+  shortcuts.innerHTML=SHORTCUT_ROUTES.map(id=>'<button class="secondary" type="button" data-route="'+id+'">'+routeIcon(id)+'<span data-route-label="'+id+'" data-short-label>'+routeLabel(id,true)+'</span><span aria-hidden="true">↗</span></button>').join('');
+  bindRoutes(shortcuts);
  }
  function decorateGoals(){
   qa('.goal-grid article').forEach(article=>{

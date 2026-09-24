@@ -29,7 +29,5 @@ function syncHomeWidget(){if(!deviceAvailable())return;const t=data.activeTimer,
 const saveBeforeDevice=save;save=function(){saveBeforeDevice();syncHomeWidget()};
 const showBeforeDevice=show;show=function(view){showBeforeDevice(view);if(view==='device'){q('#title').textContent=msg('Widget, Erinnerungen & Sperre','Widget, reminders & lock');renderDeviceSettings()}};
 const deviceView=document.createElement('section');deviceView.id='device';deviceView.className='view';deviceView.dataset.localized='true';q('main').append(deviceView);
-for(const nav of [q('aside:not(.drawer) nav'),q('#drawer nav')]){for(const panel of ['reminders','lock']){const b=document.createElement('button');b.type='button';b.className='drawer-link device-nav';b.dataset.view='device';b.dataset.panel=panel;b.dataset.localized='true';b.onclick=()=>{deviceSection=panel;show('device')};nav.append(b)}}
-function labelDeviceNav(){qa('.device-nav').forEach(b=>b.textContent=b.dataset.panel==='lock'?'▣ '+msg('App-Sperre','App lock'):msg('Erinnerungen & Widget','Reminders & widget'))}
-q('#language').addEventListener('change',()=>{labelDeviceNav();renderDeviceSettings();syncHomeWidget();if(q('#device').classList.contains('active'))show('device')});
-labelDeviceNav();renderDeviceSettings();syncHomeWidget();
+q('#language').addEventListener('change',()=>{renderDeviceSettings();syncHomeWidget();if(q('#device').classList.contains('active'))show('device')});
+renderDeviceSettings();syncHomeWidget();

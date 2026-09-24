@@ -112,7 +112,7 @@ class DeviceSmoke : Instrumentation() {
             for (i in 0..40) { if (js("!!document.querySelector('#device')",30) == "true") break; Thread.sleep(250) }
             requireJS("!!document.querySelector('#device')")
             requireJS("deviceAvailable()")
-            requireJS("getComputedStyle(q('.v21-nav[data-view=planning]'),'::before').maskImage.includes('data:image/svg+xml;base64,')")
+            requireJS("getComputedStyle(q('#settingsMenu [data-icon=planning]')).maskImage.includes('budgets-goals.svg')")
             // Complete a fresh-install setup through the rendered controls.
             for (i in 0..20) { if (js("typeof setupActive !== 'undefined'") == "true") break; Thread.sleep(100) }
             if (js("setupActive") == "true") {
