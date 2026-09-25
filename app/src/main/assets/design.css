@@ -5732,3 +5732,30 @@ main.goals-view>.place-actions {
   #designShortcuts { gap: 8px; }
   #designShortcuts button { font-size: 11px; padding: 10px 8px; gap: 6px; }
 }
+
+/* Supplied icon set and compact payslip trend */
+[data-icon="profile"] { --route-icon: url('./profile.svg'); }
+[data-icon="lock"] { --route-icon: url('./lock.svg'); }
+[data-icon="recovery"] { --route-icon: url('./cloud-sync.svg'); }
+[data-icon="cancel"] { --route-icon: url('./cancel.svg'); }
+[data-icon="alert"] { --route-icon: url('./alert.svg'); }
+[data-icon="info"] { --route-icon: url('./info.svg'); }
+[data-icon="sun"] { --route-icon: url('./sun.svg'); }
+[data-icon="moon"] { --route-icon: url('./moon.svg'); }
+.close-icon { width:18px; height:18px; display:block; }
+#close,#expenseClose,#bulkEditClose,#menuClose { display:grid; place-items:center; }
+#appearanceSection summary { display:flex; align-items:center; gap:12px; }
+#appearanceSection summary::after { content:'⌄'; margin-left:auto; }
+.payslip-trend { margin:20px 0; color:var(--card-text); }
+.payslip-trend figcaption { font-weight:700; }
+.payslip-trend svg { display:block; width:100%; height:auto; margin-top:12px; overflow:visible; }
+.payslip-trend .trend-estimate { stroke:var(--blue); fill:none; stroke-width:2.5; stroke-dasharray:5 3; }
+.payslip-trend .trend-actual { stroke:var(--pink); fill:none; stroke-width:2.5; }
+.payslip-trend .trend-dot-estimate { fill:var(--blue); }
+.payslip-trend .trend-dot-actual { fill:var(--pink); }
+.payslip-trend text { fill:currentColor; font:11px sans-serif; }
+.trend-legend { display:flex; flex-wrap:wrap; gap:16px; font-size:12px; margin-top:8px; }
+.trend-legend span { display:flex; gap:6px; align-items:center; }
+.trend-legend i { display:inline-block; width:18px; border-top:3px dashed var(--blue); }
+.trend-legend .actual-key { border-top:3px solid var(--pink); }
+.payslip-trend>p { font-size:12px; margin:8px 0 0; }

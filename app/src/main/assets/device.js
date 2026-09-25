@@ -25,7 +25,7 @@ function renderDeviceSettings(){
  q('#reminderForm').onsubmit=e=>{e.preventDefault();const enabled=q('#reminderEnabled').checked,mask=qa('.reminder-days input:checked').reduce((m,x)=>m|(1<<Number(x.value)),0);if(enabled&&!mask){q('#reminderError').textContent=msg('Wähle mindestens einen Wochentag.','Choose at least one weekday.');return}const [h,m]=q('#reminderTime').value.split(':').map(Number);Android.saveReminder(enabled,h,m,mask,language());toast(msg('Erinnerungseinstellungen gespeichert','Reminder settings saved'))};
 }
 window.refreshDeviceSettings=()=>{if(q('#device'))renderDeviceSettings()};
-function syncHomeWidget(){if(!deviceAvailable())return;const t=data.activeTimer,totals=timerTotals();Android.syncWidget(t?.state||'idle',t?.state==='break'?totals.breakMs:totals.worked,language())}
+function syncHomeWidget(){if(!deviceAvailable())return;const t=data.activeTimer,totals=timerTotals();Android.syncWidget(t?.state||'idle',t?.state==='break'?totals.breakMs:totals.worked,language(),JSON.stringify({month:monthKey(new Date()),minutes:summary(monthKey(new Date()),'all',null,false).minutes,target:Number(data.settings.target)||0}))}
 const saveBeforeDevice=save;save=function(){saveBeforeDevice();syncHomeWidget()};
 const showBeforeDevice=show;show=function(view){showBeforeDevice(view);if(view==='device'){q('#title').textContent=msg('Widget, Erinnerungen & Sperre','Widget, reminders & lock');renderDeviceSettings()}};
 const deviceView=document.createElement('section');deviceView.id='device';deviceView.className='view';deviceView.dataset.localized='true';q('main').append(deviceView);
