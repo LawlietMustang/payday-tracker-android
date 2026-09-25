@@ -28,7 +28,7 @@ module.exports=async(browser,url)=>{
   }
   for(const [id,file] of [['workplaces','workplaces.svg'],['planning','budgets-goals.svg'],['reminders','reminders-widget.svg']]){
    const icon=page.locator('#settingsMenu [data-icon="'+id+'"]');
-   assert.equal(await icon.evaluate((el,file)=>getComputedStyle(el).maskImage.includes(file),file),true);
+   assert.equal(await icon.evaluate((el,file)=>getComputedStyle(el).maskImage.startsWith('url("data:image/svg+xml,'),file),true);
    assert.equal(await icon.evaluate(el=>el.getBoundingClientRect().width),24);
   }
   await page.locator('#appearanceSection summary').click();assert.equal(await page.locator('#language').isVisible(),true);assert.equal(await page.locator('#theme').isVisible(),true);await page.locator('#appearanceSection summary').click();

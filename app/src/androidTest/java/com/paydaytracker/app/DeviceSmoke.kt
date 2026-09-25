@@ -31,6 +31,56 @@ class DeviceSmoke : Instrumentation() {
         return value
     }
     private fun requireJS(code: String) { check(js(code) == "true") { "Failed: $code; result=${js(code)}" } }
+    private fun verifyOfflineIcons() {
+        requireJS("location.protocol==='file:'")
+        for (theme in listOf("light", "dark")) {
+            js("data.settings.theme='$theme';applyTheme();show('appSettings');window.scrollTo(0,0)")
+            Thread.sleep(500)
+            fun screenshot(name: String): android.graphics.Bitmap {
+                val bitmap = uiAutomation.takeScreenshot() ?: error("Missing screenshot: $name")
+                java.io.File(targetContext.getExternalFilesDir(null), name).outputStream().use {
+                    bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+                }
+                return bitmap
+            }
+            screenshot("settings-icons-$theme.png").recycle()
+            // Exercise every production icon rule, including dynamically inserted dialog icons.
+            // The last tile deliberately uses the old file mask as a diagnostic control.
+            js("""
+                (()=>{
+                  const names=['profile','workplaces','planning','reminders','lock','recovery','info','alert','cancel','sun','moon'];
+                  const gallery=document.createElement('div');gallery.id='nativeIconGallery';
+                  gallery.style.cssText='position:fixed;z-index:99999;top:160px;left:16px;display:grid;grid-template-columns:repeat(6,24px);gap:20px;padding:20px;background:'+('$theme'==='light'?'#fff':'#160e2b')+';color:'+('$theme'==='light'?'#160e2b':'#fff');
+                  gallery.innerHTML=names.map(id=>'<span class="route-icon" data-icon="'+id+'"></span>').join('')+'<span class="route-icon" data-icon="profile" style="--route-icon:url(./profile.svg)"></span>';
+                  document.body.appendChild(gallery);
+                })()
+            """.trimIndent())
+            Thread.sleep(500)
+            val boxes = JSONArray(js("Array.from(document.querySelectorAll('#nativeIconGallery .route-icon'),e=>{const r=e.getBoundingClientRect();return [r.x,r.y,r.width,r.height].map(x=>x*devicePixelRatio)})"))
+            val offset = IntArray(2); runOnMainSync { web.getLocationOnScreen(offset) }
+            val painted = screenshot("icon-gallery-$theme.png")
+            js("document.querySelectorAll('#nativeIconGallery .route-icon').forEach(e=>e.style.visibility='hidden')")
+            Thread.sleep(200)
+            val hidden = uiAutomation.takeScreenshot() ?: error("Missing hidden-icon control")
+            try {
+                for (i in 0 until boxes.length()) {
+                    val box=boxes.getJSONArray(i)
+                    val left=offset[0]+box.getDouble(0).toInt(); val top=offset[1]+box.getDouble(1).toInt()
+                    val width=box.getDouble(2).toInt(); val height=box.getDouble(3).toInt()
+                    var changed=0
+                    for(y in top until top+height) for(x in left until left+width) {
+                        val a=painted.getPixel(x,y); val b=hidden.getPixel(x,y)
+                        val difference=kotlin.math.abs(android.graphics.Color.red(a)-android.graphics.Color.red(b))+kotlin.math.abs(android.graphics.Color.green(a)-android.graphics.Color.green(b))+kotlin.math.abs(android.graphics.Color.blue(a)-android.graphics.Color.blue(b))
+                        if(difference>90) changed++
+                    }
+                    val fraction=changed.toDouble()/(width*height)
+                    if(i<11) check(fraction in 0.04..0.65) { "Icon $i ($theme) is blank or a solid block: $fraction" }
+                    else android.util.Log.i("WageTrackIcons", "Old external-file mask painted fraction: $fraction ($theme)")
+                }
+            } finally { painted.recycle(); hidden.recycle(); js("q('#nativeIconGallery').remove()") }
+        }
+        js("data.settings.theme='light';applyTheme();show('dashboard')")
+    }
     private fun shell(command: String): String = android.os.ParcelFileDescriptor.AutoCloseInputStream(uiAutomation.executeShellCommand(command)).bufferedReader().use { it.readText() }
     private fun tap(selector: String, holdMillis: Long = 50) {
         js("document.querySelector('$selector').scrollIntoView({block:'center'})")
@@ -167,7 +217,6 @@ class DeviceSmoke : Instrumentation() {
             for (i in 0..40) { if (js("!!document.querySelector('#device')",30) == "true") break; Thread.sleep(250) }
             requireJS("!!document.querySelector('#device')")
             requireJS("deviceAvailable()")
-            requireJS("getComputedStyle(q('#settingsMenu [data-icon=planning]')).maskImage.includes('budgets-goals.svg')")
             // Complete a fresh-install setup through the rendered controls.
             for (i in 0..20) { if (js("typeof setupActive !== 'undefined'") == "true") break; Thread.sleep(100) }
             if (js("setupActive") == "true") {
@@ -182,6 +231,7 @@ class DeviceSmoke : Instrumentation() {
                 val inset = activity.window.decorView.rootWindowInsets.getInsets(android.view.WindowInsets.Type.statusBars()).top
                 check(position[1] >= inset) { "WebView overlaps status bar" }
             }
+            verifyOfflineIcons()
             requireJS("JSON.parse(Android.deviceSettings()).lock === false")
             requireJS("JSON.parse(Android.googleAccountState()).configured === false")
             js("Android.googleSignIn()")
