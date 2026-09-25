@@ -62,6 +62,14 @@ class MainActivity : Activity() {
             if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 225)
         } }
         @JavascriptInterface
+        fun syncPayslipReminder(json: String) { runOnUiThread { PayslipReminder.update(this@MainActivity, json) } }
+        @JavascriptInterface
+        fun consumePayslipReminder(): String {
+            val month = intent?.getStringExtra(PayslipReminder.EXTRA_MONTH) ?: ""
+            intent?.removeExtra(PayslipReminder.EXTRA_MONTH)
+            return month
+        }
+        @JavascriptInterface
         fun syncBackupStatus(dirty: Boolean, language: String) { runOnUiThread { BackupReminder.update(this@MainActivity, dirty, language) } }
         @JavascriptInterface
         fun autoBackupState(): String = autoBackup.state()
@@ -156,9 +164,15 @@ class MainActivity : Activity() {
         } }
 
         @JavascriptInterface
-        fun syncWidget(state: String, elapsedMs: Double, language: String) {
+        fun syncWidget(state: String, elapsedMs: Double, language: String, progress: String) {
             if (state !in listOf("idle", "working", "break") || !elapsedMs.isFinite() || elapsedMs < 0) return
             devicePrefs.edit().putString("timerState", state).putLong("timerBase", System.currentTimeMillis() - elapsedMs.toLong()).putString("language", if (language == "en") "en" else "de").apply()
+            try {
+                val doc = JSONObject(progress)
+                val minutes = doc.getDouble("minutes"); val target = doc.getDouble("target")
+                if (minutes.isFinite() && target.isFinite() && minutes >= 0 && target >= 0 && doc.getString("month").matches(Regex("\\d{4}-\\d{2}")))
+                    devicePrefs.edit().putString("widgetProgress", doc.toString()).apply()
+            } catch (_: Exception) { }
             PaydayWidget.update(this@MainActivity)
         }
         @JavascriptInterface
@@ -272,7 +286,12 @@ class MainActivity : Activity() {
         }
     }
 
-    override fun onResume() { super.onResume(); if (::appLock.isInitialized) appLock.resume(); BackupReminder.schedule(this); ReminderReceiver.deliverDue(this); ReminderReceiver.schedule(this); ShiftReminders.reconcile(this); if (::webView.isInitialized) nativeChanged() }
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent); setIntent(intent)
+        if (::webView.isInitialized) webView.evaluateJavascript("window.openPayslipReminder && window.openPayslipReminder()", null)
+    }
+
+    override fun onResume() { super.onResume(); if (::appLock.isInitialized) appLock.resume(); BackupReminder.schedule(this); PayslipReminder.reconcile(this); ReminderReceiver.deliverDue(this); ReminderReceiver.schedule(this); ShiftReminders.reconcile(this); if (::webView.isInitialized) nativeChanged() }
     override fun onPause() { autoBackup.flush(); if (::appLock.isInitialized) appLock.pause(); super.onPause() }
     override fun onDestroy() { autoBackup.changed = null; googleAccount.destroy(); appLock.destroy(); webView.destroy(); super.onDestroy() }
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) { super.onRequestPermissionsResult(requestCode, permissions, grantResults); ShiftReminders.reconcile(this); nativeChanged() }

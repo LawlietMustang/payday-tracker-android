@@ -6,7 +6,7 @@ function plannedShiftReminders(now=Date.now()){
  return data.shifts.filter(e=>e.status==='planned'&&Number.isFinite(new Date(e.date+'T'+e.start).getTime())&&new Date(e.date+'T'+e.start).getTime()>now).sort((a,b)=>(a.date+a.start).localeCompare(b.date+b.start));
 }
 function shiftReminderPayload(){
- const s=shiftReminderConfig();return {enabled:s.enabled,leadMinutes:s.amount*(s.unit==='days'?1440:60),language:language(),shifts:data.shifts.filter(e=>e.status==='planned'&&(s.scope==='all'||s.ids.includes(e.id))).map(e=>({id:e.id,date:e.date,start:e.start,workplace:workplaceName(e.workplaceId).slice(0,160)}))};
+ const s=shiftReminderConfig();return {glanceShifts:data.shifts.filter(e=>e.status==='planned').map(e=>({id:e.id,date:e.date,start:e.start,workplace:workplaceName(e.workplaceId).slice(0,160)})),enabled:s.enabled,leadMinutes:s.amount*(s.unit==='days'?1440:60),language:language(),shifts:data.shifts.filter(e=>e.status==='planned'&&(s.scope==='all'||s.ids.includes(e.id))).map(e=>({id:e.id,date:e.date,start:e.start,workplace:workplaceName(e.workplaceId).slice(0,160)}))};
 }
 function syncShiftReminders(){if(typeof Android!=='undefined'&&typeof Android.syncShiftReminders==='function')Android.syncShiftReminders(JSON.stringify(shiftReminderPayload()))}
 function reminderDeviceState(){return deviceAvailable()?JSON.parse(Android.deviceSettings()):{reminder:false,hour:20,minute:0,days:62}}

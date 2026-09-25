@@ -5,13 +5,13 @@ const APP_ROUTES = Object.freeze({
  expenses:{view:'expenses',label:['Ausgaben','Expenses'],glyph:'€'},
  history:{view:'history',label:['Verlauf','History'],glyph:'▥'},
  appSettings:{view:'appSettings',label:['Einstellungen','Settings'],glyph:'⚙'},
- profile:{view:'profile',label:['Profil','Profile'],glyph:'○'},
+ profile:{view:'profile',label:['Profil','Profile'],icon:'profile.svg'},
  pay:{view:'settings',label:['Lohn & Steuern','Pay & tax'],glyph:'€'},
  workplaces:{view:'workplaces',label:['Arbeitsplätze','Workplaces'],icon:'workplaces.svg'},
  planning:{view:'planning',label:['Budgets & Sparziele','Budgets & goals'],icon:'budgets-goals.svg'},
  reminders:{view:'device',panel:'reminders',label:['Erinnerungen & Widget','Reminders & widget'],short:['Erinnerungen','Reminders'],icon:'reminders-widget.svg'},
- lock:{view:'device',panel:'lock',label:['App-Sperre','App lock'],glyph:'▣'},
- recovery:{view:'recovery',label:['Sichern & wiederherstellen','Backup & restore'],glyph:'↥'},
+ lock:{view:'device',panel:'lock',label:['App-Sperre','App lock'],icon:'lock.svg'},
+ recovery:{view:'recovery',label:['Sichern & wiederherstellen','Backup & restore'],icon:'cloud-sync.svg'},
  delete:{label:['Daten löschen','Delete data'],glyph:'×',action:()=>deleteAccountData()}
 });
 const DRAWER_ROUTES=['dashboard','shifts','expenses','history','appSettings'];

@@ -5,7 +5,7 @@ function nextSavingsDate(date,interval,anchor){const d=new Date(date+'T12:00'),d
 const cents=n=>Math.round((Number(n)||0)*100);
 function savingsAvailable(now=new Date()){
  planningData();const today=isoDate(now),months=[...new Set(data.shifts.filter(s=>s.status==='completed'&&shiftRange(s).end<=now).map(s=>s.date.slice(0,7)))];
- const income=months.reduce((sum,m)=>sum+cents(summary(m,'all',now).est.net),0);
+ const income=months.reduce((sum,m)=>sum+cents(summary(m,'all',now,false).est.net),0);
  // Include unmaterialized recurring costs as well as explicitly entered expenses.
  let expenses=data.expenses.filter(e=>e.date<=today).reduce((s,e)=>s+cents(e.amount),0);
  for(const t of data.recurringExpenses){let key=t.startMonth;for(let i=0;key<=monthKey(now)&&i<1200;i++){const [y,m]=key.split('-').map(Number),day=Math.min(t.day,new Date(y,m,0).getDate()),date=key+'-'+String(day).padStart(2,'0');if(date<=today&&!data.expenses.some(e=>e.recurringId===t.id&&e.date.slice(0,7)===key))expenses+=cents(t.amount);key=monthKey(new Date(y,m,1))}}

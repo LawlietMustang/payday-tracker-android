@@ -33,6 +33,6 @@ module.exports=async(browser,url)=>{
   }
   if(width===390&&lang==='en'){await page.screenshot({path:'test-results/backup-reminder-tabs.png',fullPage:true});await page.evaluate(()=>show('recovery'));await page.screenshot({path:'test-results/automatic-backup.png',fullPage:true})}
  }
- assert.equal(await page.evaluate(()=>infoIcon.includes('cy="8.2"')),true,'Supplied info dot retained');
+ assert.match(await (await page.request.get(url+'/info.svg')).text(),/cy="8.2"/,'Supplied info dot retained');assert.equal(await page.evaluate(()=>infoIcon.includes('data-icon="info"')),true);
  assert.deepEqual(errors,[]);await page.close();console.log('PASS: backup state, matching snapshots, coalesced saves, and persistent device tabs');
 };

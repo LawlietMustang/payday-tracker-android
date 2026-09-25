@@ -83,6 +83,60 @@ class DeviceSmoke : Instrumentation() {
         requireJS("JSON.parse(Android.autoBackupState()).enabled===false")
         check(read(AutoBackup.CURRENT).isNotEmpty())
     }
+    private fun verifyPayslipReminder(blocked: Boolean) {
+        val c=targetContext; val now=System.currentTimeMillis()
+        val month=java.time.YearMonth.now().minusMonths(1).toString()
+        val config=org.json.JSONObject().put("enabled",true).put("language","en").put("months",org.json.JSONArray().put(org.json.JSONObject().put("month",month).put("missing",true)))
+        val p=c.getSharedPreferences("payslip_reminder",0)
+        p.edit().clear().commit();PayslipReminder.update(c,config.toString(),now)
+        val first=p.getLong("due",0);check(first>=now+2L*86400000)
+        PayslipReminder.update(c,config.toString(),now+1000);check(first==p.getLong("due",0)) { "Edits postponed payslip reminder" }
+        p.edit().putLong("due",now-1000).commit()
+        PayslipReminder().onReceive(c,Intent())
+        val manager=c.getSystemService(android.app.NotificationManager::class.java)
+        if (!blocked) for(i in 0..20){if(manager.activeNotifications.any{it.id==227})break;Thread.sleep(100)}
+        check(manager.activeNotifications.any{it.id==227} != blocked) { "Payslip notification permission handling failed" }
+        val weekly=p.getLong("due",0);check(weekly>=now+6L*86400000)
+        PayslipReminder.update(c,config.toString());check(weekly==p.getLong("due",0))
+        config.getJSONArray("months").getJSONObject(0).put("missing",false)
+        PayslipReminder.update(c,config.toString());check(!p.contains("due"))
+        for(i in 0..20){if(manager.activeNotifications.none{it.id==227})break;Thread.sleep(100)}
+        check(manager.activeNotifications.none{it.id==227}) { "Saved payslip did not cancel notification" }
+        // Month rollover is evaluated natively, without a WebView save.
+        val future=java.time.YearMonth.now().plusMonths(1)
+        val futureNow=future.atDay(7).atTime(11,0).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+        config.getJSONArray("months").put(org.json.JSONObject().put("month",future.minusMonths(1).toString()).put("missing",true))
+        PayslipReminder.update(c,config.toString(),now)
+        PayslipReminder.reconcile(c,futureNow)
+        check(p.getString("month","")==future.minusMonths(1).toString())
+        check(p.getLong("due",0)>futureNow)
+        config.put("enabled",false);PayslipReminder.update(c,config.toString());check(!p.contains("due"))
+    }
+    private fun verifyIdleWidget() {
+        val c=targetContext;val p=c.getSharedPreferences("device",0);val now=System.currentTimeMillis()
+        val at=java.time.LocalDate.now().plusDays(1).atTime(9,0)
+        val row=org.json.JSONObject().put("id","glance").put("date",at.toLocalDate().toString()).put("start","09:00").put("workplace","Widget test")
+        val config=org.json.JSONObject().put("enabled",false).put("leadMinutes",60).put("shifts",org.json.JSONArray()).put("glanceShifts",org.json.JSONArray().put(row))
+        check(ShiftReminders.replace(c,config.toString()))
+        val progress=org.json.JSONObject().put("month",java.time.YearMonth.now().toString()).put("minutes",2430).put("target",160)
+        p.edit().putString("timerState","idle").putBoolean("lock",false).putString("language","en").putString("widgetProgress",progress.toString()).commit()
+        runOnMainSync {
+            fun widget()=PaydayWidget.views(c,now).apply(c,android.widget.FrameLayout(c))
+            var v=widget();check(v.findViewById<android.widget.TextView>(R.id.widget_status).text.toString()=="40 h 30 min / 160 h")
+            check(v.findViewById<android.widget.TextView>(R.id.widget_next).text.toString()=="Next: Tomorrow 09:00")
+            p.edit().putString("language","de").commit();v=widget()
+            check(v.findViewById<android.widget.TextView>(R.id.widget_next).text.toString()=="Nächste: Morgen 09:00")
+            p.edit().putBoolean("lock",true).commit();v=widget()
+            check(v.findViewById<android.widget.TextView>(R.id.widget_status).text.toString()=="Zum Entsperren öffnen")
+            check(v.findViewById<View>(R.id.widget_next).visibility==View.GONE)
+            progress.put("month","2000-01");p.edit().putBoolean("lock",false).putString("widgetProgress",progress.toString()).commit();v=widget()
+            check(v.findViewById<android.widget.TextView>(R.id.widget_status).text.toString()=="0 h / 160 h")
+        }
+        config.put("glanceShifts",org.json.JSONArray());ShiftReminders.replace(c,config.toString())
+        check(ShiftReminders.nextGlance(c)==null)
+        p.edit().putString("language","en").putString("timerState","break").putBoolean("lock",false).commit()
+    }
+
     override fun onStart() {
         try {
             if (permissionMode == "blocked") {
@@ -93,6 +147,7 @@ class DeviceSmoke : Instrumentation() {
                 check(ShiftReminders.replace(targetContext, config.toString()))
                 check(ShiftReminders.status(targetContext).getInt("blocked") == 1)
                 check(ShiftReminders.status(targetContext).getInt("delivered") == 0) { "Blocked reminder was marked delivered" }
+                verifyPayslipReminder(true)
                 finish(Activity.RESULT_OK, Bundle().apply { putString("stream", "PAYDAY_PERMISSION_BLOCKED_PASS\n") })
                 return
             }
@@ -255,6 +310,7 @@ class DeviceSmoke : Instrumentation() {
             }
             uiAutomation.dropShellPermissionIdentity();Thread.sleep(1000)
             runOnMainSync { check(hostView.findViewById<android.widget.TextView>(R.id.widget_status)?.text.toString()=="On break") { "Widget RemoteViews did not render break status" };host.deleteAppWidgetId(widgetId);host.stopListening() }
+            verifyPayslipReminder(false);verifyIdleWidget()
             // Create and confirm a real app PIN, without a phone PIN dependency.
             js("show('appSettings');q('#settingsLock').click()");requireJS("!q('#appLockCard').hidden")
             tap("#biometricLock");Thread.sleep(500)

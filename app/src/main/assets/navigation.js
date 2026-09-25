@@ -36,5 +36,5 @@ renderBars=function(list){
 // Make the missing account service explicit instead of presenting an inert sign-in row.
 const accountNotice=q('.account-unavailable');accountNotice.setAttribute('role','note');
 function explainSignIn(){accountNotice.innerHTML='<strong>'+msg('Google-Anmeldung nicht eingerichtet','Google sign-in not configured')+'</strong><small>'+msg('Kontoverbindung und automatische Drive-Sicherung sind noch nicht verfügbar. Nutze „Sichern & wiederherstellen“ für eine Datei auf dem Gerät oder in Drive.','Account connection and automatic Drive backup are not available yet. Use Backup & restore for a file on your device or in Drive.')+'</small>'}
-q('#language').addEventListener('change',()=>{explainSignIn();renderBars(summary(selected).done)});
-explainSignIn();renderBars(summary(selected).done);
+q('#language').addEventListener('change',()=>{explainSignIn();renderBars(summary(selected).completed)});
+explainSignIn();renderBars(summary(selected).completed);

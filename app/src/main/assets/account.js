@@ -7,7 +7,8 @@ function renderProfile(){
  q('#profileForm').onsubmit=e=>{e.preventDefault();data.profile=Object.fromEntries(['name','street','postcode','city','country','email','phone'].map(k=>[k,q('#profile_'+k).value.trim()]));save();q('#profileSaved').textContent=msg('Profil gespeichert','Profile saved')};
 }
 function labelAccount(){
- qa('[data-account-label]').forEach(el=>{const labels={profile:['Profil','Profile'],appSettings:['Einstellungen','Settings'],appearance:['App-Darstellung','App appearance'],lock:['App-Sperre','App lock'],delete:['Daten löschen','Delete data'],signin:['Anmelden','Sign In'],unavailable:['Noch nicht verfügbar · Offline-Nutzung ohne Konto','Not available yet · Use offline without an account']};const a=labels[el.dataset.accountLabel];el.textContent=msg(...a)});
+ for(const id of ['close','expenseClose','bulkEditClose','menuClose'])q('#'+id).setAttribute('aria-label',msg('Schließen','Close')); 
+ qa('[data-account-label]').forEach(el=>{const labels={profile:['Profil','Profile'],appSettings:['Einstellungen','Settings'],appearance:['App-Darstellung','App appearance'],lock:['App-Sperre','App lock'],delete:['Daten löschen','Delete data'],signin:['Anmelden','Sign In'],unavailable:['Noch nicht verfügbar · Offline-Nutzung ohne Konto','Not available yet · Use offline without an account']};const a=labels[el.dataset.accountLabel];if(el.dataset.accountLabel==='appearance')el.innerHTML='<span class="route-icon" data-icon="'+(document.documentElement.dataset.theme==='dark'?'moon':'sun')+'" aria-hidden="true"></span><span>'+msg(...a)+'</span>';else el.textContent=msg(...a)});
  q('#appearanceLanguage').textContent=msg('Sprache','Language');q('#appearanceTheme').textContent=msg('Darstellung','Appearance');q('#language').setAttribute('aria-label',msg('Sprache','Language'));for(const o of q('#theme').options)o.textContent=({system:msg('Systemeinstellung','System default'),light:msg('Hell','Light'),dark:msg('Dunkel','Dark')})[o.value];
 }
 async function deleteAccountData(){
@@ -36,3 +37,5 @@ const showBeforeAccount=show;show=function(view){
 };
 q('#language').addEventListener('change',()=>{labelAccount();const view=q('.view.active')?.id;if(['profile','appSettings','settings','device'].includes(view))show(view)});
 labelAccount();renderProfile();
+
+const themeBeforeAppearance=applyTheme;applyTheme=function(){themeBeforeAppearance();labelAccount()};

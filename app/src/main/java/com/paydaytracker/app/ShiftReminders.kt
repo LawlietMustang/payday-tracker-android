@@ -34,9 +34,19 @@ object ShiftReminders {
                 require(id.isNotBlank() && id.length <= 200 && ids.add(id) && startMillis(r) > 0)
                 require(r.optString("workplace").length <= 160)
             }
+            val glance = doc.optJSONArray("glanceShifts") ?: rows
+            require(glance.length() <= 10000)
+            for (i in 0 until glance.length()) require(startMillis(glance.getJSONObject(i)) > 0)
             prefs(c).edit().putString("config", doc.toString()).commit()
             reconcile(c); true
         } catch (_: Exception) { false }
+    }
+    // Glance ignores the notification toggle and all/selected notification scope.
+    fun nextGlance(c: Context, now: Long = System.currentTimeMillis()): Long? {
+        val doc = try { JSONObject(prefs(c).getString("config", "{}")!!) } catch (_: Exception) { return null }
+        val rows = doc.optJSONArray("glanceShifts") ?: doc.optJSONArray("shifts") ?: return null
+        return (0 until rows.length()).map { startMillis(rows.getJSONObject(it)) }
+            .filter { it > now && it <= now + 48L * 3600000 }.minOrNull()
     }
     fun status(c: Context): JSONObject {
         val p = prefs(c); val manager = c.getSystemService(NotificationManager::class.java)
@@ -77,6 +87,7 @@ object ShiftReminders {
         notifications.activeNotifications.filter { it.id == 225 && it.tag !in activeKeys }.forEach { notifications.cancel(it.tag, 225) }
         // Persist before a broadcast or short-lived process finishes.
         p.edit().putString("sent", keep.toString()).putInt("blocked", blocked).putInt("count", count).putLong("next", if (next == Long.MAX_VALUE) 0 else next).commit()
+        PaydayWidget.update(c)
         if (next == Long.MAX_VALUE) return
         try {
             if (Build.VERSION.SDK_INT < 31 || alarm.canScheduleExactAlarms()) alarm.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next, pending(c))

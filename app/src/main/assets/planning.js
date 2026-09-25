@@ -1,4 +1,4 @@
-const infoIcon='<svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">  <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>  <path d="M12 11v5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>  <circle cx="12" cy="8.2" r="1.1" fill="currentColor" stroke="none"/></svg>';
+const infoIcon='<span class="route-icon" data-icon="info" aria-hidden="true"></span>';
 // Version 2.1: explicit navigation, non-destructive workplace management, personal planning.
 function migratePlanning() {
   if (!data.budgets || typeof data.budgets !== 'object') data.budgets = {};
