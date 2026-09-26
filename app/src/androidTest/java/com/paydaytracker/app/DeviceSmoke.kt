@@ -33,11 +33,27 @@ class DeviceSmoke : Instrumentation() {
     private fun requireJS(code: String) { check(js(code) == "true") { "Failed: $code; result=${js(code)}" } }
     private fun verifyOfflineIcons() {
         requireJS("location.protocol==='file:'")
+        js("q('#language').value='en';q('#language').dispatchEvent(new Event('change'))")
+        // Wait for the renderer to commit DOM changes before drawing the WebView.
+        // UiAutomation can otherwise capture the previous compositor frame on a busy emulator.
+        fun renderedBitmap(): android.graphics.Bitmap {
+            val ready = CountDownLatch(1)
+            runOnMainSync { web.postVisualStateCallback(0, object : WebView.VisualStateCallback() {
+                override fun onComplete(requestId: Long) { ready.countDown() }
+            }) }
+            check(ready.await(15, TimeUnit.SECONDS)) { "WebView did not commit its visual state" }
+            lateinit var bitmap: android.graphics.Bitmap
+            runOnMainSync {
+                bitmap = android.graphics.Bitmap.createBitmap(web.width, web.height, android.graphics.Bitmap.Config.ARGB_8888)
+                web.draw(android.graphics.Canvas(bitmap))
+            }
+            return bitmap
+        }
         for (theme in listOf("light", "dark")) {
             js("data.settings.theme='$theme';applyTheme();show('appSettings');window.scrollTo(0,0)")
             Thread.sleep(500)
             fun screenshot(name: String): android.graphics.Bitmap {
-                val bitmap = uiAutomation.takeScreenshot() ?: error("Missing screenshot: $name")
+                val bitmap = renderedBitmap()
                 java.io.File(targetContext.getExternalFilesDir(null), name).outputStream().use {
                     bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
                 }
@@ -49,7 +65,7 @@ class DeviceSmoke : Instrumentation() {
             js("""
                 (()=>{
                   const names=['profile','workplaces','planning','reminders','lock','recovery','info','alert','cancel','sun','moon'];
-                  const gallery=document.createElement('div');gallery.id='nativeIconGallery';
+                  const gallery=document.createElement('div');gallery.id='nativeIconGallery';gallery.dataset.localized='true';
                   gallery.style.cssText='position:fixed;z-index:99999;top:160px;left:16px;display:grid;grid-template-columns:repeat(6,24px);gap:20px;padding:20px;background:'+('$theme'==='light'?'#fff':'#160e2b')+';color:'+('$theme'==='light'?'#160e2b':'#fff');
                   gallery.innerHTML=names.map(id=>'<span class="route-icon" data-icon="'+id+'"></span>').join('')+'<span class="route-icon" data-icon="profile" style="--route-icon:url(./profile.svg)"></span>';
                   document.body.appendChild(gallery);
@@ -57,15 +73,14 @@ class DeviceSmoke : Instrumentation() {
             """.trimIndent())
             Thread.sleep(500)
             val boxes = JSONArray(js("Array.from(document.querySelectorAll('#nativeIconGallery .route-icon'),e=>{const r=e.getBoundingClientRect();return [r.x,r.y,r.width,r.height].map(x=>x*devicePixelRatio)})"))
-            val offset = IntArray(2); runOnMainSync { web.getLocationOnScreen(offset) }
             val painted = screenshot("icon-gallery-$theme.png")
             js("document.querySelectorAll('#nativeIconGallery .route-icon').forEach(e=>e.style.visibility='hidden')")
             Thread.sleep(200)
-            val hidden = uiAutomation.takeScreenshot() ?: error("Missing hidden-icon control")
+            val hidden = renderedBitmap()
             try {
                 for (i in 0 until boxes.length()) {
                     val box=boxes.getJSONArray(i)
-                    val left=offset[0]+box.getDouble(0).toInt(); val top=offset[1]+box.getDouble(1).toInt()
+                    val left=box.getDouble(0).toInt(); val top=box.getDouble(1).toInt()
                     val width=box.getDouble(2).toInt(); val height=box.getDouble(3).toInt()
                     var changed=0
                     for(y in top until top+height) for(x in left until left+width) {
