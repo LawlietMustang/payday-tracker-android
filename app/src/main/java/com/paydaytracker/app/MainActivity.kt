@@ -248,7 +248,7 @@ class MainActivity : Activity() {
         ReminderReceiver.deliverDue(this)
         ReminderReceiver.schedule(this)
         WebAssets.prepare(this, webView)
-        webView.loadUrl("file:///android_asset/index.html")
+        webView.loadUrl("file:///android_asset/web/index.html")
     }
 
     @Deprecated("Deprecated in Java")

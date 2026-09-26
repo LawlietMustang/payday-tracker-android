@@ -6,7 +6,7 @@ module.exports=async(browser,url)=>{
  page.on('pageerror',e=>errors.push(e.message));page.on('response',r=>{if(r.status()>=400)failed.push(r.url())});
  await page.goto(url);
  await page.evaluate(()=>{data.onboardingCompleted=true;delete data.onboardingDraft;data.settings.theme='light';save()});await page.reload();
- assert.deepEqual(await page.locator('link[rel=stylesheet]').evaluateAll(els=>els.map(e=>e.getAttribute('href'))),['./design.css'],'One static stylesheet owns the UI');
+ assert.deepEqual(await page.locator('link[rel=stylesheet]').evaluateAll(els=>els.map(e=>e.getAttribute('href'))),['./styles/design.css'],'One static stylesheet owns the UI');
  for(const language of ['en','de'])for(const theme of ['light','dark'])for(const width of [320,390,768]){
   await page.setViewportSize({width,height:844});
   await page.evaluate(({language,theme})=>{q('#language').value=language;q('#language').dispatchEvent(new Event('change'));data.settings.theme=theme;applyTheme();show('dashboard')},{language,theme});

@@ -67,7 +67,7 @@ class DeviceSmoke : Instrumentation() {
                   const names=['profile','workplaces','planning','reminders','lock','recovery','info','alert','cancel','sun','moon'];
                   const gallery=document.createElement('div');gallery.id='nativeIconGallery';gallery.dataset.localized='true';
                   gallery.style.cssText='position:fixed;z-index:99999;top:160px;left:16px;display:grid;grid-template-columns:repeat(6,24px);gap:20px;padding:20px;background:'+('$theme'==='light'?'#fff':'#160e2b')+';color:'+('$theme'==='light'?'#160e2b':'#fff');
-                  gallery.innerHTML=names.map(id=>'<span class="route-icon" data-icon="'+id+'"></span>').join('')+'<span class="route-icon" data-icon="profile" style="--route-icon:url(./profile.svg)"></span>';
+                  gallery.innerHTML=names.map(id=>'<span class="route-icon" data-icon="'+id+'"></span>').join('')+'<span class="route-icon" data-icon="profile" style="--route-icon:url(./icons/profile.svg)"></span>';
                   document.body.appendChild(gallery);
                 })()
             """.trimIndent())
