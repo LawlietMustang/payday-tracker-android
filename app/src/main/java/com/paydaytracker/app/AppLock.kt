@@ -37,7 +37,7 @@ class AppLock(private val activity: Activity, root: FrameLayout, private val con
     private var busy = false
     private var authenticated = false
     private var pendingChange: Boolean? = null
-    private val enabled get() = prefs.getBoolean("lock", false)
+    val enabled get() = prefs.getBoolean("lock", false)
     private fun text(de: String, en: String) = if (prefs.getString("language", "de") == "en") en else de
 
     private fun dp(value: Int) = (value * activity.resources.displayMetrics.density).toInt()
