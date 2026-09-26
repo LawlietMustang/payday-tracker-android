@@ -1,7 +1,8 @@
 package com.paydaytracker.app.reminders
 
+import com.paydaytracker.app.ui.MainActivity
+import com.paydaytracker.app.widget.PaydayWidget
 import com.paydaytracker.app.R
-
 import android.app.AlarmManager
 import android.app.Notification
 import android.app.NotificationChannel
@@ -38,7 +39,7 @@ open class ReminderReceiver : BroadcastReceiver() {
         val manager = context.getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(NotificationChannel("reminders", if (de) "Erinnerungen" else "Reminders", NotificationManager.IMPORTANCE_DEFAULT))
         if (!notificationsAllowed(context)) return false
-        val open = PendingIntent.getActivity(context, 221, Intent(context, MainActivity::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val open = PendingIntent.getActivity(context, 221, Intent(context, com.paydaytracker.app.MainActivity::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val notification = Notification.Builder(context, "reminders")
             .setSmallIcon(R.drawable.notification_icon).setContentTitle("WageTrack")
             .setContentText(if (test) { if (de) "Test erfolgreich: Erinnerungen können angezeigt werden." else "Test successful: reminders can be displayed." } else if (de) "Zeit, deine Arbeitsstunden einzutragen." else "Time to log your work hours.")

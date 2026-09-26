@@ -1,13 +1,14 @@
 package com.paydaytracker.app
 
+import com.paydaytracker.app.util.AutoBackup
+import com.paydaytracker.app.ui.AppLock
+import com.paydaytracker.app.ui.MainActivity
+import com.paydaytracker.app.widget.PaydayWidget
+import com.paydaytracker.app.auth.AppPin
 import com.paydaytracker.app.reminders.PayslipReminder
-
 import com.paydaytracker.app.reminders.ShiftReminders
-
 import com.paydaytracker.app.reminders.ReminderReceiver
-
 import com.paydaytracker.app.reminders.BackupReminder
-
 import android.app.Activity
 import android.app.Instrumentation
 import android.content.Intent
@@ -235,7 +236,7 @@ class DeviceSmoke : Instrumentation() {
                 ShiftReminders.replace(targetContext, "{\"enabled\":false,\"leadMinutes\":60,\"shifts\":[]}")
                 for (i in 0..20) { if (manager.activeNotifications.none { it.id == 225 }) break; Thread.sleep(100) }
             }
-            activity = startActivitySync(Intent(targetContext, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            activity = startActivitySync(Intent(targetContext, com.paydaytracker.app.MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             runOnMainSync { web = findWeb(activity.window.decorView) ?: error("Missing WebView") }
             for (i in 0..40) { if (js("!!document.querySelector('#device')",30) == "true") break; Thread.sleep(250) }
             requireJS("!!document.querySelector('#device')")
@@ -384,7 +385,7 @@ class DeviceSmoke : Instrumentation() {
             runOnMainSync {
                 host=android.appwidget.AppWidgetHost(targetContext,991);widgetId=host.allocateAppWidgetId()
                 val manager=android.appwidget.AppWidgetManager.getInstance(targetContext)
-                check(manager.bindAppWidgetIdIfAllowed(widgetId,android.content.ComponentName(targetContext,PaydayWidget::class.java))) { "Widget binding failed" }
+                check(manager.bindAppWidgetIdIfAllowed(widgetId,android.content.ComponentName(targetContext,com.paydaytracker.app.PaydayWidget::class.java))) { "Widget binding failed" }
                 host.startListening();hostView=host.createView(activity,widgetId,manager.getAppWidgetInfo(widgetId));PaydayWidget.update(targetContext)
             }
             uiAutomation.dropShellPermissionIdentity();Thread.sleep(1000)

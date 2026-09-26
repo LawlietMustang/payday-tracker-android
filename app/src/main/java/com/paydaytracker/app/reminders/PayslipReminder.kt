@@ -1,7 +1,7 @@
 package com.paydaytracker.app.reminders
 
+import com.paydaytracker.app.ui.MainActivity
 import com.paydaytracker.app.R
-
 import android.app.*
 import android.content.*
 import org.json.JSONObject
@@ -52,7 +52,7 @@ open class PayslipReminder : BroadcastReceiver() {
                     val de = config.optString("language", "de") != "en"
                     manager.createNotificationChannel(NotificationChannel(CHANNEL, if (de) "Lohnabrechnungen" else "Payslips", NotificationManager.IMPORTANCE_DEFAULT))
                     if (manager.areNotificationsEnabled() && manager.getNotificationChannel(CHANNEL)?.importance != NotificationManager.IMPORTANCE_NONE) {
-                        val intent = Intent(c, MainActivity::class.java).putExtra(EXTRA_MONTH, previous).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                        val intent = Intent(c, com.paydaytracker.app.MainActivity::class.java).putExtra(EXTRA_MONTH, previous).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
                         val open = PendingIntent.getActivity(c, ID, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
                         val text = if (de) "Trage deine letzte Lohnabrechnung ein und vergleiche deinen Lohn." else "Enter your last payslip to compare your pay."
                         val notice = Notification.Builder(c, CHANNEL).setSmallIcon(R.drawable.notification_icon)

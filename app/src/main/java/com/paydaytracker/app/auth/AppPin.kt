@@ -1,4 +1,4 @@
-package com.paydaytracker.app
+package com.paydaytracker.app.auth
 
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec

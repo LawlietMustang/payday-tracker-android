@@ -1,4 +1,4 @@
-package com.paydaytracker.app
+package com.paydaytracker.app.auth
 
 import android.app.Activity
 import android.os.CancellationSignal

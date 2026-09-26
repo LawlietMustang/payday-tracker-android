@@ -1,5 +1,8 @@
-package com.paydaytracker.app
+package com.paydaytracker.app.ui
 
+import com.paydaytracker.app.R
+import com.paydaytracker.app.widget.PaydayWidget
+import com.paydaytracker.app.auth.AppPin
 import android.app.Activity
 import android.app.KeyguardManager
 import android.content.Context

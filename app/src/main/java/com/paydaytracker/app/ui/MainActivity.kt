@@ -1,13 +1,14 @@
-package com.paydaytracker.app
+package com.paydaytracker.app.ui
 
+import com.paydaytracker.app.R
+import com.paydaytracker.app.util.AutoBackup
+import com.paydaytracker.app.service.TimerNotificationService
+import com.paydaytracker.app.widget.PaydayWidget
+import com.paydaytracker.app.auth.GoogleAccount
 import com.paydaytracker.app.reminders.PayslipReminder
-
 import com.paydaytracker.app.reminders.ShiftReminders
-
 import com.paydaytracker.app.reminders.ReminderReceiver
-
 import com.paydaytracker.app.reminders.BackupReminder
-
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.Manifest
@@ -32,7 +33,7 @@ import android.widget.FrameLayout
 import android.widget.Toast
 import org.json.JSONObject
 
-class MainActivity : Activity() {
+open class MainActivity : Activity() {
     private lateinit var webView: WebView
     private lateinit var contentRoot: FrameLayout
     private val autoBackup by lazy { AutoBackup.get(this) }
@@ -149,7 +150,7 @@ class MainActivity : Activity() {
 
         fun addWidget() { runBridgeUi("addWidget") {
             val manager = AppWidgetManager.getInstance(this@MainActivity)
-            val accepted = try { manager.isRequestPinAppWidgetSupported && manager.requestPinAppWidget(ComponentName(this@MainActivity, PaydayWidget::class.java), null, null) } catch (e: Exception) { BridgeErrors.report("addWidget", e); false }
+            val accepted = try { manager.isRequestPinAppWidgetSupported && manager.requestPinAppWidget(ComponentName(this@MainActivity, com.paydaytracker.app.PaydayWidget::class.java), null, null) } catch (e: Exception) { BridgeErrors.report("addWidget", e); false }
             webView.evaluateJavascript("window.widgetPinResult && window.widgetPinResult($accepted)", null)
         } }
 
@@ -180,7 +181,7 @@ class MainActivity : Activity() {
                 if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                     requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 902)
                 }
-                val intent = Intent(this@MainActivity, TimerNotificationService::class.java).apply {
+                val intent = Intent(this@MainActivity, com.paydaytracker.app.TimerNotificationService::class.java).apply {
                     action = TimerNotificationService.ACTION_UPDATE
                     putExtra(TimerNotificationService.EXTRA_STATE, state)
                     putExtra(TimerNotificationService.EXTRA_ELAPSED, elapsedMs.toLong())
@@ -192,7 +193,7 @@ class MainActivity : Activity() {
 
         fun stopTimerNotification() {
             runBridgeUi("stopTimerNotification") {
-                startService(Intent(this@MainActivity, TimerNotificationService::class.java).apply { action = TimerNotificationService.ACTION_STOP })
+                startService(Intent(this@MainActivity, com.paydaytracker.app.TimerNotificationService::class.java).apply { action = TimerNotificationService.ACTION_STOP })
             }
         }
 

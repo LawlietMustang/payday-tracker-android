@@ -1,7 +1,7 @@
 package com.paydaytracker.app.bridge
 
+import com.paydaytracker.app.ui.MainActivity
 import android.webkit.JavascriptInterface
-import com.paydaytracker.app.MainActivity
 import com.paydaytracker.app.util.BridgeErrors
 import org.json.JSONArray
 import org.json.JSONObject

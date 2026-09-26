@@ -1,7 +1,7 @@
 package com.paydaytracker.app.reminders
 
+import com.paydaytracker.app.ui.MainActivity
 import com.paydaytracker.app.R
-
 import android.app.AlarmManager
 import android.app.Notification
 import android.app.NotificationChannel
@@ -19,7 +19,7 @@ open class BackupReminder : BroadcastReceiver() {
             val manager = context.getSystemService(NotificationManager::class.java)
             val de = prefs.getString("language", "de") != "en"
             manager.createNotificationChannel(NotificationChannel("backups", if (de) "Sicherungen" else "Backups", NotificationManager.IMPORTANCE_DEFAULT))
-            val open = PendingIntent.getActivity(context, 226, Intent(context, MainActivity::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            val open = PendingIntent.getActivity(context, 226, Intent(context, com.paydaytracker.app.MainActivity::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             val notification = Notification.Builder(context, "backups").setSmallIcon(R.drawable.notification_icon).setContentTitle("WageTrack")
                 .setContentText(if (de) "Deine Änderungen sind noch nicht gesichert. Speichere eine Sicherungsdatei." else "Your changes are not backed up yet. Save a backup file.")
                 .setContentIntent(open).setAutoCancel(true).setVisibility(Notification.VISIBILITY_PRIVATE).build()
