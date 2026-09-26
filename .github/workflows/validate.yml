@@ -25,6 +25,8 @@ jobs:
         run: python3 scripts/embed-icon-masks.py --check
       - name: Compile Android validation build (not distributed)
         run: gradle --no-daemon assembleDebug
+      - name: Audit unused Android resources
+        run: gradle --no-daemon -PresourceAudit :app:lintDebug
       - name: Test UI
         run: |
           npm install --no-save playwright@1.58.2

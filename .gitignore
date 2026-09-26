@@ -9,3 +9,6 @@ local.properties
 node_modules/
 test-results/
 **/google-services.json
+
+.idea/
+*.iml
