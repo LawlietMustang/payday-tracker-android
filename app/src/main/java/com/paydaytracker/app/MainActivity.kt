@@ -1,5 +1,13 @@
 package com.paydaytracker.app
 
+import com.paydaytracker.app.reminders.PayslipReminder
+
+import com.paydaytracker.app.reminders.ShiftReminders
+
+import com.paydaytracker.app.reminders.ReminderReceiver
+
+import com.paydaytracker.app.reminders.BackupReminder
+
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.Manifest

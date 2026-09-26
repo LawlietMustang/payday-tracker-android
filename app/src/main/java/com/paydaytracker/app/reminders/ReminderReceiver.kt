@@ -1,4 +1,6 @@
-package com.paydaytracker.app
+package com.paydaytracker.app.reminders
+
+import com.paydaytracker.app.R
 
 import android.app.AlarmManager
 import android.app.Notification
@@ -10,7 +12,7 @@ import android.content.Context
 import android.content.Intent
 import java.util.Calendar
 
-class ReminderReceiver : BroadcastReceiver() {
+open class ReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == ACTION) deliverDue(context) else PaydayWidget.update(context)
         schedule(context)
@@ -46,7 +48,7 @@ class ReminderReceiver : BroadcastReceiver() {
         fun schedule(context: Context) {
             val prefs = context.getSharedPreferences("device", Context.MODE_PRIVATE)
             val alarm = context.getSystemService(AlarmManager::class.java)
-            val pending = PendingIntent.getBroadcast(context, 221, Intent(context, ReminderReceiver::class.java).setAction(ACTION), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            val pending = PendingIntent.getBroadcast(context, 221, Intent(context, com.paydaytracker.app.ReminderReceiver::class.java).setAction(ACTION), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             alarm.cancel(pending)
             if (!prefs.getBoolean("reminder", false)) { prefs.edit().putLong("nextReminder", 0).apply(); return }
             val days = prefs.getInt("reminderDays", 62)

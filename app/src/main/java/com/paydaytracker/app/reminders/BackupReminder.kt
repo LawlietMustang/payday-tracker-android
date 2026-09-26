@@ -1,4 +1,6 @@
-package com.paydaytracker.app
+package com.paydaytracker.app.reminders
+
+import com.paydaytracker.app.R
 
 import android.app.AlarmManager
 import android.app.Notification
@@ -9,7 +11,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 
-class BackupReminder : BroadcastReceiver() {
+open class BackupReminder : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val prefs = context.getSharedPreferences("device", Context.MODE_PRIVATE)
         val now = System.currentTimeMillis()
@@ -39,7 +41,7 @@ class BackupReminder : BroadcastReceiver() {
         fun schedule(context: Context) {
             val prefs = context.getSharedPreferences("device", Context.MODE_PRIVATE)
             val alarm = context.getSystemService(AlarmManager::class.java)
-            val pending = PendingIntent.getBroadcast(context, 226, Intent(context, BackupReminder::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            val pending = PendingIntent.getBroadcast(context, 226, Intent(context, com.paydaytracker.app.BackupReminder::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             alarm.cancel(pending)
             if (!prefs.getBoolean("backupDirty", false)) { context.getSystemService(NotificationManager::class.java).cancel(226); return }
             val due = prefs.getLong("backupDue", System.currentTimeMillis() + WEEK)

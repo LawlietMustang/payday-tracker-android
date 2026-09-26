@@ -1,5 +1,7 @@
 package com.paydaytracker.app
 
+import com.paydaytracker.app.reminders.ShiftReminders
+
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider

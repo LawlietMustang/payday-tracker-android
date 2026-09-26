@@ -1,4 +1,6 @@
-package com.paydaytracker.app
+package com.paydaytracker.app.reminders
+
+import com.paydaytracker.app.R
 
 import android.app.*
 import android.content.*
@@ -10,7 +12,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-class ShiftReminderReceiver : BroadcastReceiver() {
+open class ShiftReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) { ShiftReminders.reconcile(context) }
 }
 
@@ -18,7 +20,7 @@ class ShiftReminderReceiver : BroadcastReceiver() {
 object ShiftReminders {
     private const val CHANNEL = "upcoming_shifts"
     private fun prefs(c: Context) = c.getSharedPreferences("shift_reminders", Context.MODE_PRIVATE)
-    private fun pending(c: Context) = PendingIntent.getBroadcast(c, 225, Intent(c, ShiftReminderReceiver::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+    private fun pending(c: Context) = PendingIntent.getBroadcast(c, 225, Intent(c, com.paydaytracker.app.ShiftReminderReceiver::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     fun startMillis(row: JSONObject): Long = try {
         LocalDateTime.parse(row.getString("date") + "T" + row.getString("start")).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
     } catch (_: Exception) { 0L }

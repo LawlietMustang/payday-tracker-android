@@ -1,4 +1,6 @@
-package com.paydaytracker.app
+package com.paydaytracker.app.reminders
+
+import com.paydaytracker.app.R
 
 import android.app.*
 import android.content.*
@@ -8,7 +10,7 @@ import java.time.YearMonth
 import java.time.ZoneId
 
 // One optional local alarm. No account, network or per-edit notifications.
-class PayslipReminder : BroadcastReceiver() {
+open class PayslipReminder : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) { reconcile(context) }
     companion object {
         const val ID = 227
@@ -16,7 +18,7 @@ class PayslipReminder : BroadcastReceiver() {
         const val EXTRA_MONTH = "payslip_month"
         private const val DAY = 86400000L
         private fun prefs(c: Context) = c.getSharedPreferences("payslip_reminder", Context.MODE_PRIVATE)
-        private fun pending(c: Context) = PendingIntent.getBroadcast(c, ID, Intent(c, PayslipReminder::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        private fun pending(c: Context) = PendingIntent.getBroadcast(c, ID, Intent(c, com.paydaytracker.app.PayslipReminder::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         private fun monthAt(now: Long) = YearMonth.from(Instant.ofEpochMilli(now).atZone(ZoneId.systemDefault()))
         private fun seventh(month: YearMonth) = month.atDay(7).atTime(10, 0).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
         @Synchronized fun update(c: Context, raw: String, now: Long = System.currentTimeMillis()) {
