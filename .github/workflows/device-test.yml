@@ -38,7 +38,7 @@ jobs:
           cp "$RUNNER_TEMP/previous-wagetrack/app/build/outputs/apk/debug/app-debug.apk" "$RUNNER_TEMP/previous-wagetrack.apk"
       - uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 30
+          api-level: 33
           arch: x86_64
           target: default
           disable-animations: true
