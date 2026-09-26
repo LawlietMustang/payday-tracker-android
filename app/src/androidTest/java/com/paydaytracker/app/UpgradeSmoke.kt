@@ -33,13 +33,14 @@ class UpgradeSmoke : Instrumentation() {
         try {
             val activity=startActivitySync(Intent().setComponent(ComponentName(targetContext.packageName,"com.paydaytracker.app.MainActivity")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             runOnMainSync { web=find(activity.window.decorView)?:error("No WebView") }
-            for(i in 0..80){if(js("typeof setupActive!=='undefined' && typeof save==='function' && typeof data.profile==='object'")=="true")break;Thread.sleep(200)}
+            for(i in 0..80){if(js("typeof setupActive!=='undefined' && typeof save==='function' && typeof data==='object'")=="true")break;Thread.sleep(200)}
+            check(js("typeof setupActive!=='undefined' && typeof save==='function' && typeof data==='object'")=="true") { "App did not finish loading" }
             val prefs=targetContext.getSharedPreferences("upgrade_probe",0)
             val manager=AppWidgetManager.getInstance(targetContext)
             val provider=ComponentName(targetContext.packageName,"com.paydaytracker.app.PaydayWidget")
             if(mode=="seed") {
                 check(js("location.pathname==='/android_asset/index.html'")=="true")
-                check(js("(()=>{data.onboardingCompleted=true;delete data.onboardingDraft;data.profile.name='Upgrade retained';data.shifts=[{id:'upgrade-shift',date:'2026-08-01',start:'09:00',end:'17:00',minutes:450,breakMin:30,wage:17,status:'completed',workplaceId:'default'}];save();localStorage.setItem('upgrade-probe','retained');Android.saveReminder(true,20,30,62,'en');return true})()") == "true")
+                check(js("(()=>{data.onboardingCompleted=true;delete data.onboardingDraft;data.profile={...data.profile,name:'Upgrade retained'};data.shifts=[{id:'upgrade-shift',date:'2026-08-01',start:'09:00',end:'17:00',minutes:450,breakMin:30,wage:17,status:'completed',workplaceId:'default'}];save();localStorage.setItem('upgrade-probe','retained');Android.saveReminder(true,20,30,62,'en');return true})()") == "true")
                 uiAutomation.adoptShellPermissionIdentity("android.permission.BIND_APPWIDGET")
                 runOnMainSync {
                     val host=AppWidgetHost(targetContext,992);val id=host.allocateAppWidgetId()
