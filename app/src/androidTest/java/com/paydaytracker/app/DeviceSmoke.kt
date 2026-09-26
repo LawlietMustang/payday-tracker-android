@@ -232,6 +232,12 @@ class DeviceSmoke : Instrumentation() {
             for (i in 0..40) { if (js("!!document.querySelector('#device')",30) == "true") break; Thread.sleep(250) }
             requireJS("!!document.querySelector('#device')")
             requireJS("deviceAvailable()")
+            requireJS("JSON.parse(Android.bridgeContract()).some(m=>m.name==='syncWidget' && m.arguments.length===4)")
+            requireJS("Array.from(document.querySelectorAll('script[src],link[rel=stylesheet]')).every(e=>(e.src||e.href).includes('?v='))")
+            check(targetContext.getSharedPreferences("app_meta",0).getInt("last_version_code",-1)==BuildConfig.VERSION_CODE)
+            var reported=false
+            val fallback=com.paydaytracker.app.util.BridgeErrors.call("testFailure", "fallback", { reported=true }) { throw IllegalStateException("test") }
+            check(reported && fallback=="fallback")
             // Complete a fresh-install setup through the rendered controls.
             for (i in 0..20) { if (js("typeof setupActive !== 'undefined'") == "true") break; Thread.sleep(100) }
             if (js("setupActive") == "true") {
