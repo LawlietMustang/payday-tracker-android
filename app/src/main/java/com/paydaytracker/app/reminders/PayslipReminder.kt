@@ -1,5 +1,7 @@
-package com.paydaytracker.app
+package com.paydaytracker.app.reminders
 
+import com.paydaytracker.app.ui.MainActivity
+import com.paydaytracker.app.R
 import android.app.*
 import android.content.*
 import org.json.JSONObject
@@ -8,7 +10,7 @@ import java.time.YearMonth
 import java.time.ZoneId
 
 // One optional local alarm. No account, network or per-edit notifications.
-class PayslipReminder : BroadcastReceiver() {
+open class PayslipReminder : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) { reconcile(context) }
     companion object {
         const val ID = 227
@@ -16,7 +18,7 @@ class PayslipReminder : BroadcastReceiver() {
         const val EXTRA_MONTH = "payslip_month"
         private const val DAY = 86400000L
         private fun prefs(c: Context) = c.getSharedPreferences("payslip_reminder", Context.MODE_PRIVATE)
-        private fun pending(c: Context) = PendingIntent.getBroadcast(c, ID, Intent(c, PayslipReminder::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        private fun pending(c: Context) = PendingIntent.getBroadcast(c, ID, Intent(c, com.paydaytracker.app.PayslipReminder::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         private fun monthAt(now: Long) = YearMonth.from(Instant.ofEpochMilli(now).atZone(ZoneId.systemDefault()))
         private fun seventh(month: YearMonth) = month.atDay(7).atTime(10, 0).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
         @Synchronized fun update(c: Context, raw: String, now: Long = System.currentTimeMillis()) {
@@ -50,7 +52,7 @@ class PayslipReminder : BroadcastReceiver() {
                     val de = config.optString("language", "de") != "en"
                     manager.createNotificationChannel(NotificationChannel(CHANNEL, if (de) "Lohnabrechnungen" else "Payslips", NotificationManager.IMPORTANCE_DEFAULT))
                     if (manager.areNotificationsEnabled() && manager.getNotificationChannel(CHANNEL)?.importance != NotificationManager.IMPORTANCE_NONE) {
-                        val intent = Intent(c, MainActivity::class.java).putExtra(EXTRA_MONTH, previous).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                        val intent = Intent(c, com.paydaytracker.app.MainActivity::class.java).putExtra(EXTRA_MONTH, previous).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
                         val open = PendingIntent.getActivity(c, ID, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
                         val text = if (de) "Trage deine letzte Lohnabrechnung ein und vergleiche deinen Lohn." else "Enter your last payslip to compare your pay."
                         val notice = Notification.Builder(c, CHANNEL).setSmallIcon(R.drawable.notification_icon)

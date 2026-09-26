@@ -2,7 +2,7 @@
 
 ## Styling
 
-`app/src/main/assets/design.css` is the only stylesheet loaded by `index.html`.
+`app/src/main/assets/web/styles/design.css` is the only stylesheet loaded by `index.html`.
 It loads before the page renders; feature scripts must not append stylesheet links.
 The old base and feature stylesheets have been retired. Their required layout rules
 were consolidated, superseded declarations removed, and the old blue theme removed.
@@ -15,8 +15,9 @@ readable. Check both appearances when editing these tokens.
 Find the existing selector and edit it instead of adding another override at the
 end. Keep breakpoint rules next to the relevant component when adding new styles.
 `workplaces.svg`, `budgets-goals.svg` and `reminders-widget.svg` are referenced as
-CSS masks, so their shapes inherit the surrounding text color without embedding
-copies in the stylesheet.
+source inputs for embedded CSS masks, so shapes inherit the surrounding text color.
+Run `python3 scripts/embed-icon-masks.py` after editing SVG source artwork. External
+file masks are blocked in the offline WebView.
 
 ## Navigation and screen order
 
@@ -41,4 +42,5 @@ Run `node tests/planning.cjs` with the workflow's Playwright version and Chromiu
 installed. `tests/layout-review.cjs` covers the single stylesheet, shared menu,
 settings destinations, Back history, asset icons, languages and responsive widths.
 The existing suite covers forms, onboarding, reminders, backups and card alignment.
-The Android device workflow also checks the external SVG mask in the real WebView.
+The Android device workflow also checks actual painted icon pixels in the offline WebView.
+See REPOSITORY-GUIDE.md for the full folder map and build commands.

@@ -19,37 +19,37 @@ are produced by the caller listed below and validated by the matching native fea
 
 | Method | Arguments | Return | JavaScript callers |
 | --- | --- | --- | --- |
-| `addWidget` | `none` | `Unit` | `app/src/main/assets/device.js` |
-| `autoBackupState` | `none` | `String` | `app/src/main/assets/recovery.js` |
-| `backgroundSettings` | `none` | `Unit` | `app/src/main/assets/device.js`, `app/src/main/assets/shift-reminders.js` |
+| `addWidget` | `none` | `Unit` | `app/src/main/assets/web/scripts/core/device.js` |
+| `autoBackupState` | `none` | `String` | `app/src/main/assets/web/scripts/features/recovery.js` |
+| `backgroundSettings` | `none` | `Unit` | `app/src/main/assets/web/scripts/core/device.js`, `app/src/main/assets/web/scripts/features/shift-reminders.js` |
 | `bridgeContract` | `none` | `String` | Read-only instrumentation contract |
-| `chooseBackupFolder` | `none` | `Unit` | `app/src/main/assets/recovery.js` |
-| `clearAppData` | `none` | `Unit` | `app/src/main/assets/account.js` |
-| `consumePayslipReminder` | `none` | `String` | `app/src/main/assets/payslip-reminder.js` |
-| `deviceSettings` | `none` | `String` | `app/src/main/assets/device.js`, `app/src/main/assets/onboarding.js`, `app/src/main/assets/shift-reminders.js` |
-| `disableAutoBackup` | `none` | `Unit` | `app/src/main/assets/recovery.js` |
-| `exactReminderSettings` | `none` | `Unit` | `app/src/main/assets/device.js`, `app/src/main/assets/shift-reminders.js` |
-| `exportBackup` | `json: String` | `Unit` | `app/src/main/assets/recovery.js` |
-| `exportCsv` | `base64Data: String, fileName: String` | `Unit` | `app/src/main/assets/app.js` |
-| `googleAccountState` | `none` | `String` | `app/src/main/assets/google-account.js` |
-| `googleSignIn` | `none` | `Unit` | `app/src/main/assets/google-account.js` |
-| `googleSignOut` | `none` | `Unit` | `app/src/main/assets/google-account.js` |
-| `importBackup` | `none` | `Unit` | `app/src/main/assets/onboarding.js`, `app/src/main/assets/recovery.js` |
-| `notificationSettings` | `none` | `Unit` | `app/src/main/assets/device.js`, `app/src/main/assets/shift-reminders.js` |
-| `openHome` | `none` | `Unit` | `app/src/main/assets/recovery.js` |
-| `queueAutoBackup` | `document: String, hash: String` | `Unit` | `app/src/main/assets/recovery.js` |
-| `requestShiftNotifications` | `none` | `Unit` | `app/src/main/assets/onboarding.js`, `app/src/main/assets/payslip-reminder.js`, `app/src/main/assets/shift-reminders.js` |
-| `retryAutoBackup` | `none` | `Unit` | `app/src/main/assets/recovery.js` |
-| `retryShiftReminders` | `none` | `Unit` | `app/src/main/assets/shift-reminders.js` |
-| `saveReminder` | `enabled: Boolean, hour: Int, minute: Int, days: Int, language: String` | `Unit` | `app/src/main/assets/device.js`, `app/src/main/assets/recovery.js`, `app/src/main/assets/shift-reminders.js` |
-| `setAppLock` | `enabled: Boolean` | `Unit` | `app/src/main/assets/device.js` |
-| `setDarkMode` | `dark: Boolean` | `Unit` | `app/src/main/assets/app.js` |
-| `shiftReminderStatus` | `none` | `String` | `app/src/main/assets/shift-reminders.js` |
-| `stopTimerNotification` | `none` | `Unit` | `app/src/main/assets/app.js`, `app/src/main/assets/recovery.js` |
-| `syncBackupStatus` | `dirty: Boolean, language: String` | `Unit` | `app/src/main/assets/recovery.js` |
-| `syncPayslipReminder` | `json: String` | `Unit` | `app/src/main/assets/payslip-reminder.js` |
-| `syncShiftReminders` | `json: String` | `Unit` | `app/src/main/assets/shift-reminders.js` |
-| `syncWidget` | `state: String, elapsedMs: Double, language: String, progress: String` | `Unit` | `app/src/main/assets/device.js` |
-| `testReminder` | `none` | `Unit` | `app/src/main/assets/device.js` |
-| `testShiftReminder` | `none` | `Unit` | `app/src/main/assets/shift-reminders.js` |
-| `updateTimerNotification` | `state: String, elapsedMs: Double, language: String` | `Unit` | `app/src/main/assets/app.js` |
+| `chooseBackupFolder` | `none` | `Unit` | `app/src/main/assets/web/scripts/features/recovery.js` |
+| `clearAppData` | `none` | `Unit` | `app/src/main/assets/web/scripts/features/account.js` |
+| `consumePayslipReminder` | `none` | `String` | `app/src/main/assets/web/scripts/features/payslip-reminder.js` |
+| `deviceSettings` | `none` | `String` | `app/src/main/assets/web/scripts/core/device.js`, `app/src/main/assets/web/scripts/features/onboarding.js`, `app/src/main/assets/web/scripts/features/shift-reminders.js` |
+| `disableAutoBackup` | `none` | `Unit` | `app/src/main/assets/web/scripts/features/recovery.js` |
+| `exactReminderSettings` | `none` | `Unit` | `app/src/main/assets/web/scripts/core/device.js`, `app/src/main/assets/web/scripts/features/shift-reminders.js` |
+| `exportBackup` | `json: String` | `Unit` | `app/src/main/assets/web/scripts/features/recovery.js` |
+| `exportCsv` | `base64Data: String, fileName: String` | `Unit` | `app/src/main/assets/web/scripts/core/app.js` |
+| `googleAccountState` | `none` | `String` | `app/src/main/assets/web/scripts/features/google-account.js` |
+| `googleSignIn` | `none` | `Unit` | `app/src/main/assets/web/scripts/features/google-account.js` |
+| `googleSignOut` | `none` | `Unit` | `app/src/main/assets/web/scripts/features/google-account.js` |
+| `importBackup` | `none` | `Unit` | `app/src/main/assets/web/scripts/features/onboarding.js`, `app/src/main/assets/web/scripts/features/recovery.js` |
+| `notificationSettings` | `none` | `Unit` | `app/src/main/assets/web/scripts/core/device.js`, `app/src/main/assets/web/scripts/features/shift-reminders.js` |
+| `openHome` | `none` | `Unit` | `app/src/main/assets/web/scripts/features/recovery.js` |
+| `queueAutoBackup` | `document: String, hash: String` | `Unit` | `app/src/main/assets/web/scripts/features/recovery.js` |
+| `requestShiftNotifications` | `none` | `Unit` | `app/src/main/assets/web/scripts/features/onboarding.js`, `app/src/main/assets/web/scripts/features/payslip-reminder.js`, `app/src/main/assets/web/scripts/features/shift-reminders.js` |
+| `retryAutoBackup` | `none` | `Unit` | `app/src/main/assets/web/scripts/features/recovery.js` |
+| `retryShiftReminders` | `none` | `Unit` | `app/src/main/assets/web/scripts/features/shift-reminders.js` |
+| `saveReminder` | `enabled: Boolean, hour: Int, minute: Int, days: Int, language: String` | `Unit` | `app/src/main/assets/web/scripts/core/device.js`, `app/src/main/assets/web/scripts/features/recovery.js`, `app/src/main/assets/web/scripts/features/shift-reminders.js` |
+| `setAppLock` | `enabled: Boolean` | `Unit` | `app/src/main/assets/web/scripts/core/device.js` |
+| `setDarkMode` | `dark: Boolean` | `Unit` | `app/src/main/assets/web/scripts/core/app.js` |
+| `shiftReminderStatus` | `none` | `String` | `app/src/main/assets/web/scripts/features/shift-reminders.js` |
+| `stopTimerNotification` | `none` | `Unit` | `app/src/main/assets/web/scripts/core/app.js`, `app/src/main/assets/web/scripts/features/recovery.js` |
+| `syncBackupStatus` | `dirty: Boolean, language: String` | `Unit` | `app/src/main/assets/web/scripts/features/recovery.js` |
+| `syncPayslipReminder` | `json: String` | `Unit` | `app/src/main/assets/web/scripts/features/payslip-reminder.js` |
+| `syncShiftReminders` | `json: String` | `Unit` | `app/src/main/assets/web/scripts/features/shift-reminders.js` |
+| `syncWidget` | `state: String, elapsedMs: Double, language: String, progress: String` | `Unit` | `app/src/main/assets/web/scripts/core/device.js` |
+| `testReminder` | `none` | `Unit` | `app/src/main/assets/web/scripts/core/device.js` |
+| `testShiftReminder` | `none` | `Unit` | `app/src/main/assets/web/scripts/features/shift-reminders.js` |
+| `updateTimerNotification` | `state: String, elapsedMs: Double, language: String` | `Unit` | `app/src/main/assets/web/scripts/core/app.js` |

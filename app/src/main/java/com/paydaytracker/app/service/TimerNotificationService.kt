@@ -1,5 +1,7 @@
-package com.paydaytracker.app
+package com.paydaytracker.app.service
 
+import com.paydaytracker.app.R
+import com.paydaytracker.app.ui.MainActivity
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Notification
@@ -10,7 +12,7 @@ import android.os.Build
 import android.os.IBinder
 import android.os.SystemClock
 
-class TimerNotificationService : Service() {
+open class TimerNotificationService : Service() {
     companion object {
         const val ACTION_UPDATE = "com.paydaytracker.app.TIMER_UPDATE"
         const val ACTION_STOP = "com.paydaytracker.app.TIMER_STOP"
@@ -43,7 +45,7 @@ class TimerNotificationService : Service() {
         val english = intent?.getStringExtra(EXTRA_LANGUAGE) == "en"
         val onBreak = state == "break"
         val status = if (english) { if (onBreak) "On break" else "Working" } else { if (onBreak) "Pause läuft" else "Arbeitszeit läuft" }
-        val openApp = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java).apply {
+        val openApp = PendingIntent.getActivity(this, 0, Intent(this, com.paydaytracker.app.MainActivity::class.java).apply {
             this.flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val notification = Notification.Builder(this, CHANNEL_ID)

@@ -1,5 +1,8 @@
-package com.paydaytracker.app
+package com.paydaytracker.app.reminders
 
+import com.paydaytracker.app.ui.MainActivity
+import com.paydaytracker.app.widget.PaydayWidget
+import com.paydaytracker.app.R
 import android.app.*
 import android.content.*
 import android.os.Build
@@ -10,7 +13,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-class ShiftReminderReceiver : BroadcastReceiver() {
+open class ShiftReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) { ShiftReminders.reconcile(context) }
 }
 
@@ -18,7 +21,7 @@ class ShiftReminderReceiver : BroadcastReceiver() {
 object ShiftReminders {
     private const val CHANNEL = "upcoming_shifts"
     private fun prefs(c: Context) = c.getSharedPreferences("shift_reminders", Context.MODE_PRIVATE)
-    private fun pending(c: Context) = PendingIntent.getBroadcast(c, 225, Intent(c, ShiftReminderReceiver::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+    private fun pending(c: Context) = PendingIntent.getBroadcast(c, 225, Intent(c, com.paydaytracker.app.ShiftReminderReceiver::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     fun startMillis(row: JSONObject): Long = try {
         LocalDateTime.parse(row.getString("date") + "T" + row.getString("start")).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
     } catch (_: Exception) { 0L }
@@ -103,7 +106,7 @@ object ShiftReminders {
         val text = if (key == "shift-test") { if (de) "Test erfolgreich: Schichterinnerungen können angezeigt werden." else "Test successful: shift reminders can be displayed." }
                    else if (locked) { if (de) "Öffne die App für deine bevorstehende Schicht." else "Open the app to view your upcoming shift." }
                    else row.optString("workplace") + " · " + time
-        val open = PendingIntent.getActivity(c, 225, Intent(c, MainActivity::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val open = PendingIntent.getActivity(c, 225, Intent(c, com.paydaytracker.app.MainActivity::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val notification = Notification.Builder(c, CHANNEL).setSmallIcon(R.drawable.notification_icon)
             .setContentTitle(if (de) "Bevorstehende Schicht" else "Upcoming shift").setContentText(text)
             .setStyle(Notification.BigTextStyle().bigText(text)).setContentIntent(open).setAutoCancel(true)

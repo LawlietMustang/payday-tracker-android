@@ -1,5 +1,8 @@
-package com.paydaytracker.app
+package com.paydaytracker.app.reminders
 
+import com.paydaytracker.app.ui.MainActivity
+import com.paydaytracker.app.widget.PaydayWidget
+import com.paydaytracker.app.R
 import android.app.AlarmManager
 import android.app.Notification
 import android.app.NotificationChannel
@@ -10,7 +13,7 @@ import android.content.Context
 import android.content.Intent
 import java.util.Calendar
 
-class ReminderReceiver : BroadcastReceiver() {
+open class ReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == ACTION) deliverDue(context) else PaydayWidget.update(context)
         schedule(context)
@@ -36,7 +39,7 @@ class ReminderReceiver : BroadcastReceiver() {
         val manager = context.getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(NotificationChannel("reminders", if (de) "Erinnerungen" else "Reminders", NotificationManager.IMPORTANCE_DEFAULT))
         if (!notificationsAllowed(context)) return false
-        val open = PendingIntent.getActivity(context, 221, Intent(context, MainActivity::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val open = PendingIntent.getActivity(context, 221, Intent(context, com.paydaytracker.app.MainActivity::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val notification = Notification.Builder(context, "reminders")
             .setSmallIcon(R.drawable.notification_icon).setContentTitle("WageTrack")
             .setContentText(if (test) { if (de) "Test erfolgreich: Erinnerungen können angezeigt werden." else "Test successful: reminders can be displayed." } else if (de) "Zeit, deine Arbeitsstunden einzutragen." else "Time to log your work hours.")
@@ -46,7 +49,7 @@ class ReminderReceiver : BroadcastReceiver() {
         fun schedule(context: Context) {
             val prefs = context.getSharedPreferences("device", Context.MODE_PRIVATE)
             val alarm = context.getSystemService(AlarmManager::class.java)
-            val pending = PendingIntent.getBroadcast(context, 221, Intent(context, ReminderReceiver::class.java).setAction(ACTION), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            val pending = PendingIntent.getBroadcast(context, 221, Intent(context, com.paydaytracker.app.ReminderReceiver::class.java).setAction(ACTION), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             alarm.cancel(pending)
             if (!prefs.getBoolean("reminder", false)) { prefs.edit().putLong("nextReminder", 0).apply(); return }
             val days = prefs.getInt("reminderDays", 62)

@@ -1,5 +1,8 @@
-package com.paydaytracker.app
+package com.paydaytracker.app.widget
 
+import com.paydaytracker.app.R
+import com.paydaytracker.app.ui.MainActivity
+import com.paydaytracker.app.reminders.ShiftReminders
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
@@ -16,12 +19,12 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-class PaydayWidget : AppWidgetProvider() {
+open class PaydayWidget : AppWidgetProvider() {
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) = update(context)
     companion object {
         fun update(context: Context) {
             val manager = AppWidgetManager.getInstance(context)
-            val ids = manager.getAppWidgetIds(ComponentName(context, PaydayWidget::class.java))
+            val ids = manager.getAppWidgetIds(ComponentName(context, com.paydaytracker.app.PaydayWidget::class.java))
             manager.updateAppWidget(ids, views(context))
         }
         fun views(context: Context, now: Long = System.currentTimeMillis()): RemoteViews {
@@ -42,7 +45,7 @@ class PaydayWidget : AppWidgetProvider() {
             views.setViewVisibility(R.id.widget_clock, if (active && !locked) View.VISIBLE else View.GONE)
             val elapsed = (System.currentTimeMillis() - prefs.getLong("timerBase", System.currentTimeMillis())).coerceAtLeast(0)
             views.setChronometer(R.id.widget_clock, SystemClock.elapsedRealtime() - elapsed, null, active && !locked)
-            val intent = Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            val intent = Intent(context, com.paydaytracker.app.MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             val open = PendingIntent.getActivity(context, 220, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             views.setOnClickPendingIntent(R.id.widget_root, open)
             return views

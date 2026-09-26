@@ -1,5 +1,7 @@
-package com.paydaytracker.app
+package com.paydaytracker.app.reminders
 
+import com.paydaytracker.app.ui.MainActivity
+import com.paydaytracker.app.R
 import android.app.AlarmManager
 import android.app.Notification
 import android.app.NotificationChannel
@@ -9,7 +11,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 
-class BackupReminder : BroadcastReceiver() {
+open class BackupReminder : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val prefs = context.getSharedPreferences("device", Context.MODE_PRIVATE)
         val now = System.currentTimeMillis()
@@ -17,7 +19,7 @@ class BackupReminder : BroadcastReceiver() {
             val manager = context.getSystemService(NotificationManager::class.java)
             val de = prefs.getString("language", "de") != "en"
             manager.createNotificationChannel(NotificationChannel("backups", if (de) "Sicherungen" else "Backups", NotificationManager.IMPORTANCE_DEFAULT))
-            val open = PendingIntent.getActivity(context, 226, Intent(context, MainActivity::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            val open = PendingIntent.getActivity(context, 226, Intent(context, com.paydaytracker.app.MainActivity::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             val notification = Notification.Builder(context, "backups").setSmallIcon(R.drawable.notification_icon).setContentTitle("WageTrack")
                 .setContentText(if (de) "Deine Änderungen sind noch nicht gesichert. Speichere eine Sicherungsdatei." else "Your changes are not backed up yet. Save a backup file.")
                 .setContentIntent(open).setAutoCancel(true).setVisibility(Notification.VISIBILITY_PRIVATE).build()
@@ -39,7 +41,7 @@ class BackupReminder : BroadcastReceiver() {
         fun schedule(context: Context) {
             val prefs = context.getSharedPreferences("device", Context.MODE_PRIVATE)
             val alarm = context.getSystemService(AlarmManager::class.java)
-            val pending = PendingIntent.getBroadcast(context, 226, Intent(context, BackupReminder::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            val pending = PendingIntent.getBroadcast(context, 226, Intent(context, com.paydaytracker.app.BackupReminder::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             alarm.cancel(pending)
             if (!prefs.getBoolean("backupDirty", false)) { context.getSystemService(NotificationManager::class.java).cancel(226); return }
             val due = prefs.getLong("backupDue", System.currentTimeMillis() + WEEK)

@@ -10,7 +10,7 @@ from pathlib import Path
 from urllib.parse import quote
 import xml.etree.ElementTree as ET
 
-ASSETS = Path(__file__).resolve().parents[1] / 'app/src/main/assets'
+ASSETS = Path(__file__).resolve().parents[1] / 'app/src/main/assets/web'
 ICONS = {
     'workplaces': 'workplaces', 'planning': 'budgets-goals',
     'reminders': 'reminders-widget', 'profile': 'profile', 'lock': 'lock',
@@ -22,7 +22,7 @@ ET.register_namespace('', 'http://www.w3.org/2000/svg')
 
 def embedded_css(css):
     for name, filename in ICONS.items():
-        svg = ET.parse(ASSETS / (filename + '.svg')).getroot()
+        svg = ET.parse(ASSETS / 'icons' / (filename + '.svg')).getroot()
         for child in list(svg):
             if child.tag.endswith('}metadata'):
                 svg.remove(child)
@@ -42,7 +42,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--check', action='store_true')
     args = parser.parse_args()
-    stylesheet = ASSETS / 'design.css'
+    stylesheet = ASSETS / 'styles/design.css'
     original = stylesheet.read_text()
     updated = embedded_css(original)
     if args.check:

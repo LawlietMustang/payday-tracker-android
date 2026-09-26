@@ -1,3 +1,11 @@
+## Current development layout
+
+See [the repository guide](docs/REPOSITORY-GUIDE.md) for the file map, editing,
+building and debugging. Frontend lives in `app/src/main/assets/web`; native code
+is grouped by feature under `app/src/main/java/com/paydaytracker/app`.
+Merging into `main` automatically builds a signed APK. Check that commit's successful
+**Build Android APK** run when downloading an update.
+
 # Payday Tracker for Android
 
 Payday Tracker records shifts, breaks, gross earnings, estimated net earnings, forecasts, settings, and language choice without an internet connection. Optional Google sign-in uses a network connection when configured; it does not upload financial records.
