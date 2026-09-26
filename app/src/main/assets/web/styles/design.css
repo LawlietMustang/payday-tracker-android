@@ -2846,7 +2846,7 @@ input[type="checkbox"]:focus-visible {
   margin-bottom: 0;
 }
 .brand>b.brand-icon {
-  background: url("./wagetrack-icon.svg") center/contain no-repeat;
+  background: url("../icons/wagetrack-icon.svg") center/contain no-repeat;
   border-radius: 9px;
 }
 .setup-brand img {

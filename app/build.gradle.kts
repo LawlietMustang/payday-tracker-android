@@ -6,7 +6,7 @@ android {
     if (providers.gradleProperty("resourceAudit").isPresent) {
         lint { checkOnly += "UnusedResources"; warningsAsErrors = true }
     }
-    defaultConfig { applicationId = "com.paydaytracker.app"; minSdk = 26; targetSdk = 35; versionCode = 41; versionName = "2.4.12"; testInstrumentationRunner = "com.paydaytracker.app.DeviceSmoke" }
+    defaultConfig { applicationId = "com.paydaytracker.app"; minSdk = 26; targetSdk = 35; versionCode = 41; versionName = "2.4.12"; testInstrumentationRunner = if (providers.gradleProperty("upgradeTest").isPresent) "com.paydaytracker.app.UpgradeSmoke" else "com.paydaytracker.app.DeviceSmoke" }
     signingConfigs {
         create("permanent") {
             System.getenv("PAYDAY_KEYSTORE_PATH")?.let { storeFile = file(it) }
