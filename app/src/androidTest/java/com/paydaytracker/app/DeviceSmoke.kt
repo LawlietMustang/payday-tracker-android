@@ -236,7 +236,14 @@ class DeviceSmoke : Instrumentation() {
             requireJS("Array.from(document.querySelectorAll('script[src],link[rel=stylesheet]')).every(e=>(e.src||e.href).includes('?v='))")
             check(targetContext.getSharedPreferences("app_meta",0).getInt("last_version_code",-1)==BuildConfig.VERSION_CODE)
             var reported=false
-            val fallback=com.paydaytracker.app.util.BridgeErrors.call("testFailure", "fallback", { reported=true }) { throw IllegalStateException("test") }
+           var reported = false
+            val fallback = com.paydaytracker.app.util.BridgeErrors.call(
+                tag = "testFailure",
+                default = "fallback",
+                onError = { reported = true }
+            ) {
+                throw IllegalStateException("test")
+            }
             check(reported && fallback=="fallback")
             // Complete a fresh-install setup through the rendered controls.
             for (i in 0..20) { if (js("typeof setupActive !== 'undefined'") == "true") break; Thread.sleep(100) }
