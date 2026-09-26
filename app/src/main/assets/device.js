@@ -31,3 +31,11 @@ const showBeforeDevice=show;show=function(view){showBeforeDevice(view);if(view==
 const deviceView=document.createElement('section');deviceView.id='device';deviceView.className='view';deviceView.dataset.localized='true';q('main').append(deviceView);
 q('#language').addEventListener('change',()=>{renderDeviceSettings();syncHomeWidget();if(q('#device').classList.contains('active'))show('device')});
 renderDeviceSettings();syncHomeWidget();
+
+// Visible, rate-limited feedback when a native bridge operation fails.
+const bridgeErrorTimes = new Map();
+window.nativeBridgeError = function(method) {
+ const now=Date.now();if(now-(bridgeErrorTimes.get(method)||0)<10000)return;
+ bridgeErrorTimes.set(method,now);
+ toast(msg('Aktion fehlgeschlagen. Bitte erneut versuchen.','That action failed. Please try again.'));
+};

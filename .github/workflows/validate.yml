@@ -19,6 +19,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+      - name: Check bridge contract and release notes
+        run: python3 scripts/check-project.py
       - name: Verify embedded offline icons
         run: python3 scripts/embed-icon-masks.py --check
       - name: Compile Android validation build (not distributed)

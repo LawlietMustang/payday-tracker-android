@@ -10,7 +10,9 @@ import android.os.Build
 import android.os.Bundle
 import android.util.Base64
 import android.view.View
-import android.webkit.JavascriptInterface
+import com.paydaytracker.app.bridge.AndroidBridge
+import com.paydaytracker.app.util.BridgeErrors
+import com.paydaytracker.app.util.WebAssets
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
@@ -36,80 +38,67 @@ class MainActivity : Activity() {
     private val devicePrefs by lazy { getSharedPreferences("device", MODE_PRIVATE) }
     private fun nativeChanged() { if (!isDestroyed) webView.evaluateJavascript("window.refreshDeviceSettings && window.refreshDeviceSettings()", null) }
 
-    inner class AndroidBridge {
-        @JavascriptInterface
+    private fun bridgeFailure(method: String) {
+        runOnUiThread { if (!isDestroyed && ::webView.isInitialized) webView.evaluateJavascript(
+            "window.nativeBridgeError && window.nativeBridgeError(" + JSONObject.quote(method) + ")", null) }
+    }
+    private fun runBridgeUi(method: String, action: () -> Unit) {
+        runOnUiThread { BridgeErrors.call(method, Unit, ::bridgeFailure, action) }
+    }
+
+    inner class NativeActions {
         fun googleAccountState(): String = googleAccount.state()
-        @JavascriptInterface
-        fun googleSignIn() { runOnUiThread { if (webView.visibility == View.VISIBLE) googleAccount.signIn() } }
-        @JavascriptInterface
-        fun googleSignOut() { runOnUiThread { if (webView.visibility == View.VISIBLE) googleAccount.signOut() } }
-        @JavascriptInterface
+        fun googleSignIn() { runBridgeUi("googleSignIn") { if (webView.visibility == View.VISIBLE) googleAccount.signIn() } }
+        fun googleSignOut() { runBridgeUi("googleSignOut") { if (webView.visibility == View.VISIBLE) googleAccount.signOut() } }
         fun shiftReminderStatus(): String = ShiftReminders.status(this@MainActivity).toString()
-        @JavascriptInterface
-        fun syncShiftReminders(json: String) { runOnUiThread {
+        fun syncShiftReminders(json: String) { runBridgeUi("syncShiftReminders") {
             val ok = ShiftReminders.replace(this@MainActivity, json)
             webView.evaluateJavascript("window.shiftReminderSyncResult && window.shiftReminderSyncResult($ok)", null)
         } }
-        @JavascriptInterface
-        fun retryShiftReminders() { runOnUiThread { ShiftReminders.retry(this@MainActivity); nativeChanged() } }
-        @JavascriptInterface
-        fun testShiftReminder() { runOnUiThread {
+        fun retryShiftReminders() { runBridgeUi("retryShiftReminders") { ShiftReminders.retry(this@MainActivity); nativeChanged() } }
+        fun testShiftReminder() { runBridgeUi("testShiftReminder") {
             val ok = ShiftReminders.test(this@MainActivity)
             webView.evaluateJavascript("window.shiftReminderTestResult && window.shiftReminderTestResult($ok)", null)
         } }
-        @JavascriptInterface
-        fun requestShiftNotifications() { runOnUiThread {
+        fun requestShiftNotifications() { runBridgeUi("requestShiftNotifications") {
             if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 225)
         } }
-        @JavascriptInterface
-        fun syncPayslipReminder(json: String) { runOnUiThread { PayslipReminder.update(this@MainActivity, json) } }
-        @JavascriptInterface
+        fun syncPayslipReminder(json: String) { runBridgeUi("syncPayslipReminder") { PayslipReminder.update(this@MainActivity, json) } }
         fun consumePayslipReminder(): String {
             val month = intent?.getStringExtra(PayslipReminder.EXTRA_MONTH) ?: ""
             intent?.removeExtra(PayslipReminder.EXTRA_MONTH)
             return month
         }
-        @JavascriptInterface
-        fun syncBackupStatus(dirty: Boolean, language: String) { runOnUiThread { BackupReminder.update(this@MainActivity, dirty, language) } }
-        @JavascriptInterface
+        fun syncBackupStatus(dirty: Boolean, language: String) { runBridgeUi("syncBackupStatus") { BackupReminder.update(this@MainActivity, dirty, language) } }
         fun autoBackupState(): String = autoBackup.state()
-        @JavascriptInterface
         fun queueAutoBackup(document: String, hash: String) { autoBackup.enqueue(document, hash) }
-        @JavascriptInterface
         fun retryAutoBackup() { autoBackup.retry() }
-        @JavascriptInterface
-        fun disableAutoBackup() { runOnUiThread { if (webView.visibility == View.VISIBLE) autoBackup.disable() } }
-        @JavascriptInterface
-        fun chooseBackupFolder() { runOnUiThread {
-            if (webView.visibility != View.VISIBLE) return@runOnUiThread
+        fun disableAutoBackup() { runBridgeUi("disableAutoBackup") { if (webView.visibility == View.VISIBLE) autoBackup.disable() } }
+        fun chooseBackupFolder() { runBridgeUi("chooseBackupFolder") {
+            if (webView.visibility != View.VISIBLE) return@runBridgeUi
             startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION or Intent.FLAG_GRANT_PREFIX_URI_PERMISSION)
             }, 905)
         } }
-        @JavascriptInterface
-        fun exportBackup(json: String) { runOnUiThread {
-            if (json.toByteArray().size > 10 * 1024 * 1024 || webView.visibility != View.VISIBLE) { webView.evaluateJavascript("window.backupResult(false)", null); return@runOnUiThread }
+        fun exportBackup(json: String) { runBridgeUi("exportBackup") {
+            if (json.toByteArray().size > 10 * 1024 * 1024 || webView.visibility != View.VISIBLE) { webView.evaluateJavascript("window.backupResult(false)", null); return@runBridgeUi }
             pendingBackup = json.toByteArray(Charsets.UTF_8)
             startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
                 addCategory(Intent.CATEGORY_OPENABLE); type = "application/json"
                 putExtra(Intent.EXTRA_TITLE, "WageTrack-${java.time.LocalDate.now()}.json")
             }, 903)
         } }
-        @JavascriptInterface
-        fun importBackup() { runOnUiThread {
+        fun importBackup() { runBridgeUi("importBackup") {
             startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
                 addCategory(Intent.CATEGORY_OPENABLE); type = "*/*"
             }, 904)
         } }
-        @JavascriptInterface
-        fun openHome() { runOnUiThread { startActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)) } }
-        @JavascriptInterface
-        fun clearAppData() = runOnUiThread {
+        fun openHome() { runBridgeUi("openHome") { startActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)) } }
+        fun clearAppData() = runBridgeUi("clearAppData") {
             // Android clears this app's private data and stops its processes/alarms.
             val accepted = getSystemService(android.app.ActivityManager::class.java).clearApplicationUserData()
             if (!accepted) Toast.makeText(this@MainActivity, if (devicePrefs.getString("language", "de") == "en") "Could not delete data. Try again." else "Daten konnten nicht gelöscht werden. Bitte erneut versuchen.", Toast.LENGTH_LONG).show()
         }
-        @JavascriptInterface
         fun deviceSettings(): String = JSONObject().apply {
             put("lock", devicePrefs.getBoolean("lock", false))
             put("reminder", devicePrefs.getBoolean("reminder", false))
@@ -122,13 +111,11 @@ class MainActivity : Activity() {
             put("screenLock", getSystemService(android.app.KeyguardManager::class.java).isDeviceSecure)
         }.toString()
 
-        @JavascriptInterface
-        fun setAppLock(enabled: Boolean) { runOnUiThread { appLock.change(enabled) } }
+        fun setAppLock(enabled: Boolean) { runBridgeUi("setAppLock") { appLock.change(enabled) } }
 
-        @JavascriptInterface
         fun saveReminder(enabled: Boolean, hour: Int, minute: Int, days: Int, language: String) {
             if (hour !in 0..23 || minute !in 0..59 || days !in 0..127 || (enabled && days == 0)) return
-            runOnUiThread {
+            runBridgeUi("saveReminder") {
                 devicePrefs.edit().putBoolean("reminder", enabled).putInt("reminderHour", hour).putInt("reminderMinute", minute).putInt("reminderDays", days).putString("language", if (language == "en") "en" else "de").apply()
                 ReminderReceiver.schedule(this@MainActivity)
                 if (enabled && Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 224)
@@ -136,11 +123,9 @@ class MainActivity : Activity() {
             }
         }
 
-        @JavascriptInterface
-        fun notificationSettings() { runOnUiThread { startActivity(Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, packageName)) } }
+        fun notificationSettings() { runBridgeUi("notificationSettings") { startActivity(Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, packageName)) } }
 
-        @JavascriptInterface
-        fun testReminder() { runOnUiThread {
+        fun testReminder() { runBridgeUi("testReminder") {
             val ok = ReminderReceiver.post(this@MainActivity, true)
             val en = devicePrefs.getString("language", "de") == "en"
             Toast.makeText(this@MainActivity, if (ok) { if (en) "Test sent. Check your notifications." else "Test gesendet. Prüfe deine Benachrichtigungen." } else { if (en) "Notifications are blocked. Allow them in phone settings." else "Benachrichtigungen sind gesperrt. Bitte in den Telefoneinstellungen erlauben." }, Toast.LENGTH_LONG).show()
@@ -148,22 +133,18 @@ class MainActivity : Activity() {
             nativeChanged()
         } }
 
-        @JavascriptInterface
-        fun exactReminderSettings() { runOnUiThread {
+        fun exactReminderSettings() { runBridgeUi("exactReminderSettings") {
             if (Build.VERSION.SDK_INT >= 31) startActivity(Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, android.net.Uri.parse("package:$packageName")))
         } }
 
-        @JavascriptInterface
-        fun backgroundSettings() { runOnUiThread { startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:$packageName"))) } }
+        fun backgroundSettings() { runBridgeUi("backgroundSettings") { startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:$packageName"))) } }
 
-        @JavascriptInterface
-        fun addWidget() { runOnUiThread {
+        fun addWidget() { runBridgeUi("addWidget") {
             val manager = AppWidgetManager.getInstance(this@MainActivity)
-            val accepted = try { manager.isRequestPinAppWidgetSupported && manager.requestPinAppWidget(ComponentName(this@MainActivity, PaydayWidget::class.java), null, null) } catch (_: Exception) { false }
+            val accepted = try { manager.isRequestPinAppWidgetSupported && manager.requestPinAppWidget(ComponentName(this@MainActivity, PaydayWidget::class.java), null, null) } catch (e: Exception) { BridgeErrors.report("addWidget", e); false }
             webView.evaluateJavascript("window.widgetPinResult && window.widgetPinResult($accepted)", null)
         } }
 
-        @JavascriptInterface
         fun syncWidget(state: String, elapsedMs: Double, language: String, progress: String) {
             if (state !in listOf("idle", "working", "break") || !elapsedMs.isFinite() || elapsedMs < 0) return
             devicePrefs.edit().putString("timerState", state).putLong("timerBase", System.currentTimeMillis() - elapsedMs.toLong()).putString("language", if (language == "en") "en" else "de").apply()
@@ -172,12 +153,11 @@ class MainActivity : Activity() {
                 val minutes = doc.getDouble("minutes"); val target = doc.getDouble("target")
                 if (minutes.isFinite() && target.isFinite() && minutes >= 0 && target >= 0 && doc.getString("month").matches(Regex("\\d{4}-\\d{2}")))
                     devicePrefs.edit().putString("widgetProgress", doc.toString()).apply()
-            } catch (_: Exception) { }
+            } catch (e: Exception) { BridgeErrors.report("syncWidget", e) }
             PaydayWidget.update(this@MainActivity)
         }
-        @JavascriptInterface
         fun setDarkMode(dark: Boolean) {
-            runOnUiThread {
+            runBridgeUi("setDarkMode") {
                 val background = if (dark) Color.rgb(17, 10, 38) else Color.rgb(24, 14, 51)
                 window.statusBarColor = background
                 window.decorView.setBackgroundColor(background)
@@ -187,9 +167,8 @@ class MainActivity : Activity() {
             }
         }
 
-        @JavascriptInterface
         fun updateTimerNotification(state: String, elapsedMs: Double, language: String) {
-            runOnUiThread {
+            runBridgeUi("updateTimerNotification") {
                 if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                     requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 902)
                 }
@@ -203,14 +182,12 @@ class MainActivity : Activity() {
             }
         }
 
-        @JavascriptInterface
         fun stopTimerNotification() {
-            runOnUiThread {
+            runBridgeUi("stopTimerNotification") {
                 startService(Intent(this@MainActivity, TimerNotificationService::class.java).apply { action = TimerNotificationService.ACTION_STOP })
             }
         }
 
-        @JavascriptInterface
         fun exportCsv(base64Data: String, fileName: String) {
             try {
                 pendingCsv = Base64.decode(base64Data, Base64.DEFAULT)
@@ -219,9 +196,10 @@ class MainActivity : Activity() {
                     type = "text/csv"
                     putExtra(Intent.EXTRA_TITLE, fileName)
                 }
-                runOnUiThread { startActivityForResult(intent, createCsvRequest) }
-            } catch (_: Exception) {
-                runOnUiThread { webView.evaluateJavascript("window.csvResult(false)", null) }
+                runBridgeUi("exportCsv") { startActivityForResult(intent, createCsvRequest) }
+            } catch (e: Exception) {
+                BridgeErrors.report("exportCsv", e)
+                runBridgeUi("exportCsv") { webView.evaluateJavascript("window.csvResult(false)", null) }
             }
         }
     }
@@ -249,7 +227,7 @@ class MainActivity : Activity() {
             settings.displayZoomControls = false
             settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
             settings.blockNetworkLoads = true
-            addJavascriptInterface(AndroidBridge(), "Android")
+            addJavascriptInterface(AndroidBridge(NativeActions(), ::bridgeFailure), "Android")
             overScrollMode = View.OVER_SCROLL_NEVER
         }
         val root = FrameLayout(this)
@@ -269,6 +247,7 @@ class MainActivity : Activity() {
         root.requestApplyInsets()
         ReminderReceiver.deliverDue(this)
         ReminderReceiver.schedule(this)
+        WebAssets.prepare(this, webView)
         webView.loadUrl("file:///android_asset/index.html")
     }
 
