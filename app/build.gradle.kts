@@ -1,12 +1,12 @@
 plugins { id("com.android.application"); id("org.jetbrains.kotlin.android") }
 android {
     namespace = "com.paydaytracker.app"
-    compileSdk = 35
+    compileSdk = 36
     buildFeatures { buildConfig = true }
     if (providers.gradleProperty("resourceAudit").isPresent) {
         lint { checkOnly += "UnusedResources"; warningsAsErrors = true }
     }
-    defaultConfig { applicationId = "com.paydaytracker.app"; minSdk = 26; targetSdk = 35; versionCode = 40; versionName = "2.4.11"; testInstrumentationRunner = "com.paydaytracker.app.DeviceSmoke" }
+    defaultConfig { applicationId = "com.paydaytracker.app"; minSdk = 26; targetSdk = 36; versionCode = 40; versionName = "2.4.11"; testInstrumentationRunner = "com.paydaytracker.app.DeviceSmoke" }
     signingConfigs {
         create("permanent") {
             System.getenv("PAYDAY_KEYSTORE_PATH")?.let { storeFile = file(it) }
