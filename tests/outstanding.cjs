@@ -26,7 +26,7 @@ module.exports=async(browser,url)=>{
   assert.equal(await page.locator('.payslip-trend svg').count(),1);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   if(width===390)await page.screenshot({path:`test-results/payslip-trend-${language}-${theme}.png`,fullPage:true});
   await page.evaluate(()=>show('appSettings'));
-  for(const [id,file]of [['profile','profile'],['lock','lock'],['recovery','cloud-sync']])assert.match(await page.locator(`#settingsMenu [data-icon="${id}"]`).evaluate(el=>getComputedStyle(el).maskImage),new RegExp(file+'\\.svg'));
+  for(const [id,file]of [['profile','profile'],['lock','lock'],['recovery','cloud-sync']])assert.match(await page.locator(`#settingsMenu [data-icon="${id}"]`).evaluate(el=>getComputedStyle(el).maskImage),/^url\("data:image\/svg\+xml,/);
  }
  // Compact control changes persist and call the native bridge; notification tapping opens the right month.
  await page.evaluate(()=>{window.Android={syncPayslipReminder:p=>window.lastPayslip=JSON.parse(p),requestShiftNotifications:()=>{},consumePayslipReminder:()=> '2029-12'};deviceSection='reminders';show('device')});

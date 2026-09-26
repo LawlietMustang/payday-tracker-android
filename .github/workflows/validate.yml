@@ -19,6 +19,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+      - name: Verify embedded offline icons
+        run: python3 scripts/embed-icon-masks.py --check
       - name: Compile Android validation build (not distributed)
         run: gradle --no-daemon assembleDebug
       - name: Test UI

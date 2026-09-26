@@ -43,6 +43,10 @@ jobs:
             adb pull /sdcard/Android/data/com.paydaytracker.app.debug/files/device-smoke.png device-smoke.png || true
             adb pull /sdcard/Android/data/com.paydaytracker.app.debug/files/lock-screen.png lock-screen.png || true
             adb pull /sdcard/Android/data/com.paydaytracker.app.debug/files/pin-setup.png pin-setup.png || true
+            adb pull /sdcard/Android/data/com.paydaytracker.app.debug/files/settings-icons-light.png settings-icons-light.png || true
+            adb pull /sdcard/Android/data/com.paydaytracker.app.debug/files/settings-icons-dark.png settings-icons-dark.png || true
+            adb pull /sdcard/Android/data/com.paydaytracker.app.debug/files/icon-gallery-light.png icon-gallery-light.png || true
+            adb pull /sdcard/Android/data/com.paydaytracker.app.debug/files/icon-gallery-dark.png icon-gallery-dark.png || true
             grep -q 'PAYDAY_SMOKE_PASS' device-smoke.txt
       - uses: actions/upload-artifact@v4
         if: always()
@@ -55,3 +59,5 @@ jobs:
             device-smoke.png
             lock-screen.png
             pin-setup.png
+            settings-icons-*.png
+            icon-gallery-*.png
