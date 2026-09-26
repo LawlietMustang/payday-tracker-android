@@ -47,10 +47,19 @@ jobs:
             adb install "$RUNNER_TEMP/previous-wagetrack.apk"
             adb install "$RUNNER_TEMP/upgrade-test.apk"
             adb shell am instrument -w -e mode seed com.paydaytracker.app.debug.test/com.paydaytracker.app.UpgradeSmoke | tee upgrade-seed.txt
+            
+            # Print file contents to GitHub logs if test fails
+            echo "=== UPGRADE SEED OUTPUT LOG ==="
+            cat upgrade-seed.txt
+            
             grep -q 'WAGETRACK_UPGRADE_SEED_PASS' upgrade-seed.txt
             adb shell am force-stop com.paydaytracker.app.debug
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb shell am instrument -w -e mode verify com.paydaytracker.app.debug.test/com.paydaytracker.app.UpgradeSmoke | tee upgrade-verify.txt
+            
+            echo "=== UPGRADE VERIFY OUTPUT LOG ==="
+            cat upgrade-verify.txt
+            
             grep -q 'WAGETRACK_UPGRADE_VERIFY_PASS' upgrade-verify.txt
             adb install -r "$RUNNER_TEMP/device-test.apk"
             adb shell pm clear com.paydaytracker.app.debug
