@@ -5,15 +5,24 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 assets=ROOT/'app/src/main/assets'
 native=ROOT/'app/src/main/java/com/paydaytracker/app/bridge/AndroidBridge.kt'
+version=re.search(r'versionName = "([^"]+)"',(ROOT/'app/build.gradle.kts').read_text())[1]
+if not any((ROOT/f).exists() for f in [f'VERSION-{version}.md',f'docs/VERSION-{version}.md']):
+ raise SystemExit('Missing release notes for '+version)
+activity=ROOT/'app/src/main/java/com/paydaytracker/app/MainActivity.kt'
+if not native.exists():
+ if not activity.exists() or 'ComposeView' not in activity.read_text():
+  raise SystemExit('Missing native bridge without a Compose entry point')
+ test=ROOT/'app/src/androidTest/java/com/paydaytracker/app/DeviceSmoke.kt'
+ if 'createAndroidComposeRule<MainActivity>()' not in test.read_text():
+  raise SystemExit('Native app requires Compose device smoke coverage')
+ print(f'PASS: native Compose entry point, device test and release notes for {version}')
+ sys.exit(0)
 methods=re.findall(r'@JavascriptInterface\s+fun (\w+)\(([^)]*)\)(?:: (\w+))?',native.read_text())
 known={m[0] for m in methods};callers={name:[] for name in known}
 for file in assets.rglob('*.js'):
  for name in set(re.findall(r'\bAndroid\.(\w+)',file.read_text())):
   if name not in known:raise SystemExit(f'{file.name}: unknown Android.{name}')
   callers[name].append(str(file.relative_to(ROOT)))
-version=re.search(r'versionName = "([^"]+)"',(ROOT/'app/build.gradle.kts').read_text())[1]
-if not any((ROOT/f).exists() for f in [f'VERSION-{version}.md',f'docs/VERSION-{version}.md']):
- raise SystemExit('Missing release notes for '+version)
 intro='''# JavaScript ↔ Android bridge
 
 Generated contract table: run `python3 scripts/check-project.py --write-doc` after changing the bridge.
@@ -43,3 +52,4 @@ expected=intro+'\n'.join(rows)+'\n';doc=ROOT/'docs/JS-NATIVE-BRIDGE.md'
 if '--write-doc' in sys.argv:doc.write_text(expected)
 if not doc.exists() or doc.read_text()!=expected:raise SystemExit('Bridge documentation is stale; run with --write-doc')
 print(f'PASS: {len(methods)} bridge methods, callers and release notes for {version}')
+

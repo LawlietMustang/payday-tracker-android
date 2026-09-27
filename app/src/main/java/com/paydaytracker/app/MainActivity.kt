@@ -1,7 +1,6 @@
 package com.paydaytracker.app
 
 import android.content.Intent
-import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.view.View
@@ -29,8 +28,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         // Window & status bar styling matching WageTrack theme tokens
-        window.statusBarColor = Color.rgb(24, 14, 51)
-        window.navigationBarColor = Color.rgb(24, 14, 51)
+        window.statusBarColor = getColor(R.color.app_background)
+        window.navigationBarColor = getColor(R.color.app_background)
         if (Build.VERSION.SDK_INT >= 30) {
             window.setDecorFitsSystemWindows(false)
         }
@@ -41,7 +40,7 @@ class MainActivity : ComponentActivity() {
         }
 
         val root = FrameLayout(this).apply {
-            setBackgroundColor(Color.rgb(24, 14, 51))
+            setBackgroundColor(getColor(R.color.app_background))
         }
         contentRoot = root
 
@@ -123,3 +122,4 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
