@@ -14,7 +14,7 @@ android {
     if (providers.gradleProperty("resourceAudit").isPresent) {
         lint { checkOnly += "UnusedResources"; warningsAsErrors = true }
     }
-    defaultConfig { applicationId = "com.paydaytracker.app"; minSdk = 26; targetSdk = 36; versionCode = 40; versionName = "2.4.11"; testInstrumentationRunner = "com.paydaytracker.app.DeviceSmoke" }
+    defaultConfig { applicationId = "com.paydaytracker.app"; minSdk = 26; targetSdk = 36; versionCode = 40; versionName = "2.4.11"; testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner" }
     signingConfigs {
         create("permanent") {
             System.getenv("PAYDAY_KEYSTORE_PATH")?.let { storeFile = file(it) }
@@ -51,6 +51,7 @@ dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
     implementation(composeBom)
     androidTestImplementation(composeBom)
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
@@ -91,3 +92,4 @@ val prepareWebAssets by tasks.registering(Sync::class) {
 }
 android.sourceSets.getByName("main").assets.setSrcDirs(listOf(layout.buildDirectory.dir("generated/webAssets")))
 tasks.named("preBuild").configure { dependsOn(prepareWebAssets) }
+
