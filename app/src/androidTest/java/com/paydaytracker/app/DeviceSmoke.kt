@@ -70,6 +70,41 @@ class DeviceSmoke {
         Assert.assertEquals(saved!!.id,runBlocking{repository.shifts.first().first{it.note==note}.id})
         runBlocking{repository.deleteShift(saved!!.id)}
     }
+    @Test fun populatedScreensAndTimerSurviveRecreation() = runBlocking {
+        val month=java.time.YearMonth.now()
+        val wp=repository.workplaces.first().first()
+        val records=(1..8).map { day -> Shift("visual-$day",month.atDay(day).toString(),"09:00","17:00",450,30,wp.wage,wp.id,"completed","manual") }
+        repository.saveShifts(records)
+        val previous=repository.getSettings()
+        repository.saveSettings(previous.copy(theme="light"))
+        repository.saveSavingsGoal(SavingsGoal("visual-goal","Holiday fund",1000.0,250.0))
+        try {
+            compose.waitForIdle()
+            screenshot("overview-populated")
+            compose.onNodeWithText("Earnings, progress & recent shifts",substring=true).performScrollTo().performClick()
+            compose.onNodeWithText("GROSS EARNED").performScrollTo()
+            screenshot("earnings-populated")
+            compose.onNodeWithContentDescription("Menu").performClick()
+            compose.onNodeWithText("Settings",useUnmergedTree=true).performClick()
+            compose.onNodeWithText("Budgets & goals").performClick()
+            compose.onNodeWithText("Holiday fund").assertExists()
+            screenshot("goals-populated")
+            compose.onNodeWithTag("nav-dashboard").performClick()
+            compose.onNodeWithText("▶ Start work").performScrollTo().performClick()
+            compose.waitUntil(5000){ repositoryDocument().optJSONObject("activeTimer") != null }
+            compose.activityRule.scenario.recreate()
+            compose.waitUntil(15000){compose.onAllNodesWithTag("screen-dashboard").fetchSemanticsNodes().isNotEmpty()}
+            compose.onNodeWithText("Take a break").performScrollTo().assertExists()
+            screenshot("clock-running")
+        } finally {
+            repository.updateDocument{it.put("activeTimer",JSONObject.NULL)}
+            repository.deleteShifts(records.map{it.id})
+            repository.deleteSavingsGoal("visual-goal")
+            repository.saveSettings(previous)
+        }
+    }
+    private fun repositoryDocument() = runBlocking { repository.document() }
+
     @Test fun oldBackupPreservesTemplatesAndSettings() = runBlocking {
         val fixture="""{"settings":{"currency":"EUR","wage":15,"theme":"dark","country":"DE"},"shifts":[],"templates":[{"id":"parity-template","name":"Late","start":"18:00","end":"23:00","breakMin":15}],"shiftReminders":{"enabled":true,"amount":2,"unit":"hours","scope":"all"},"budgets":{"2026-09":{"total":500,"rent":200}},"language":"en","onboardingCompleted":true}"""
         Assert.assertTrue(repository.importBackupJson(fixture))

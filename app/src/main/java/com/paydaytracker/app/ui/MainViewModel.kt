@@ -69,7 +69,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (repository.workplaces.first().isEmpty()) repository.addWorkplace(job, s.wage)
         repository.updateDocument { it.put("onboardingCompleted", true) }; triggerBackup()
     } }
-    fun resetData() { viewModelScope.launch { repository.clearAll(); repository.updateDocument { it.put("onboardingCompleted", false) }; triggerBackup() } }
+    fun resetData() { viewModelScope.launch {
+        val context = getApplication<Application>()
+        com.paydaytracker.app.AutoBackup.get(context).disable()
+        repository.clearAll()
+        repository.updateDocument { it.put("nativeInitialized",true).put("onboardingCompleted",false).put("language",context.getSharedPreferences("device",0).getString("language","en")).put("loggingReminder",JSONObject().put("enabled",false)) }
+        NativeCoordinator.syncTimer(context, JSONObject())
+        context.getSharedPreferences("device",0).edit().putBoolean("reminder",false).apply()
+        com.paydaytracker.app.ReminderReceiver.schedule(context)
+        NativeCoordinator.syncShiftReminders(context,emptyList(),emptyList())
+        NativeCoordinator.syncPayslipReminder(context,emptyList(),false)
+        com.paydaytracker.app.BackupReminder.update(context,false,"en")
+        workplaceFilter.value="all"
+        selectedMonth.value=YearMonth.now().toString()
+    } }
 
     private val currentYearMonth = YearMonth.now()
     val selectedMonth = MutableStateFlow(currentYearMonth.format(DateTimeFormatter.ofPattern("yyyy-MM")))
@@ -179,8 +192,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
         // Reactive synchronization with native system services (Phase 4)
         viewModelScope.launch {
-            combine(currentMonthSummary, settings) { summary, s ->
-                if (ready.value) NativeCoordinator.syncWidget(getApplication(), summary, s)
+            combine(shifts, workplaces, settings, ready) { shiftList, wpList, s, loaded ->
+                if (loaded) NativeCoordinator.syncWidget(getApplication(), PayrollCalculator.summary(YearMonth.now().toString(),shiftList,s,wpList), s)
             }.collect {}
         }
 
@@ -229,6 +242,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         updateDocument { it.put("workplaceFilter", filter) }
     }
 
+    fun saveShifts(shifts: List<Shift>) { viewModelScope.launch { repository.saveShifts(shifts); triggerBackup() } }
     fun saveTimedShift(shift: Shift) { viewModelScope.launch { repository.saveTimedShift(shift); triggerBackup() } }
     fun saveShift(shift: Shift) {
         viewModelScope.launch {

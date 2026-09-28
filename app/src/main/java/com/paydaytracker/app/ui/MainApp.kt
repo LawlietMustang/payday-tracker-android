@@ -46,7 +46,7 @@ fun MainApp(viewModel: MainViewModel) {
     fun add(date: String = LocalDate.now().toString(), t: ShiftTemplate? = null) { editShift=null; shiftDate=date; template=t; shiftOpen=true }
     fun edit(id: String) { editShift=shifts.firstOrNull { it.id==id }; template=null; shiftOpen=true }
     val drawer = rememberDrawerState(DrawerValue.Closed); val scope = rememberCoroutineScope()
-    val onboard = !doc.optBoolean("onboardingCompleted") && places.isEmpty()
+    val onboard = !doc.optBoolean("onboardingCompleted")
     CompositionLocalProvider(LocalLanguage provides language) { WageTrackTheme(darkTheme = dark) {
         if (!ready) { Surface(Modifier.fillMaxSize(), color=Ink, contentColor=WhiteInk) { Column(Modifier.safeDrawingPadding().padding(32.dp), verticalArrangement=Arrangement.spacedBy(20.dp)) {
             Heading("WageTrack"); Text(error ?: L("Loading your records…", "Deine Daten werden geladen…"))

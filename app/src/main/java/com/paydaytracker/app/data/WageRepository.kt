@@ -67,6 +67,15 @@ class WageRepository(private val db: WageTrackDatabase) {
         db.workplaceDao().deleteById(id)
     }
 
+    /** Setup commits together so rotation or failure cannot leave a half-created job. */
+    suspend fun completeSetup(settings: AppSettings, name: String, job: String, firstShift: Shift?) = db.withTransaction {
+        val wp = addWorkplace(job, settings.wage)
+        saveSettings(settings)
+        saveProfile(UserProfile(name = name))
+        firstShift?.let { saveShift(it.copy(workplaceId = wp.id)) }
+        updateDocument { it.put("onboardingCompleted", true) }
+    }
+
     suspend fun saveTimedShift(shift: Shift) = db.withTransaction {
         db.shiftDao().insert(shift)
         updateDocument { it.put("activeTimer", JSONObject.NULL) }
@@ -123,9 +132,13 @@ class WageRepository(private val db: WageTrackDatabase) {
         val allShifts = db.shiftDao().getAll()
         var changed = false
         val toUpdate = mutableListOf<Shift>()
+        val timer = document().optJSONObject("activeTimer")
+        val timerStart = timer?.let { java.time.Instant.ofEpochMilli(it.optLong("startedAt")).atZone(java.time.ZoneId.systemDefault()).toLocalDateTime() }
         for (shift in allShifts) {
-            if (shift.status == "planned" && shift.id != document().optJSONObject("activeTimer")?.optString("shiftId")) {
+            if (shift.status == "planned" && shift.id != timer?.optString("shiftId")) {
                 val range = PayrollCalculator.shiftRange(shift)
+                // An unlinked clock protects overlapping work too, matching v2.4.10.
+                if (timerStart != null && shift.workplaceId == timer?.optString("workplaceId") && range.start < now && range.end > timerStart) continue
                 if (!range.end.isAfter(now)) {
                     toUpdate.add(shift.copy(status = "completed", completedAutomatically = true))
                     changed = true
