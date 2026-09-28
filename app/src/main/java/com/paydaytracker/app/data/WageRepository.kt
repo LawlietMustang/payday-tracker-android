@@ -521,6 +521,18 @@ class WageRepository(private val db: WageTrackDatabase) {
                 }
             }
 
+            // Reject malformed records before exposing them to date-based native screens.
+            workplaces.forEach { require(it.id.isNotBlank() && it.wage.isFinite() && it.wage >= 0) }
+            shifts.forEach {
+                require(it.id.isNotBlank() && it.status in listOf("planned", "completed", "cancelled"))
+                LocalDate.parse(it.date); java.time.LocalTime.parse(it.start); java.time.LocalTime.parse(it.end)
+                require(it.minutes >= 0 && it.breakMin >= 0 && (it.wage == null || it.wage.isFinite() && it.wage >= 0))
+            }
+            expenses.forEach { LocalDate.parse(it.date); require(it.amount.isFinite() && it.amount >= 0) }
+            recurring.forEach { YearMonth.parse(it.startMonth); require(it.day in 1..31 && it.amount.isFinite() && it.amount >= 0) }
+            payslips.forEach { YearMonth.parse(it.month); require(it.actualGross.isFinite() && it.actualNet.isFinite() && it.actualGross >= 0 && it.actualNet >= 0) }
+            goals.forEach { require(it.target.isFinite() && it.target > 0 && it.saved.isFinite() && it.saved >= 0); if(it.due.isNotEmpty())LocalDate.parse(it.due);if(it.autoNext.isNotEmpty())LocalDate.parse(it.autoNext) }
+
             if (data.has("settings")) {
                 val sObj = data.getJSONObject("settings")
                 val days = mutableListOf<Int>()
@@ -553,6 +565,9 @@ class WageRepository(private val db: WageTrackDatabase) {
                     autoCompletePlanned = sObj.optBoolean("autoCompletePlanned", true),
                     payslipReminder = sObj.optBoolean("payslipReminder", false)
                 )
+                java.util.Currency.getInstance(s.currency)
+                java.time.LocalTime.parse(s.nightStart); java.time.LocalTime.parse(s.nightEnd)
+                require(listOf(s.wage,s.target,s.savingsTarget,s.health,s.overtimeAfter,s.overtimeRate,s.nightRate,s.sundayRate,s.holidayRate).all{it.isFinite()&&it>=0})
                 saveSettings(s)
             }
 

@@ -21,13 +21,17 @@ import java.util.UUID
 @OptIn(ExperimentalFoundationApi::class)
 @Composable fun Hours(vm:MainViewModel,add:(String,ShiftTemplate?)->Unit,edit:(String)->Unit,manage:()->Unit) {
     val month by vm.selectedMonth.collectAsState();val all by vm.shifts.collectAsState();val workplaces by vm.workplaces.collectAsState();val filter by vm.workplaceFilter.collectAsState();val templates by vm.shiftTemplates.collectAsState()
+    val document by vm.document.collectAsState()
+    val calendarShifts=all.filter{filter=="all"||it.workplaceId==filter}
+    val timer=org.json.JSONObject(document).optJSONObject("activeTimer")
+    val activeDate=timer?.takeIf{filter=="all"||it.optString("workplaceId")==filter}?.let{Instant.ofEpochMilli(it.optLong("startedAt")).atZone(ZoneId.systemDefault()).toLocalDate().toString()}
     val shifts=all.filter{it.date.startsWith(month)&&(filter=="all"||it.workplaceId==filter)}.sortedByDescending{it.date+it.start}
     var bulkEdit by remember{mutableStateOf(false)}
     var day by remember{mutableStateOf<String?>(null)};var selected by remember(month){mutableStateOf(setOf<String>())};var delete by remember{mutableStateOf(false)}
     Page {
         WorkplacePicker(vm,manage)
-        WageCard(color=Purple){CompositionLocalProvider(LocalContentColor provides WhiteInk){Eyebrow(L("Your shifts","Deine Schichten"));Heading(F.formatMonthTitle(month));CalendarGrid(month,shifts){day=it}
-            Text(L("● Planned   ● Completed   ● Cancelled","● Geplant   ● Erledigt   ● Abgesagt"),fontSize=10.sp,color=Lavender)
+        WageCard(color=Purple){CompositionLocalProvider(LocalContentColor provides WhiteInk){Eyebrow(L("Your shifts","Deine Schichten"));Heading(F.formatMonthTitle(month));CalendarGrid(month,calendarShifts,activeDate){day=it}
+            Text(L("Planned · Completed · Active · Overlap · Cancelled","Geplant · Erledigt · Aktiv · Überschneidung · Abgesagt"),fontSize=10.sp,color=Lavender)
             HorizontalDivider(color=Lavender.copy(alpha=.3f));Eyebrow(L("Quick shift templates","Schnelle Schichtvorlagen"))
             Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)){templates.forEach{t->Action(t.name){add(month+"-01",t)}};Action(L("+ Shift","+ Schicht"),primary=true){add(if(LocalDate.now().toString().startsWith(month))LocalDate.now().toString()else month+"-01",null)}}
         }}
@@ -41,15 +45,19 @@ import java.util.UUID
         }}}
     }
     if(bulkEdit)BulkShiftEditor(vm,shifts.filter{it.id in selected}){bulkEdit=false;selected=emptySet()}
-    if(day!=null)AlertDialog(onDismissRequest={day=null},title={Text(day!!)},text={Column{shifts.filter{it.date==day}.forEach{shift->LinkRow(shift.start+"–"+shift.end,statusLabel(shift.status)){day=null;edit(shift.id)}};Action(L("+ Add shift","+ Schicht hinzufügen"),primary=true){val d=day!!;day=null;add(d,null)}}},confirmButton={TextButton({day=null}){Text(L("Close","Schließen"))}})
+    if(day!=null)AlertDialog(onDismissRequest={day=null},title={Text(day!!)},text={Column{calendarShifts.filter{it.date==day}.forEach{shift->LinkRow(shift.start+"–"+shift.end,statusLabel(shift.status)){day=null;edit(shift.id)}};Action(L("+ Add shift","+ Schicht hinzufügen"),primary=true){val d=day!!;day=null;add(d,null)}}},confirmButton={TextButton({day=null}){Text(L("Close","Schließen"))}})
     if(delete)AlertDialog(onDismissRequest={delete=false},title={Text(L("Delete selected shifts?","Ausgewählte Schichten löschen?"))},confirmButton={TextButton({vm.deleteShifts(selected.toList());selected=emptySet();delete=false}){Text(L("Delete","Löschen"))}},dismissButton={TextButton({delete=false}){Text(L("Cancel","Abbrechen"))}})
 }
 @Composable fun statusLabel(status:String)=when(status){"planned"->L("Planned","Geplant");"cancelled"->L("Cancelled","Abgesagt");else->L("Completed","Erledigt")}
-@Composable fun CalendarGrid(month:String,shifts:List<Shift>,select:(String)->Unit) {
+@Composable fun CalendarGrid(month:String,shifts:List<Shift>,activeDate:String?=null,select:(String)->Unit) {
+    val conflicts=remember(shifts){
+        val intervals=shifts.filter{it.status!="cancelled"}.map{it to PayrollCalculator.shiftRange(it)}.sortedBy{it.second.start}
+        buildSet<String>{for(i in intervals.indices){var j=i+1;while(j<intervals.size&&intervals[j].second.start<intervals[i].second.end){add(intervals[i].first.id);add(intervals[j].first.id);j++}}}
+    }
     val ym=YearMonth.parse(month);val start=ym.atDay(1).minusDays((ym.atDay(1).dayOfWeek.value-1).toLong());val rows=(ym.lengthOfMonth()+ym.atDay(1).dayOfWeek.value-2)/7+1
     Row(Modifier.fillMaxWidth()){(if(LocalLanguage.current=="en")listOf("Mon","Tue","Wed","Thu","Fri","Sat","Sun")else listOf("Mo","Di","Mi","Do","Fr","Sa","So")).forEach{Text(it,Modifier.weight(1f),fontSize=10.sp,textAlign=androidx.compose.ui.text.style.TextAlign.Center)}}
-    repeat(rows){week->Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(4.dp)){repeat(7){index->val date=start.plusDays((week*7+index).toLong());val entries=shifts.filter{it.date==date.toString()};val planned=entries.any{it.status=="planned"};val cancelled=entries.isNotEmpty()&&entries.all{it.status=="cancelled"};val color=if(cancelled)Pink else if(planned)Color(0xFF4C8CFF)else Color(0xFF35D07F)
-        Surface(onClick={select(date.toString())},modifier=Modifier.weight(1f).aspectRatio(.92f),color=if(entries.isEmpty())Raised else color.copy(alpha=.2f),shape=RoundedCornerShape(10.dp),border=if(date==LocalDate.now())BorderStroke(1.dp,Lime)else null){Column(horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){Text(date.dayOfMonth.toString(),fontSize=14.sp,color=if(date.month==ym.month)WhiteInk else Lavender.copy(alpha=.4f));Text(if(entries.isEmpty())" "else "•".repeat(entries.size.coerceAtMost(3)),fontSize=9.sp,color=color)}}
+    repeat(rows){week->Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(4.dp)){repeat(7){index->val date=start.plusDays((week*7+index).toLong());val entries=shifts.filter{it.date==date.toString()};val planned=entries.any{it.status=="planned"};val cancelled=entries.isNotEmpty()&&entries.all{it.status=="cancelled"};val color=if(entries.any{it.id in conflicts})Color(0xFFFF8A45)else if(date.toString()==activeDate)Lime else if(cancelled)Pink else if(planned)Color(0xFF4C8CFF)else Color(0xFF35D07F)
+        Surface(onClick={select(date.toString())},modifier=Modifier.weight(1f).aspectRatio(.92f),color=if(entries.isEmpty()&&date.toString()!=activeDate)Raised else color.copy(alpha=.2f),shape=RoundedCornerShape(10.dp),border=if(date==LocalDate.now())BorderStroke(1.dp,Lime)else null){Column(horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){Text(date.dayOfMonth.toString(),fontSize=14.sp,color=if(date.month==ym.month)WhiteInk else Lavender.copy(alpha=.4f));Text(if(entries.isEmpty())" "else "•".repeat(entries.size.coerceAtMost(3)),fontSize=9.sp,color=color)}}
     }}}
 }
 @Composable fun ShiftEditor(vm:MainViewModel,shift:Shift?,initialDate:String,template:ShiftTemplate?,dismiss:()->Unit) {

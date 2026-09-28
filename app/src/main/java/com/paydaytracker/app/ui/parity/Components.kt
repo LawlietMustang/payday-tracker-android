@@ -76,7 +76,7 @@ val LocalLanguage = compositionLocalOf { "en" }
     }
 }
 @Composable fun Mark(kind: String, modifier: Modifier = Modifier.size(24.dp), tint: Color = LocalContentColor.current) {
-    val res = when (kind) { "profile" -> R.drawable.wt_profile; "workplaces" -> R.drawable.wt_workplaces; "planning" -> R.drawable.wt_budgets_goals; "reminders" -> R.drawable.wt_reminders_widget; "lock" -> R.drawable.wt_lock; "backup" -> R.drawable.wt_cloud_sync; "info" -> R.drawable.wt_info; else -> null }
+    val res = when (kind) { "sun" -> R.drawable.wt_sun; "moon" -> R.drawable.wt_moon; "profile" -> R.drawable.wt_profile; "workplaces" -> R.drawable.wt_workplaces; "planning" -> R.drawable.wt_budgets_goals; "reminders" -> R.drawable.wt_reminders_widget; "lock" -> R.drawable.wt_lock; "backup" -> R.drawable.wt_cloud_sync; "info" -> R.drawable.wt_info; else -> null }
     if (res != null) { Icon(painterResource(res), null, modifier, tint); return }
     Canvas(modifier) {
         val s = size.minDimension / 24f

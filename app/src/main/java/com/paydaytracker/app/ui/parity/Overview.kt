@@ -59,6 +59,19 @@ fun clock(ms: Long): String { val s=ms/1000;return "%02d:%02d:%02d".format(s/360
                 val weeks=generateSequence(start){it.plusWeeks(1)}.takeWhile{it<=ym.atEndOfMonth()}.toList();val max=groups.values.maxOfOrNull{xs->xs.sumOf{it.minutes}}?.coerceAtLeast(1) ?: 1
                 Row(Modifier.fillMaxWidth().height(112.dp),horizontalArrangement=Arrangement.spacedBy(10.dp),verticalAlignment=Alignment.Bottom) {weeks.forEach { w->Column(Modifier.weight(1f),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(5.dp)){Box(Modifier.fillMaxWidth(.7f).height((80f*(groups[w]?.sumOf{it.minutes} ?: 0)/max).coerceAtLeast(2f).dp).background(Brush.verticalGradient(listOf(Pink,Color(0xFF5831BD))),RoundedCornerShape(5.dp)));Text("W"+w.get(WeekFields.ISO.weekOfWeekBasedYear()),fontSize=11.sp)} } }
             }
+            WageCard { Eyebrow(L("Estimate","Schätzung"));Heading(L("Deductions overview","Abzüge im Überblick"))
+                val tax=summary.est
+                if(tax.manualDeduction!=null)Stat(L("Manual deduction","Manueller Abzug"),money(tax.manualDeduction))else {
+                    Stat(L("Wage tax","Lohnsteuer"),money(tax.wageTax))
+                    Stat(L("Pension insurance","Rentenversicherung"),money(tax.pension))
+                    Stat(L("Health insurance","Krankenversicherung"),money(tax.health))
+                    Stat(L("Long-term care insurance","Pflegeversicherung"),money(tax.care))
+                    Stat(L("Unemployment insurance","Arbeitslosenversicherung"),money(tax.unemployment))
+                    Stat(L("Solidarity & church tax","Soli & Kirchensteuer"),money(tax.soli+tax.church))
+                }
+                Stat(L("Estimated net","Geschätztes Netto"),money(tax.net))
+                Action(L("View calculation basis →","Berechnungsgrundlage ansehen →")){navigate("pay")}
+            }
             WageCard { Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Heading(L("Your shifts","Deine Schichten"));TextButton({navigate("shifts")}){Text(L("Show all →","Alle →"))}};summary.list.sortedByDescending{it.date+it.start}.take(5).forEach{shift->ShiftRow(shift,workplaces.firstOrNull{it.id==shift.workplaceId}?.name ?: "",{edit(shift.id)})} }
         }
     }

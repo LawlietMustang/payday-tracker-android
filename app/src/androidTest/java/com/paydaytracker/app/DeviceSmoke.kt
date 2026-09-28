@@ -112,6 +112,9 @@ class DeviceSmoke {
         Assert.assertEquals(2,exported.getJSONObject("shiftReminders").getInt("amount"))
         Assert.assertTrue(repository.shiftTemplates.first().any{it.id=="parity-template"})
         Assert.assertFalse(repository.importBackupJson("{\"notABackup\":true}"))
+        val invalid=JSONObject(fixture).put("shifts",org.json.JSONArray().put(JSONObject().put("id","invalid-record").put("date","not-a-date").put("start","09:00").put("end","17:00").put("minutes",480)))
+        Assert.assertFalse(repository.importBackupJson(invalid.toString()))
+        Assert.assertFalse(repository.shifts.first().any{it.id=="invalid-record"})
         repository.deleteShiftTemplate("parity-template")
     }
 }

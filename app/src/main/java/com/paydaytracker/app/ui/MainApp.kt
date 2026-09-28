@@ -67,7 +67,7 @@ fun MainApp(viewModel: MainViewModel) {
                 topBar={ Column(Modifier.statusBarsPadding().padding(horizontal=16.dp,vertical=12.dp)) {
                     Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)) {
                         OutlinedIconButton({scope.launch{drawer.open()}},Modifier.size(46.dp).semantics{contentDescription="Menu"},shape=RoundedCornerShape(16.dp),border=BorderStroke(1.dp,Color(0xFF59437C))) { Mark("menu",tint=WhiteInk) }
-                        Column(Modifier.weight(1f)) { val hour=LocalTime.now().hour; Text(when { hour<12 -> L("☀ Good morning","☀ Guten Morgen");hour<18 -> L("☀ Good afternoon","☀ Guten Tag");else -> L("☾ Good evening","☾ Guten Abend") },fontSize=11.sp,color=Lavender,fontWeight=FontWeight.SemiBold); Text(labels[route] ?: "WageTrack",fontSize=23.sp,fontWeight=FontWeight.SemiBold) }
+                        Column(Modifier.weight(1f)) { val hour=LocalTime.now().hour; Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(5.dp)){Mark(if(hour<18)"sun"else "moon",Modifier.size(14.dp),Lime);Text(when { hour<12 -> L("Good morning","Guten Morgen");hour<18 -> L("Good afternoon","Guten Tag");else -> L("Good evening","Guten Abend") },fontSize=11.sp,color=Lavender,fontWeight=FontWeight.SemiBold)}; Text(labels[route] ?: "WageTrack",fontSize=23.sp,fontWeight=FontWeight.SemiBold) }
                         if(route in listOf("dashboard","shifts","expenses","history","planning")) HeaderMonth(vm)
                     }
 
