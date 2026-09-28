@@ -123,7 +123,7 @@ class WageRepository(private val db: WageTrackDatabase) {
         var changed = false
         val toUpdate = mutableListOf<Shift>()
         for (shift in allShifts) {
-            if (shift.status == "planned") {
+            if (shift.status == "planned" && shift.id != document().optJSONObject("activeTimer")?.optString("shiftId")) {
                 val range = PayrollCalculator.shiftRange(shift)
                 if (!range.end.isAfter(now)) {
                     toUpdate.add(shift.copy(status = "completed", completedAutomatically = true))
@@ -312,6 +312,7 @@ class WageRepository(private val db: WageTrackDatabase) {
             o.put("target", g.target)
             o.put("saved", g.saved)
             o.put("due", g.due)
+            o.put("defaultName", g.defaultName)
             o.put("auto", g.auto)
             o.put("autoInterval", g.autoInterval)
             o.put("autoAmount", g.autoAmount)

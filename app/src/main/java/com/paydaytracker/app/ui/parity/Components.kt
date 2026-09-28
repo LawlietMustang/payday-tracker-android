@@ -52,8 +52,9 @@ val LocalLanguage = compositionLocalOf { "en" }
 } }
 @Composable fun Choice(label: String, value: String, choices: List<Pair<String, String>>, onSelect: (String) -> Unit) {
     var open by remember { mutableStateOf(false) }
+    val tint = LocalContentColor.current
     Column { if (label.isNotEmpty()) Text(label, fontSize = 12.sp, modifier = Modifier.padding(bottom = 4.dp))
-        Box { OutlinedButton({ open = true }, Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+        Box { OutlinedButton({ open = true }, Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = tint)) {
             Text(choices.firstOrNull { it.first == value }?.second ?: value, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis); Text("⌄")
         }; DropdownMenu(open, { open = false }) { choices.forEach { (key, name) -> DropdownMenuItem(text = { Text(name) }, onClick = { onSelect(key); open = false }) } } }
     }

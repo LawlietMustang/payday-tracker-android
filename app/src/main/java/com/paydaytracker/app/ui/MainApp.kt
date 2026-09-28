@@ -68,10 +68,9 @@ fun MainApp(viewModel: MainViewModel) {
                     Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)) {
                         OutlinedIconButton({scope.launch{drawer.open()}},Modifier.size(46.dp).semantics{contentDescription="Menu"},shape=RoundedCornerShape(16.dp),border=BorderStroke(1.dp,Color(0xFF59437C))) { Mark("menu",tint=WhiteInk) }
                         Column(Modifier.weight(1f)) { val hour=LocalTime.now().hour; Text(when { hour<12 -> L("☀ Good morning","☀ Guten Morgen");hour<18 -> L("☀ Good afternoon","☀ Guten Tag");else -> L("☾ Good evening","☾ Guten Abend") },fontSize=11.sp,color=Lavender,fontWeight=FontWeight.SemiBold); Text(labels[route] ?: "WageTrack",fontSize=23.sp,fontWeight=FontWeight.SemiBold) }
+                        if(route in listOf("dashboard","shifts","expenses","history","planning")) HeaderMonth(vm)
                     }
-                    if(route in listOf("dashboard","shifts","expenses","history","planning")) { val month by vm.selectedMonth.collectAsState(); Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.End) {
-                        TextButton(vm::prevMonth){Text("‹",color=WhiteInk)};Text(Formatters.formatMonthTitle(month),fontSize=13.sp);TextButton(vm::nextMonth){Text("›",color=WhiteInk)}
-                    } }
+
                 } }, bottomBar={
                     Surface(Modifier.navigationBarsPadding().padding(horizontal=12.dp,vertical=10.dp),shape=RoundedCornerShape(30.dp),color=Purple,border=BorderStroke(1.dp,Color(0xFF59437C))) {
                         Row(Modifier.fillMaxWidth().padding(horizontal=8.dp,vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
@@ -83,9 +82,9 @@ fun MainApp(viewModel: MainViewModel) {
                 }) { padding -> Box(Modifier.padding(padding).fillMaxSize().testTag("screen-$route")) {
                 when(route) {
                     "dashboard" -> Overview(vm,::navigate,{add()},::edit)
-                    "shifts" -> Hours(vm,::add,::edit)
+                    "shifts" -> Hours(vm,::add,::edit){navigate("workplaces")}
                     "expenses" -> Expenses(vm)
-                    "history" -> History(vm)
+                    "history" -> History(vm){navigate("workplaces")}
                     "planning" -> Planning(vm)
                     "settings","profile","pay","workplaces","appearance" -> Preferences(vm,route,::navigate)
                     "reminders","lock" -> DevicePage(vm,route)
@@ -95,4 +94,22 @@ fun MainApp(viewModel: MainViewModel) {
         }
         if(shiftOpen) ShiftEditor(vm,editShift,shiftDate,template,{shiftOpen=false})
     } }
+}
+
+@Composable private fun HeaderMonth(vm: MainViewModel) {
+    val month by vm.selectedMonth.collectAsState()
+    var open by remember { mutableStateOf(false) }
+    Surface(onClick = { open = true }, color = Raised, contentColor = WhiteInk, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Lavender.copy(alpha=.4f))) {
+        Text(java.time.YearMonth.parse(month).format(java.time.format.DateTimeFormatter.ofPattern("MMM yyyy", Formatters.locale))+" ⌄", Modifier.padding(horizontal=12.dp,vertical=15.dp),fontSize=12.sp)
+    }
+    if(open) AlertDialog(onDismissRequest={open=false},title={Text(L("Select month","Monat auswählen"))},text={
+        Column {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically) {
+                TextButton(vm::prevMonth){Text("‹")};Text(Formatters.formatMonthTitle(month));TextButton(vm::nextMonth){Text("›")}
+            }
+            val ym=java.time.YearMonth.parse(month)
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){TextButton({vm.setMonth(ym.minusYears(1).toString())}){Text("− 1 "+L("year","Jahr"))};TextButton({vm.setMonth(ym.plusYears(1).toString())}){Text("+ 1 "+L("year","Jahr"))}}
+            TextButton({vm.setMonth(java.time.YearMonth.now().toString());open=false}){Text(L("This month","Dieser Monat"))}
+        }
+    },confirmButton={TextButton({open=false}){Text(L("Done","Fertig"))}})
 }

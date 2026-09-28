@@ -24,7 +24,7 @@ jobs:
       - name: Verify embedded offline icons
         run: python3 scripts/embed-icon-masks.py --check
       - name: Compile Android validation build (not distributed)
-        run: gradle --no-daemon assembleDebug
+        run: gradle --no-daemon assembleDebug testDebugUnitTest
       - name: Audit unused Android resources
         run: gradle --no-daemon -PresourceAudit :app:lintDebug
       - name: Test UI

@@ -1,6 +1,9 @@
 package com.paydaytracker.app
 
 import androidx.compose.ui.test.*
+import android.graphics.Bitmap
+import androidx.test.platform.app.InstrumentationRegistry
+import java.io.File
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.paydaytracker.app.data.*
@@ -20,15 +23,24 @@ class DeviceSmoke {
         repository.updateDocument { it.put("language","en").put("onboardingCompleted",true) }
         compose.waitUntil(15000) { compose.onAllNodesWithTag("screen-dashboard").fetchSemanticsNodes().isNotEmpty() }
     }
+    private fun screenshot(name: String) {
+        compose.waitForIdle()
+        val image=InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
+        val dir=File(compose.activity.getExternalFilesDir(null), "native-screens").apply { mkdirs() }
+        File(dir,"$name.png").outputStream().use { image.compress(Bitmap.CompressFormat.PNG,100,it) }
+        image.recycle()
+    }
     @Test fun originalNavigationIsRestored() {
         for(route in listOf("shifts","expenses","history","dashboard")) {
             compose.onNodeWithTag("nav-$route").performClick()
             compose.onNodeWithTag("screen-$route").assertExists()
+            screenshot(route)
         }
         compose.onNodeWithContentDescription("Menu").performClick()
         compose.onNodeWithText("Settings",useUnmergedTree=true).performClick()
         compose.onNodeWithText("Reminders & widget").performScrollTo().performClick()
         compose.onNodeWithText("Upcoming shifts").assertExists()
+        screenshot("reminders")
         compose.onNodeWithText("App lock").performClick()
         compose.onNodeWithText("Biometric / PIN lock").assertExists()
         compose.onNodeWithText("Reminders").performClick()

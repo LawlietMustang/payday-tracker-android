@@ -19,12 +19,12 @@ import java.time.*
 import java.util.UUID
 
 @OptIn(ExperimentalFoundationApi::class)
-@Composable fun Hours(vm:MainViewModel,add:(String,ShiftTemplate?)->Unit,edit:(String)->Unit) {
+@Composable fun Hours(vm:MainViewModel,add:(String,ShiftTemplate?)->Unit,edit:(String)->Unit,manage:()->Unit) {
     val month by vm.selectedMonth.collectAsState();val all by vm.shifts.collectAsState();val workplaces by vm.workplaces.collectAsState();val filter by vm.workplaceFilter.collectAsState();val templates by vm.shiftTemplates.collectAsState()
     val shifts=all.filter{it.date.startsWith(month)&&(filter=="all"||it.workplaceId==filter)}.sortedByDescending{it.date+it.start}
     var day by remember{mutableStateOf<String?>(null)};var selected by remember(month){mutableStateOf(setOf<String>())};var delete by remember{mutableStateOf(false)}
     Page {
-        WorkplacePicker(vm){}
+        WorkplacePicker(vm,manage)
         WageCard(color=Purple){CompositionLocalProvider(LocalContentColor provides WhiteInk){Eyebrow(L("Your shifts","Deine Schichten"));Heading(F.formatMonthTitle(month));CalendarGrid(month,shifts){day=it}
             Text(L("● Planned   ● Completed   ● Cancelled","● Geplant   ● Erledigt   ● Abgesagt"),fontSize=10.sp,color=Lavender)
             HorizontalDivider(color=Lavender.copy(alpha=.3f));Eyebrow(L("Quick shift templates","Schnelle Schichtvorlagen"))
@@ -34,7 +34,7 @@ import java.util.UUID
         if(selected.isNotEmpty())WageCard{Text("${selected.size} "+L("selected","ausgewählt"));Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(6.dp)){Action(L("Delete","Löschen")){delete=true};listOf("planned","completed","cancelled").forEach{status->Action(statusLabel(status)){shifts.filter{it.id in selected}.forEach{vm.saveShift(it.copy(status=status,statusSource="manual",cancelledBy=if(status=="cancelled")"employer"else null))};selected=emptySet()}};Action(L("Done","Fertig")){selected=emptySet()}}}
         if(shifts.isEmpty())WageCard{Text(L("No shifts this month.","Noch keine Schichten in diesem Monat."));Action(L("+ Add shift","+ Schicht hinzufügen"),primary=true){add(month+"-01",null)}}
         shifts.forEach{shift->WageCard{Row(verticalAlignment=Alignment.CenterVertically){if(selected.isNotEmpty())Checkbox(shift.id in selected,{selected=if(shift.id in selected)selected-shift.id else selected+shift.id})
-            Box(Modifier.weight(1f).combinedClickable(onClick={if(selected.isEmpty())edit(shift.id)else selected=if(shift.id in selected)selected-shift.id else selected+shift.id},onLongClick={selected=selected+shift.id}).testTag("shift-${shift.id}")){ShiftRow(shift,workplaces.firstOrNull{it.id==shift.workplaceId}?.name ?: "",{if(selected.isEmpty())edit(shift.id)else selected=if(shift.id in selected)selected-shift.id else selected+shift.id})}
+            Box(Modifier.weight(1f).testTag("shift-${shift.id}")){ShiftRow(shift,workplaces.firstOrNull{it.id==shift.workplaceId}?.name ?: "",{if(selected.isEmpty())edit(shift.id)else selected=if(shift.id in selected)selected-shift.id else selected+shift.id},longClick={selected=selected+shift.id})}
         }}}
     }
     if(day!=null)AlertDialog(onDismissRequest={day=null},title={Text(day!!)},text={Column{shifts.filter{it.date==day}.forEach{shift->LinkRow(shift.start+"–"+shift.end,statusLabel(shift.status)){day=null;edit(shift.id)}};Action(L("+ Add shift","+ Schicht hinzufügen"),primary=true){val d=day!!;day=null;add(d,null)}}},confirmButton={TextButton({day=null}){Text(L("Close","Schließen"))}})
@@ -58,7 +58,7 @@ import java.util.UUID
         if(templates.isNotEmpty())Choice(L("Shift template","Schichtvorlage"),"",listOf("" to L("No template","Keine Vorlage"))+templates.map{it.id to it.name}){id->templates.firstOrNull{it.id==id}?.let{start=it.start;end=it.end;pause=it.breakMin.toString();note=it.note}}
         Choice(L("Workplace","Arbeitsplatz"),workplace,places.map{it.id to it.name}){workplace=it}
         Field(L("Date (YYYY-MM-DD)","Datum (JJJJ-MM-TT)"),date,{date=it})
-        if(shift==null) {Action(L("+ More dates","+ Weitere Tage")){val d=runCatching{LocalDate.parse(date)}.getOrDefault(LocalDate.now());DatePickerDialog(context,{_,y,m,day->moreDates=moreDates+LocalDate.of(y,m+1,day).toString()},d.year,d.monthValue-1,d.dayOfMonth).show()};if(moreDates.isNotEmpty())TextButton({moreDates=emptySet()}){Text(moreDates.joinToString()+L(" · Clear"," · Leeren"),fontSize=11.sp)}}
+        if(shift==null) {Action(L("+ More dates","+ Weitere Tage")){val d=runCatching{LocalDate.parse(date)}.getOrDefault(LocalDate.now());DatePickerDialog(context,{_,y,m,day->val chosen=LocalDate.of(y,m+1,day).toString();moreDates=if(chosen in moreDates)moreDates-chosen else moreDates+chosen},d.year,d.monthValue-1,d.dayOfMonth).show()};if(moreDates.isNotEmpty())TextButton({moreDates=emptySet()}){Text(moreDates.joinToString()+L(" · Clear"," · Leeren"),fontSize=11.sp)}}
         Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Field(L("Start (HH:mm)","Beginn (HH:mm)"),start,{start=it},Modifier.weight(1f));Field(L("End (HH:mm)","Ende (HH:mm)"),end,{end=it},Modifier.weight(1f))}
         Field(L("Unpaid break (minutes)","Pause (Minuten)"),pause,{pause=it})
         Choice(L("Status","Status"),effective,listOf("planned","completed","cancelled").map{it to statusLabel(it)}){status=it;manual=true}
