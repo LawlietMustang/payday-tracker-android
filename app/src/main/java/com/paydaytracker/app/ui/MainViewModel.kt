@@ -53,6 +53,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (repository.workplaces.first().isNotEmpty() && !doc.has("onboardingCompleted")) repository.updateDocument { it.put("onboardingCompleted", true) }
             val language = doc.optString("language", getApplication<Application>().getSharedPreferences("device", 0).getString("language", "de"))
             getApplication<Application>().getSharedPreferences("device", 0).edit().putString("language", language).apply()
+            workplaceFilter.value = doc.optString("workplaceFilter", "all")
             ready.value = true
             repository.reconcileShiftStatuses()
             repository.materializeRecurringExpenses(selectedMonth.value)
@@ -225,6 +226,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setFilter(filter: String) {
         workplaceFilter.value = filter
+        updateDocument { it.put("workplaceFilter", filter) }
     }
 
     fun saveTimedShift(shift: Shift) { viewModelScope.launch { repository.saveTimedShift(shift); triggerBackup() } }

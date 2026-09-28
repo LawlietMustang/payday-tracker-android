@@ -16,8 +16,7 @@ object DataMigration {
     suspend fun checkAndMigrate(context: Context, repository: WageRepository): Boolean {
         val prefs = context.getSharedPreferences("migration", 0)
         if (prefs.getBoolean("migrated_to_native", false) && repository.document().length() > 0) return false
-        val db = WageTrackDatabase.getInstance(context)
-        val hasData = db.workplaceDao().getAll().isNotEmpty() || db.shiftDao().getAll().isNotEmpty()
+        val hasData = repository.hasRecords()
         val raw = withContext(Dispatchers.Main) {
             withTimeout(15000) {
                 suspendCancellableCoroutine<String?> { continuation ->

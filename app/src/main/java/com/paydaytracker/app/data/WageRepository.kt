@@ -15,6 +15,7 @@ import java.util.UUID
 class WageRepository(private val db: WageTrackDatabase) {
 
     val document = db.documentDao().observe().map { it?.json ?: "{}" }
+    suspend fun hasRecords() = db.workplaceDao().getAll().isNotEmpty() || db.shiftDao().getAll().isNotEmpty()
     suspend fun document(): JSONObject = JSONObject(db.documentDao().get()?.json ?: "{}")
     suspend fun updateDocument(edit: (JSONObject) -> Unit) = db.withTransaction {
         val doc = document(); edit(doc); db.documentDao().put(NativeDocument(json = doc.toString()))
@@ -224,7 +225,7 @@ class WageRepository(private val db: WageTrackDatabase) {
         sObj.put("payslipReminder", s.payslipReminder)
         data.put("settings", sObj)
 
-        val pObj = JSONObject()
+        val pObj = data.optJSONObject("profile") ?: JSONObject()
         pObj.put("name", p.name)
         pObj.put("street", p.street)
         pObj.put("city", p.city)

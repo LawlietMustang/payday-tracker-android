@@ -84,7 +84,7 @@ val LocalLanguage = compositionLocalOf { "en" }
         when(kind) {
             "home" -> { val p = Path().apply { moveTo(3*s,10*s); lineTo(12*s,3*s); lineTo(21*s,10*s); lineTo(21*s,22*s); lineTo(3*s,22*s); close() }; drawPath(p,tint, style=Stroke(1.8f*s)) }
             "hours" -> { drawCircle(tint,10*s, Offset(12*s,12*s), style=Stroke(1.8f*s)); line(12f,6f,12f,12f); line(12f,12f,16f,15f) }
-            "expenses" -> { drawArc(tint,85f,190f,false,Offset(7*s,2*s),Size(14*s,20*s), style=Stroke(1.8f*s,cap=StrokeCap.Round)); line(3f,9f,17f,9f); line(3f,15f,17f,15f) }
+            "expenses" -> { drawArc(tint,60f,240f,false,Offset(7*s,2*s),Size(14*s,20*s), style=Stroke(1.8f*s,cap=StrokeCap.Round)); line(3f,9f,17f,9f); line(3f,15f,17f,15f) }
             "history" -> { drawRect(tint,Offset(4*s,2*s),Size(16*s,20*s), style=Stroke(1.8f*s)); line(8f,7f,16f,7f); line(8f,12f,16f,12f); line(8f,17f,13f,17f) }
             "add" -> { line(12f,3f,12f,21f); line(3f,12f,21f,12f) }
             "menu" -> { line(3f,5f,21f,5f); line(3f,12f,21f,12f); line(3f,19f,21f,19f) }
