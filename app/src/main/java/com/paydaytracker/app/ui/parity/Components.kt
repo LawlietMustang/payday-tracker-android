@@ -38,11 +38,11 @@ val LocalLanguage = compositionLocalOf { "en" }
 @Composable fun Page(content: @Composable ColumnScope.() -> Unit) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(18.dp), content = content)
 }
-@Composable fun Action(label: String, modifier: Modifier = Modifier, primary: Boolean = false, enabled: Boolean = true, onClick: () -> Unit) {
+@Composable fun Action(label: String, modifier: Modifier = Modifier, primary: Boolean = false, enabled: Boolean = true, compact: Boolean = false, onClick: () -> Unit) {
     Button(onClick, modifier.heightIn(min = 44.dp), enabled = enabled, shape = RoundedCornerShape(14.dp),
         border = BorderStroke(1.dp, if (primary) Ink else MaterialTheme.colorScheme.outline),
-        colors = ButtonDefaults.buttonColors(containerColor = if (primary) Lime else MaterialTheme.colorScheme.surface, contentColor = if (primary) Ink else MaterialTheme.colorScheme.onSurface), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp)) {
-        Text(label, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+        colors = ButtonDefaults.buttonColors(containerColor = if (primary) Lime else MaterialTheme.colorScheme.surface, contentColor = if (primary) Ink else MaterialTheme.colorScheme.onSurface), contentPadding = PaddingValues(horizontal = if(compact)4.dp else 16.dp, vertical = 10.dp)) {
+        Text(label, fontWeight = FontWeight.SemiBold, fontSize = if(compact)12.sp else 14.sp, maxLines = if(compact)1 else Int.MAX_VALUE)
     }
 }
 @Composable fun Eyebrow(text: String) { Text(text.uppercase(), fontSize = 10.sp, letterSpacing = 1.sp, fontWeight = FontWeight.Bold, color = LocalContentColor.current.copy(alpha = .7f)) }

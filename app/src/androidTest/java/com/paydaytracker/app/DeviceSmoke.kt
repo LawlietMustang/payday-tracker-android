@@ -25,6 +25,8 @@ class DeviceSmoke {
     }
     private fun screenshot(name: String) {
         compose.waitForIdle()
+        // Wait for the submitted frame to reach SurfaceFlinger before taking a device screenshot.
+        Thread.sleep(250)
         val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
         fun shell(command: String) = automation.executeShellCommand(command).use {
             android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes().decodeToString()
@@ -79,13 +81,14 @@ class DeviceSmoke {
             compose.waitForIdle()
             screenshot("overview-populated")
             compose.onNodeWithText("Earnings, progress & recent shifts",substring=true).performScrollTo().performClick()
-            compose.onNodeWithText("GROSS EARNED").performScrollTo()
+            compose.onNodeWithTag("earnings-row").performScrollTo()
             screenshot("earnings-populated")
             compose.onNodeWithContentDescription("Menu").performClick()
             compose.onNodeWithText("Settings",useUnmergedTree=true).performClick()
             compose.onNodeWithText("Budgets & goals").performClick()
             compose.waitUntil(10000){compose.onAllNodesWithText("Holiday fund").fetchSemanticsNodes().isNotEmpty()}
             compose.onNodeWithText("Holiday fund").assertExists()
+            compose.onNodeWithTag("goal-visual-goal").performScrollTo()
             screenshot("goals-populated")
             compose.onNodeWithTag("nav-dashboard").performClick()
             compose.onNodeWithText("▶ Start work").performScrollTo().performClick()

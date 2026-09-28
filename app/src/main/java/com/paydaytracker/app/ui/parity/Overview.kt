@@ -24,6 +24,7 @@ fun timerTotals(t: JSONObject, now: Long): Pair<Long,Long> = (t.optLong("workedM
 fun clock(ms: Long): String { val s=ms/1000;return "%02d:%02d:%02d".format(s/3600,s/60%60,s%60) }
 
 @Composable fun Overview(vm: MainViewModel, navigate: (String)->Unit, add: ()->Unit, edit: (String)->Unit) {
+    val payslips by vm.payslips.collectAsState()
     val s by vm.currentMonthSummary.collectAsState(); val forecast by vm.currentMonthForecast.collectAsState(); val settings by vm.settings.collectAsState()
     val shifts by vm.shifts.collectAsState(); val workplaces by vm.workplaces.collectAsState(); val filter by vm.workplaceFilter.collectAsState(); val month by vm.selectedMonth.collectAsState(); val expenses by vm.expenses.collectAsState()
     val summary=s ?: return; val money: (Double)->String={F.formatMoney(it,settings.currency)}
@@ -45,12 +46,12 @@ fun clock(ms: Long): String { val s=ms/1000;return "%02d:%02d:%02d".format(s/360
             Stat(L("Base pay","Grundlohn"),money(summary.baseGross));Stat(L("Bonuses","Zuschläge"),money(summary.bonus.total))
             listOf(L("Overtime","Überstunden") to summary.bonus.overtime,L("Night","Nacht") to summary.bonus.night,L("Sunday","Sonntag") to summary.bonus.sunday,L("Holiday","Feiertag") to summary.bonus.holiday).forEach{Stat(it.first,money(it.second))}
         }
-        WageCard { Eyebrow(L("Payslip check","Lohnabrechnung"));Heading(L("Compare your pay","Deinen Lohn vergleichen"));Text(L("Add a payslip to see the difference.","Abrechnung hinzufügen und Unterschiede sehen."),fontSize=13.sp);Action(L("Add payslip →","Abrechnung hinzufügen →")){navigate("history")} }
+
         Surface(onClick={details=!details},shape=RoundedCornerShape(18.dp),color=Purple,contentColor=WhiteInk,border=BorderStroke(1.dp,Lavender.copy(alpha=.4f))) {Text((if(details)"▾ " else "▸ ")+L("Earnings, progress & recent shifts","Verdienst, Fortschritt & letzte Schichten"),Modifier.fillMaxWidth().padding(18.dp),fontSize=13.sp,fontWeight=FontWeight.SemiBold)}
         if(details) {
             val previous=PayrollCalculator.summary(YearMonth.parse(month).minusMonths(1).toString(),shifts,settings,workplaces,filter)
             val delta=if(previous.gross>0)"%+.1f%%".format(F.locale,(summary.gross/previous.gross-1)*100)else "–"
-            Row(horizontalArrangement=Arrangement.spacedBy(12.dp)) { Metric(L("Gross earned","Brutto verdient"),money(summary.gross),F.formatDuration(summary.minutes)+" · "+summary.done.size+L(" shifts"," Schichten"),Modifier.weight(1f),L("To date","Bisher"));Metric(L("Estimated net","Geschätztes Netto"),money(summary.est.net),money(if(summary.minutes>0)summary.est.net/(summary.minutes/60.0)else 0.0)+"/h",Modifier.weight(1f)) }
+            Row(Modifier.testTag("earnings-row"),horizontalArrangement=Arrangement.spacedBy(12.dp)) { Metric(L("Gross earned","Brutto verdient"),money(summary.gross),F.formatDuration(summary.minutes)+" · "+summary.done.size+L(" shifts"," Schichten"),Modifier.weight(1f),L("To date","Bisher"));Metric(L("Estimated net","Geschätztes Netto"),money(summary.est.net),money(if(summary.minutes>0)summary.est.net/(summary.minutes/60.0)else 0.0)+"/h",Modifier.weight(1f)) }
             Row(horizontalArrangement=Arrangement.spacedBy(12.dp)) { Metric(L("Monthly forecast","Monatsprognose"),money(forecast?.gross ?: 0.0),F.formatDuration(forecast?.minutes ?: 0),Modifier.weight(1f),when(forecast?.confidence){"Hoch"->L("HIGH","HOCH");"Mittel"->L("MEDIUM","MITTEL");"Niedrig"->L("LOW","NIEDRIG");else->L("NO DATA","KEINE DATEN")});Metric(L("Vs previous month","Zum Vormonat"),delta,money(previous.gross),Modifier.weight(1f)) }
             WageCard { Eyebrow(L("Working time","Arbeitszeit")); Heading(L("Monthly progress","Monatsfortschritt"));val progress=if(settings.target>0)(summary.workedMinutes/(settings.target*60)).toFloat().coerceIn(0f,1f)else 0f
                 LinearProgressIndicator(progress={progress},Modifier.fillMaxWidth().height(10.dp),color=Pink);Stat(F.formatDuration(summary.workedMinutes),L("Target: ","Ziel: ")+F.formatDuration((settings.target*60).toInt()))
@@ -74,6 +75,19 @@ fun clock(ms: Long): String { val s=ms/1000;return "%02d:%02d:%02d".format(s/360
             }
             WageCard { Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Heading(L("Your shifts","Deine Schichten"));TextButton({navigate("shifts")}){Text(L("Show all →","Alle →"))}};summary.list.sortedByDescending{it.date+it.start}.take(5).forEach{shift->ShiftRow(shift,workplaces.firstOrNull{it.id==shift.workplaceId}?.name ?: "",{edit(shift.id)})} }
         }
+        WageCard(color=Purple) { CompositionLocalProvider(LocalContentColor provides WhiteInk) {
+            Eyebrow(L("Payslip check","Lohnabrechnung"));Heading(L("Compare your pay","Deinen Lohn vergleichen"))
+            val pays=payslips.filter{it.month==month&&(filter=="all"||it.workplaceId==filter)}
+            if(pays.isEmpty())Text(L("Add a payslip to see the difference.","Abrechnung hinzufügen und Unterschiede sehen."),fontSize=13.sp)
+            else {
+                val expected=pays.sumOf{PayrollCalculator.summary(month,shifts,settings,workplaces,it.workplaceId).est.net}
+                val actual=pays.sumOf{it.actualNet}
+                Stat(L("Estimated net","Geschätztes Netto"),money(expected));Stat(L("Payslip net","Abrechnungsnetto"),money(actual))
+                Stat(L("Difference","Differenz"),money(actual-expected))
+            }
+            Action(L("View payslips →","Abrechnungen ansehen →")){navigate("history")}
+        } }
+
     }
 }
 @Composable fun Metric(label: String, value: String, foot: String, modifier: Modifier = Modifier, badge: String = "") {
@@ -102,7 +116,10 @@ fun clock(ms: Long): String { val s=ms/1000;return "%02d:%02d:%02d".format(s/360
     WageCard(color=Purple) {CompositionLocalProvider(LocalContentColor provides WhiteInk){Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Eyebrow(L("Live time clock","Live-Zeiterfassung"));if(timer!=null)Text(L("● Ongoing","● Laufend"),fontSize=11.sp,color=Lime)}
         Text(if(timer==null)L("Ready to start","Bereit zum Start")else if(breaking)L("On break","Pause läuft")else L("Working","Arbeitszeit läuft"),color=Lavender,fontSize=14.sp)
         Text(clock(if(breaking)totals.second else totals.first),fontSize=40.sp,fontWeight=FontWeight.Bold,modifier=Modifier.testTag("timer-value"))
-        Stat(L("Break","Pause"),clock(totals.second))
+        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(28.dp)){
+            Column{Eyebrow(L("Start","Beginn"));Text(timer?.let{Instant.ofEpochMilli(it.optLong("startedAt")).atZone(ZoneId.systemDefault()).toLocalTime().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))} ?: "–",fontSize=16.sp)}
+            Column{Eyebrow(L("Break","Pause"));Text(clock(totals.second),fontSize=16.sp)}
+        }
         if(timer==null)Action(L("▶ Start work","▶ Arbeit starten"),Modifier.fillMaxWidth(),true,places.isNotEmpty()){val wp=places.firstOrNull{it.id==filter} ?: places.first();val ts=System.currentTimeMillis();val linked=shifts.filter{it.status=="planned"&&it.workplaceId==wp.id&&PayrollCalculator.shiftRange(it).let{r->LocalDateTime.now() >= r.start.minusMinutes(30) && LocalDateTime.now() < r.end}}.singleOrNull();vm.updateDocument{it.put("activeTimer",JSONObject().put("startedAt",ts).put("segmentStartedAt",ts).put("state","working").put("workplaceId",wp.id).put("shiftId",linked?.id))}}
         else {Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Action(if(breaking)L("Resume","Fortsetzen")else L("Take a break","Pause starten"),Modifier.weight(1f),true){vm.updateDocument{d->val t=d.optJSONObject("activeTimer") ?: return@updateDocument;val at=System.currentTimeMillis();val x=timerTotals(t,at);t.put("workedMs",x.first).put("breakMs",x.second).put("state",if(breaking)"working" else "break").put("segmentStartedAt",at).put("breakStartedAt",at)}};Action(L("Finish","Beenden"),Modifier.weight(1f)){confirm="finish"}};TextButton({confirm="discard"}){Text(L("Discard timer","Zeiterfassung verwerfen"),color=Lavender)}}
     } }
