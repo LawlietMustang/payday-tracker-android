@@ -25,16 +25,13 @@ class DeviceSmoke {
     }
     private fun screenshot(name: String) {
         compose.waitForIdle()
-        val image=InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
-        val dir=File(compose.activity.getExternalFilesDir(null), "native-screens").apply { mkdirs() }
-        val file=File(dir,"$name.png")
-        file.outputStream().use { image.compress(Bitmap.CompressFormat.PNG,100,it) }
-        image.recycle()
-        // Gradle removes the test app after instrumentation, including externalFilesDir.
-        // Copy evidence while installed to a shell-owned shared folder.
-        InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(
-            "mkdir -p /sdcard/Download/native-screens && cp ${file.absolutePath} /sdcard/Download/native-screens/$name.png"
-        ).use { android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes() }
+        val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+        fun shell(command: String) = automation.executeShellCommand(command).use {
+            android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes().decodeToString()
+        }
+        shell("mkdir -p /sdcard/Download/native-screens")
+        shell("screencap -p /sdcard/Download/native-screens/$name.png")
+        Assert.assertTrue("Screenshot must be nonempty", shell("wc -c /sdcard/Download/native-screens/$name.png").trim().substringBefore(' ').toLong() > 1000)
     }
     @Test fun originalNavigationIsRestored() {
         for(route in listOf("shifts","expenses","history","dashboard")) {
@@ -87,6 +84,7 @@ class DeviceSmoke {
             compose.onNodeWithContentDescription("Menu").performClick()
             compose.onNodeWithText("Settings",useUnmergedTree=true).performClick()
             compose.onNodeWithText("Budgets & goals").performClick()
+            compose.waitUntil(10000){compose.onAllNodesWithText("Holiday fund").fetchSemanticsNodes().isNotEmpty()}
             compose.onNodeWithText("Holiday fund").assertExists()
             screenshot("goals-populated")
             compose.onNodeWithTag("nav-dashboard").performClick()
