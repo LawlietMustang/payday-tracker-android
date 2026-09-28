@@ -16,15 +16,27 @@ import java.security.MessageDigest
 import java.time.YearMonth
 
 object NativeCoordinator {
+    private var timerToken: String? = null
+    fun syncTimer(context: Context, document: JSONObject) {
+        val timer = document.optJSONObject("activeTimer")
+        val token = timer?.toString() ?: "idle"
+        if (timerToken == token) return
+        timerToken = token
+        val now = System.currentTimeMillis()
+        val totals = timer?.let { com.paydaytracker.app.ui.parity.timerTotals(it, now) }
+        val state = timer?.optString("state") ?: "idle"
+        val elapsed = if (state == "break") totals?.second ?: 0L else totals?.first ?: 0L
+        val language = document.optString("language", context.getSharedPreferences("device", 0).getString("language", "de"))
+        context.getSharedPreferences("device", 0).edit().putString("timerState", state).putLong("timerBase", now-elapsed).putString("language", language).apply()
+        if (timer == null) context.stopService(android.content.Intent(context, TimerNotificationService::class.java))
+        else try { context.startForegroundService(android.content.Intent(context, TimerNotificationService::class.java).setAction(TimerNotificationService.ACTION_UPDATE).putExtra(TimerNotificationService.EXTRA_STATE,state).putExtra(TimerNotificationService.EXTRA_ELAPSED,elapsed).putExtra(TimerNotificationService.EXTRA_LANGUAGE,language)) } catch (_: IllegalStateException) { timerToken = null }
+        PaydayWidget.update(context)
+    }
+
 
     fun syncWidget(context: Context, summary: MonthSummary?, settings: AppSettings, timerState: String = "idle", timerBase: Long = 0L) {
         val prefs = context.getSharedPreferences("device", Context.MODE_PRIVATE)
         val language = prefs.getString("language", "de") ?: "de"
-        prefs.edit()
-            .putString("timerState", timerState)
-            .putLong("timerBase", timerBase)
-            .putString("language", language)
-            .apply()
 
         if (summary != null) {
             val doc = JSONObject()
@@ -41,16 +53,20 @@ object NativeCoordinator {
             val autoBackup = AutoBackup.get(context)
             val json = repository.exportBackupJson()
             val md = MessageDigest.getInstance("SHA-256")
-            val hash = md.digest(json.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
+            val hash = md.digest(JSONObject(json).getJSONObject("data").toString().toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
             autoBackup.enqueue(json, hash)
             val lang = context.getSharedPreferences("device", Context.MODE_PRIVATE).getString("language", "de") ?: "de"
             BackupReminder.update(context, dirty = true, language = lang)
         }
     }
 
-    fun syncShiftReminders(context: Context, shifts: List<Shift>, workplaces: List<Workplace>, leadMinutes: Long = 60) {
+    fun syncShiftReminders(context: Context, shifts: List<Shift>, workplaces: List<Workplace>, document: JSONObject = JSONObject()) {
         val doc = JSONObject()
-        doc.put("leadMinutes", leadMinutes)
+        val config = document.optJSONObject("shiftReminders") ?: JSONObject()
+        val lead = config.optLong("amount", 1) * if (config.optString("unit") == "days") 1440 else 60
+        doc.put("enabled", config.optBoolean("enabled"))
+        doc.put("language", document.optString("language", "de"))
+        doc.put("leadMinutes", lead.coerceIn(1, 43200))
         val wpMap = workplaces.associate { it.id to it.name }
         val shiftArray = JSONArray()
         shifts.filter { it.status == "planned" }.forEach { sh ->
@@ -61,7 +77,14 @@ object NativeCoordinator {
             o.put("workplace", wpMap[sh.workplaceId] ?: "")
             shiftArray.put(o)
         }
-        doc.put("shifts", shiftArray)
+        doc.put("glanceShifts", shiftArray)
+        val ids = config.optJSONArray("ids") ?: JSONArray()
+        val selected = (0 until ids.length()).map { ids.optString(it) }.toSet()
+        val rows = JSONArray()
+        for (i in 0 until shiftArray.length()) { val row = shiftArray.getJSONObject(i)
+            if (config.optString("scope", "all") == "all" || row.optString("id") in selected) rows.put(row)
+        }
+        doc.put("shifts", rows)
         ShiftReminders.replace(context, doc.toString())
     }
 

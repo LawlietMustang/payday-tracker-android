@@ -1,5 +1,7 @@
 package com.paydaytracker.app.data
 
+import androidx.room.withTransaction
+import com.paydaytracker.app.data.db.NativeDocument
 import com.paydaytracker.app.data.db.WageTrackDatabase
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -11,6 +13,13 @@ import java.time.YearMonth
 import java.util.UUID
 
 class WageRepository(private val db: WageTrackDatabase) {
+
+    val document = db.documentDao().observe().map { it?.json ?: "{}" }
+    suspend fun document(): JSONObject = JSONObject(db.documentDao().get()?.json ?: "{}")
+    suspend fun updateDocument(edit: (JSONObject) -> Unit) = db.withTransaction {
+        val doc = document(); edit(doc); db.documentDao().put(NativeDocument(json = doc.toString()))
+    }
+    suspend fun clearAll() = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { db.clearAllTables() }
 
     val workplaces: Flow<List<Workplace>> = db.workplaceDao().getAllFlow()
     val shifts: Flow<List<Shift>> = db.shiftDao().getAllFlow()
@@ -167,11 +176,11 @@ class WageRepository(private val db: WageTrackDatabase) {
         root.put("version", 1)
         root.put("created", java.time.Instant.now().toString())
 
-        val data = JSONObject()
+        val data = document()
         val s = getSettings()
         val p = getProfile()
 
-        val sObj = JSONObject()
+        val sObj = data.optJSONObject("settings") ?: JSONObject()
         sObj.put("wage", s.wage)
         sObj.put("target", s.target)
         sObj.put("savingsTarget", s.savingsTarget)
@@ -231,6 +240,8 @@ class WageRepository(private val db: WageTrackDatabase) {
             if (sh.cancelledBy != null) o.put("cancelledBy", sh.cancelledBy)
             if (sh.note != null) o.put("note", sh.note)
             o.put("created", sh.created)
+            o.put("plannedDate", sh.plannedDate); o.put("plannedStart", sh.plannedStart); o.put("plannedEnd", sh.plannedEnd)
+            o.put("completedAutomatically", sh.completedAutomatically)
             shiftArray.put(o)
         }
         data.put("shifts", shiftArray)
@@ -316,6 +327,12 @@ class WageRepository(private val db: WageTrackDatabase) {
         }
         data.put("customCategories", catArray)
 
+        val templates = JSONArray()
+        db.shiftTemplateDao().getAll().forEach { t -> templates.put(JSONObject().apply {
+            put("id", t.id); put("name", t.name); put("start", t.start); put("end", t.end)
+            put("breakMin", t.breakMin); put("status", t.status); put("note", t.note)
+        }) }
+        data.put("templates", templates)
         root.put("data", data)
         return root.toString(2)
     }
@@ -324,6 +341,8 @@ class WageRepository(private val db: WageTrackDatabase) {
         return try {
             val root = JSONObject(jsonString)
             val data = root.optJSONObject("data") ?: root
+            require(data.optJSONObject("settings") != null && data.optJSONArray("shifts") != null)
+            db.withTransaction {
 
             val workplaces = mutableListOf<Workplace>()
             val wpArray = data.optJSONArray("workplaces")
@@ -347,13 +366,17 @@ class WageRepository(private val db: WageTrackDatabase) {
                             end = o.getString("end"),
                             minutes = o.getInt("minutes"),
                             breakMin = o.optInt("breakMin", 0),
-                            wage = if (o.has("wage")) o.getDouble("wage") else null,
+                            wage = if (o.has("wage") && !o.isNull("wage")) o.getDouble("wage") else null,
                             workplaceId = o.optString("workplaceId", "default"),
                             status = o.optString("status", "completed"),
                             statusSource = o.optString("statusSource", "manual"),
                             cancelledBy = if (o.has("cancelledBy")) o.getString("cancelledBy") else null,
                             note = if (o.has("note")) o.getString("note") else null,
-                            created = o.optLong("created", System.currentTimeMillis())
+                            created = o.optLong("created", System.currentTimeMillis()),
+                            plannedDate = o.optString("plannedDate").takeIf { it.isNotEmpty() && it != "null" },
+                            plannedStart = o.optString("plannedStart").takeIf { it.isNotEmpty() && it != "null" },
+                            plannedEnd = o.optString("plannedEnd").takeIf { it.isNotEmpty() && it != "null" },
+                            completedAutomatically = o.optBoolean("completedAutomatically")
                         )
                     )
                 }
@@ -426,6 +449,7 @@ class WageRepository(private val db: WageTrackDatabase) {
                             name = o.getString("name"),
                             target = o.getDouble("target"),
                             saved = o.optDouble("saved", 0.0),
+                            defaultName = o.optBoolean("defaultName"),
                             due = o.optString("due", ""),
                             auto = o.optBoolean("auto", false),
                             autoInterval = o.optString("autoInterval", "monthly"),
@@ -520,7 +544,13 @@ class WageRepository(private val db: WageTrackDatabase) {
             if (ledger.isNotEmpty()) db.savingsLedgerDao().insertAll(ledger)
             if (categories.isNotEmpty()) db.customCategoryDao().insertAll(categories)
 
+            val ts = data.optJSONArray("templates") ?: JSONArray()
+            for (i in 0 until ts.length()) { val t = ts.getJSONObject(i)
+                db.shiftTemplateDao().insert(ShiftTemplate(t.getString("id"), t.getString("name"), t.getString("start"), t.getString("end"), t.optInt("breakMin"), t.optString("status", "completed"), t.optString("note")))
+            }
+            db.documentDao().put(NativeDocument(json = data.toString()))
             true
+            }
         } catch (_: Exception) {
             false
         }

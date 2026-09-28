@@ -4,9 +4,11 @@ import java.text.NumberFormat
 import java.util.Locale
 
 object Formatters {
+    var language: String = "de"
+    val locale get() = if (language == "en") Locale.UK else Locale.GERMANY
 
     fun formatMoney(amount: Double, currencyCode: String = "EUR"): String {
-        val locale = Locale.GERMANY
+        val locale = this.locale
         val format = NumberFormat.getCurrencyInstance(locale)
         try {
             format.currency = java.util.Currency.getInstance(currencyCode)
@@ -24,7 +26,7 @@ object Formatters {
         return try {
             val parts = monthKey.split("-").map { it.toInt() }
             val ym = java.time.YearMonth.of(parts[0], parts[1])
-            val formatter = java.time.format.DateTimeFormatter.ofPattern("MMMM yyyy", Locale.GERMANY)
+            val formatter = java.time.format.DateTimeFormatter.ofPattern("MMMM yyyy", locale)
             ym.format(formatter)
         } catch (_: Exception) {
             monthKey
