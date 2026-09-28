@@ -227,6 +227,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         workplaceFilter.value = filter
     }
 
+    fun saveTimedShift(shift: Shift) { viewModelScope.launch { repository.saveTimedShift(shift); triggerBackup() } }
     fun saveShift(shift: Shift) {
         viewModelScope.launch {
             repository.saveShift(shift)

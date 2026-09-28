@@ -66,6 +66,23 @@ class WageRepository(private val db: WageTrackDatabase) {
         db.workplaceDao().deleteById(id)
     }
 
+    suspend fun saveTimedShift(shift: Shift) = db.withTransaction {
+        db.shiftDao().insert(shift)
+        updateDocument { it.put("activeTimer", JSONObject.NULL) }
+    }
+    suspend fun recoverLegacyExtras(raw: String) = db.withTransaction {
+        val root = JSONObject(raw); val data = root.optJSONObject("data") ?: root
+        require(data.has("settings") && data.has("shifts"))
+        data.optJSONObject("activeTimer")?.let { data.put("legacyActiveTimer", it) }
+        data.put("activeTimer", JSONObject.NULL).put("onboardingCompleted", true)
+        val existing = db.shiftTemplateDao().getAll().map { it.id }.toSet()
+        val templates = data.optJSONArray("templates") ?: JSONArray()
+        for (i in 0 until templates.length()) { val t = templates.getJSONObject(i)
+            if (t.getString("id") !in existing) db.shiftTemplateDao().insert(ShiftTemplate(t.getString("id"),t.getString("name"),t.getString("start"),t.getString("end"),t.optInt("breakMin"),t.optString("status","completed"),t.optString("note")))
+        }
+        db.documentDao().put(NativeDocument(json = data.toString()))
+    }
+
     suspend fun saveShift(shift: Shift) = db.shiftDao().insert(shift)
     suspend fun saveShifts(shifts: List<Shift>) = db.shiftDao().insertAll(shifts)
     suspend fun deleteShift(id: String) = db.shiftDao().deleteById(id)

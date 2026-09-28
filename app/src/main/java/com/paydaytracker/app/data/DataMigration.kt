@@ -9,15 +9,15 @@ import org.json.JSONObject
 import org.json.JSONTokener
 import java.io.File
 import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 /** One-time localStorage reader. No web screen or legacy application script is executed. */
 object DataMigration {
     suspend fun checkAndMigrate(context: Context, repository: WageRepository): Boolean {
         val prefs = context.getSharedPreferences("migration", 0)
-        if (prefs.getBoolean("migrated_to_native", false)) return false
+        if (prefs.getBoolean("migrated_to_native", false) && repository.document().length() > 0) return false
         val db = WageTrackDatabase.getInstance(context)
         val hasData = db.workplaceDao().getAll().isNotEmpty() || db.shiftDao().getAll().isNotEmpty()
-        if (hasData) { prefs.edit().putBoolean("migrated_to_native", true).apply(); return false }
         val raw = withContext(Dispatchers.Main) {
             withTimeout(15000) {
                 suspendCancellableCoroutine<String?> { continuation ->
@@ -36,7 +36,7 @@ object DataMigration {
                                             doc.put("language", payload.optString("language", "de").takeIf { it == "en" } ?: "de")
                                             continuation.resume(doc.toString())
                                         } else continuation.resume(null)
-                                    } catch (e: Exception) { continuation.resume(null) }
+                                    } catch (e: Exception) { continuation.resumeWithException(e) }
                                 }
                                 web.destroy()
                             }
@@ -53,9 +53,10 @@ object DataMigration {
         val source = raw ?: fallback?.takeIf { it.isNotBlank() }
         if (source != null) {
             withContext(Dispatchers.IO) { File(context.filesDir, "pre-native-migration.json").writeText(source) }
-            check(repository.importBackupJson(source)) { "Saved data could not be imported. Your original data is retained." }
+            if (hasData) repository.recoverLegacyExtras(source) else check(repository.importBackupJson(source)) { "Saved data could not be imported. Your original data is retained." }
             repository.updateDocument { if (!it.has("onboardingCompleted")) it.put("onboardingCompleted", true) }
         }
+        if (source == null) repository.updateDocument { it.put("nativeInitialized", true) }
         prefs.edit().putBoolean("migrated_to_native", true).apply()
         return source != null
     }
