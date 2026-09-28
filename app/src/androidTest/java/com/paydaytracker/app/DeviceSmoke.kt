@@ -27,8 +27,14 @@ class DeviceSmoke {
         compose.waitForIdle()
         val image=InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
         val dir=File(compose.activity.getExternalFilesDir(null), "native-screens").apply { mkdirs() }
-        File(dir,"$name.png").outputStream().use { image.compress(Bitmap.CompressFormat.PNG,100,it) }
+        val file=File(dir,"$name.png")
+        file.outputStream().use { image.compress(Bitmap.CompressFormat.PNG,100,it) }
         image.recycle()
+        // Gradle removes the test app after instrumentation, including externalFilesDir.
+        // Copy evidence while installed to a shell-owned shared folder.
+        InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(
+            "mkdir -p /sdcard/Download/native-screens && cp ${file.absolutePath} /sdcard/Download/native-screens/$name.png"
+        ).use { android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes() }
     }
     @Test fun originalNavigationIsRestored() {
         for(route in listOf("shifts","expenses","history","dashboard")) {

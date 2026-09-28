@@ -37,7 +37,7 @@ jobs:
             adb logcat -c
             timeout 480s gradle --no-daemon connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.paydaytracker.app.DeviceSmoke,com.paydaytracker.app.UpgradeSmoke || { adb logcat -d > device-logcat.txt; exit 1; }
             adb logcat -d > device-logcat.txt
-            adb pull /sdcard/Android/data/com.paydaytracker.app.debug/files/native-screens native-screens
+            adb pull /sdcard/Download/native-screens native-screens
       - name: Upload native test results
         uses: actions/upload-artifact@v4
         if: always()
