@@ -158,22 +158,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         PayrollCalculator.spendingProjection(month, expList)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
-    val savingsAvailableCents: StateFlow<Long> = combine(
-        shifts,
-        expenses,
-        recurringExpenses,
-        savingsGoals,
-        savingsLedger
-    ) { s, e, r, g, l ->
+    private data class SavingsInputs(
+        val shifts: List<Shift>, val expenses: List<Expense>, val recurring: List<RecurringExpense>,
+        val goals: List<SavingsGoal>, val ledger: List<SavingsLedgerEntry>
+    )
+    private val savingsInputs = combine(shifts, expenses, recurringExpenses, savingsGoals, savingsLedger) { s, e, r, g, l ->
+        SavingsInputs(s, e, r, g, l)
+    }
+    val savingsAvailableCents: StateFlow<Long> = combine(savingsInputs, settings, workplaces) { data, appSettings, jobs ->
         PayrollCalculator.savingsAvailable(
-            now = LocalDateTime.now(),
-            shifts = s,
-            expenses = e,
-            recurringExpenses = r,
-            savingsGoals = g,
-            savingsLedger = l,
-            settings = settings.value,
-            workplaces = workplaces.value
+            now = LocalDateTime.now(), shifts = data.shifts, expenses = data.expenses,
+            recurringExpenses = data.recurring, savingsGoals = data.goals, savingsLedger = data.ledger,
+            settings = appSettings, workplaces = jobs
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0L)
 
@@ -204,8 +200,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         viewModelScope.launch {
-            combine(payslips, settings) { payslipList, s ->
-                NativeCoordinator.syncPayslipReminder(getApplication(), payslipList, s.payslipReminder)
+            combine(payslips, settings, shifts, ready) { payslipList, s, shiftList, loaded ->
+                if(loaded)NativeCoordinator.syncPayslipReminder(getApplication(), payslipList, s.payslipReminder, shiftList)
             }.collect {}
         }
     }

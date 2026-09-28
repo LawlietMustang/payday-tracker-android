@@ -201,7 +201,7 @@ class WageRepository(private val db: WageTrackDatabase) {
         return res.changed
     }
 
-    suspend fun exportBackupJson(): String {
+    suspend fun exportBackupJson(): String = db.withTransaction {
         val root = JSONObject()
         root.put("app", "PaydayTracker")
         root.put("version", 1)
@@ -366,7 +366,7 @@ class WageRepository(private val db: WageTrackDatabase) {
         }) }
         data.put("templates", templates)
         root.put("data", data)
-        return root.toString(2)
+        root.toString(2)
     }
 
     suspend fun importBackupJson(jsonString: String): Boolean {

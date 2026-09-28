@@ -88,19 +88,17 @@ object NativeCoordinator {
         ShiftReminders.replace(context, doc.toString())
     }
 
-    fun syncPayslipReminder(context: Context, payslips: List<Payslip>, enabled: Boolean) {
+    fun syncPayslipReminder(context: Context, payslips: List<Payslip>, enabled: Boolean, shifts: List<Shift> = emptyList()) {
         val doc = JSONObject()
         doc.put("enabled", enabled)
         val lang = context.getSharedPreferences("device", Context.MODE_PRIVATE).getString("language", "de") ?: "de"
         doc.put("language", lang)
-        val current = YearMonth.now()
-        val prev = current.minusMonths(1).toString()
-        val hasPrev = payslips.any { it.month == prev }
         val monthsArray = JSONArray()
-        monthsArray.put(JSONObject().apply {
-            put("month", prev)
-            put("missing", !hasPrev)
-        })
+        shifts.filter { it.status != "cancelled" }.groupBy { it.date.take(7) }.forEach { (month, records) ->
+            monthsArray.put(JSONObject().put("month",month).put("missing",records.map{it.workplaceId}.distinct().any { workplace ->
+                payslips.none { it.month == month && it.workplaceId == workplace }
+            }))
+        }
         doc.put("months", monthsArray)
         PayslipReminder.update(context, doc.toString())
     }
