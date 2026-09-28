@@ -34,11 +34,6 @@ class MainActivity : ComponentActivity() {
             window.setDecorFitsSystemWindows(false)
         }
 
-        // Check and migrate data from legacy WebView localStorage if this is an upgrade (Phase 5)
-        lifecycleScope.launch {
-            DataMigration.checkAndMigrate(this@MainActivity, repository)
-        }
-
         val root = FrameLayout(this).apply {
             setBackgroundColor(getColor(R.color.app_background))
         }
@@ -58,6 +53,7 @@ class MainActivity : ComponentActivity() {
         appLockInstance = appLock
 
         setContentView(root)
+        viewModel.initialize()
 
         // Handle payslip reminder deep-link intent if opened from notification
         handleIncomingIntent(intent)

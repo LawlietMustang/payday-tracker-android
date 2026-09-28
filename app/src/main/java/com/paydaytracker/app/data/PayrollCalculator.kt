@@ -294,7 +294,7 @@ object PayrollCalculator {
             val worked = workedByPlace[wid] ?: 0
             val before = maxOf(0, worked - threshold)
             val after = maxOf(0, worked + e.minutes - threshold)
-            val b = bonusForEntry(e, settings, after - before)
+            val b = bonusForEntry(e.copy(wage = e.wage ?: workplaceMap[e.workplaceId]?.wage ?: settings.wage), settings, after - before)
             workedByPlace[wid] = worked + e.minutes
             bonusById[e.id] = b
             minutes += e.minutes

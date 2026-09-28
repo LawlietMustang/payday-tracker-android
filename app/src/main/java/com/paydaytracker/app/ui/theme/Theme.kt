@@ -16,7 +16,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
-    primary = DarkPrimary,
+    primary = AccentLime,
     onPrimary = DarkOnPrimary,
     secondary = DarkSecondary,
     onSecondary = DarkOnSecondary,
@@ -31,13 +31,13 @@ private val DarkColorScheme = darkColorScheme(
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = LightPrimary,
+    primary = AccentPurple,
     onPrimary = LightOnPrimary,
     secondary = LightSecondary,
     onSecondary = LightOnSecondary,
-    background = LightBackground,
-    onBackground = LightText,
-    surface = LightSurface,
+    background = LightText,
+    onBackground = DarkText,
+    surface = LightBackground,
     onSurface = LightText,
     surfaceVariant = LightSurfaceVariant,
     onSurfaceVariant = LightTextMuted,
@@ -65,8 +65,8 @@ fun WageTrackTheme(
         SideEffect {
             val window = (view.context as Activity).window
             window.statusBarColor = colorScheme.background.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
-            WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = !darkTheme
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
+            WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = false
         }
     }
 

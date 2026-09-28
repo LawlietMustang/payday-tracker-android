@@ -4,94 +4,59 @@ import android.content.Context
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import com.paydaytracker.app.data.db.WageTrackDatabase
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 import org.json.JSONObject
+import org.json.JSONTokener
 import java.io.File
 import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
+/** One-time localStorage reader. No web screen or legacy application script is executed. */
 object DataMigration {
-
     suspend fun checkAndMigrate(context: Context, repository: WageRepository): Boolean {
-        val prefs = context.getSharedPreferences("migration", Context.MODE_PRIVATE)
-        if (prefs.getBoolean("migrated_to_native", false)) {
-            return false
-        }
-
-        // Check if Room database already has records
-        val db = WageTrackDatabase.getInstance(context)
-        val hasData = withContext(Dispatchers.IO) {
-            db.workplaceDao().getAll().isNotEmpty() ||
-            db.shiftDao().getAll().isNotEmpty()
-        }
-        if (hasData) {
-            prefs.edit().putBoolean("migrated_to_native", true).apply()
-            return false
-        }
-
-        // Check for existing pending auto-backup file on disk
-        val pendingFile = File(context.filesDir, "backup-pending.json")
-        if (pendingFile.exists()) {
-            val migrated = withContext(Dispatchers.IO) {
-                try {
-                    val raw = pendingFile.readText(Charsets.UTF_8)
-                    val snapshot = JSONObject(raw)
-                    val doc = snapshot.optString("document", "")
-                    if (doc.isNotBlank()) {
-                        repository.importBackupJson(doc)
-                    } else false
-                } catch (_: Exception) { false }
-            }
-            if (migrated) {
-                prefs.edit().putBoolean("migrated_to_native", true).apply()
-                return true
-            }
-        }
-
-        // Query WebView localStorage for 'lohnzeit-v1'
-        val storageData = withContext(Dispatchers.Main) {
-            suspendCancellableCoroutine<String?> { continuation ->
-                val webView = WebView(context).apply {
-                    settings.javaScriptEnabled = true
-                    settings.domStorageEnabled = true
-                    settings.databaseEnabled = true
-                    webViewClient = object : WebViewClient() {
-                        override fun onPageFinished(view: WebView?, url: String?) {
-                            view?.evaluateJavascript("window.localStorage ? window.localStorage.getItem('lohnzeit-v1') : null") { result ->
-                                try {
-                                    if (result != null && result != "null" && result.length > 5) {
-                                        val unquoted = try {
-                                            val tokener = org.json.JSONTokener(result).nextValue()
-                                            if (tokener is String) tokener else result
-                                        } catch (_: Exception) { result }
-                                        continuation.resume(unquoted)
-                                    } else {
-                                        continuation.resume(null)
-                                    }
-                                } finally {
-                                    view?.destroy()
+        val prefs = context.getSharedPreferences("migration", 0)
+        if (prefs.getBoolean("migrated_to_native", false) && repository.document().length() > 0) return false
+        val hasData = repository.hasRecords()
+        val raw = withContext(Dispatchers.Main) {
+            withTimeout(15000) {
+                suspendCancellableCoroutine<String?> { continuation ->
+                    val web = WebView(context)
+                    web.settings.javaScriptEnabled = true
+                    web.settings.domStorageEnabled = true
+                    web.webViewClient = object : WebViewClient() {
+                        override fun onPageFinished(view: WebView, url: String?) {
+                            view.evaluateJavascript("JSON.stringify({data:localStorage.getItem('lohnzeit-v1'),language:localStorage.getItem('lohnzeit-language')})") { value ->
+                                if (continuation.isActive) {
+                                    try {
+                                        val payload = JSONObject(JSONTokener(value).nextValue() as String)
+                                        val content = payload.optString("data")
+                                        if (content.isNotBlank() && content != "null") {
+                                            val doc = JSONObject(content)
+                                            doc.put("language", payload.optString("language", "de").takeIf { it == "en" } ?: "de")
+                                            continuation.resume(doc.toString())
+                                        } else continuation.resume(null)
+                                    } catch (e: Exception) { continuation.resumeWithException(e) }
                                 }
+                                web.destroy()
                             }
                         }
                     }
+                    continuation.invokeOnCancellation { android.os.Handler(android.os.Looper.getMainLooper()).post { web.destroy() } }
+                    web.loadDataWithBaseURL("file:///android_asset/index.html", "<html><body></body></html>", "text/html", "UTF-8", null)
                 }
-                continuation.invokeOnCancellation { webView.destroy() }
-                webView.loadUrl("file:///android_asset/index.html")
             }
         }
-
-        if (!storageData.isNullOrBlank()) {
-            val ok = withContext(Dispatchers.IO) {
-                repository.importBackupJson(storageData)
-            }
-            if (ok) {
-                prefs.edit().putBoolean("migrated_to_native", true).apply()
-                return true
-            }
+        val fallback = withContext(Dispatchers.IO) {
+            runCatching { JSONObject(File(context.filesDir, "backup-pending.json").readText()).optString("document") }.getOrNull()
         }
-
+        val source = raw ?: fallback?.takeIf { it.isNotBlank() }
+        if (source != null) {
+            withContext(Dispatchers.IO) { File(context.filesDir, "pre-native-migration.json").writeText(source) }
+            if (hasData) repository.recoverLegacyExtras(source) else check(repository.importBackupJson(source)) { "Saved data could not be imported. Your original data is retained." }
+            repository.updateDocument { if (!it.has("onboardingCompleted")) it.put("onboardingCompleted", true) }
+        }
+        if (source == null) repository.updateDocument { it.put("nativeInitialized", true) }
         prefs.edit().putBoolean("migrated_to_native", true).apply()
-        return false
+        return source != null
     }
 }

@@ -1,6 +1,10 @@
 package com.paydaytracker.app.ui
 
 import android.app.Application
+import com.paydaytracker.app.data.DataMigration
+import org.json.JSONObject
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.paydaytracker.app.NativeCoordinator
@@ -37,6 +41,48 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val db = WageTrackDatabase.getInstance(application)
     val repository = WageRepository(db)
+
+    val ready = MutableStateFlow(false)
+    val startupError = MutableStateFlow<String?>(null)
+    val document = repository.document.stateIn(viewModelScope, SharingStarted.Eagerly, "{}")
+    fun initialize() { viewModelScope.launch {
+        startupError.value = null
+        try {
+            DataMigration.checkAndMigrate(getApplication(), repository)
+            val doc = repository.document()
+            if (repository.workplaces.first().isNotEmpty() && !doc.has("onboardingCompleted")) repository.updateDocument { it.put("onboardingCompleted", true) }
+            val language = doc.optString("language", getApplication<Application>().getSharedPreferences("device", 0).getString("language", "de"))
+            getApplication<Application>().getSharedPreferences("device", 0).edit().putString("language", language).apply()
+            workplaceFilter.value = doc.optString("workplaceFilter", "all")
+            ready.value = true
+            repository.reconcileShiftStatuses()
+            repository.materializeRecurringExpenses(selectedMonth.value)
+            repository.reconcileSavings()
+        } catch (e: Exception) { startupError.value = e.message ?: "Unable to load saved data" }
+    } }
+    fun updateDocument(edit: (JSONObject) -> Unit) { viewModelScope.launch { repository.updateDocument(edit); triggerBackup() } }
+    fun saveTemplate(t: ShiftTemplate) { viewModelScope.launch { repository.saveShiftTemplate(t); triggerBackup() } }
+    fun deleteTemplate(id: String) { viewModelScope.launch { repository.deleteShiftTemplate(id); triggerBackup() } }
+    fun deleteRecurring(id: String) { viewModelScope.launch { repository.deleteRecurringExpense(id); triggerBackup() } }
+    fun setup(s: AppSettings, name: String, job: String) { viewModelScope.launch {
+        repository.saveSettings(s); repository.saveProfile(UserProfile(name = name))
+        if (repository.workplaces.first().isEmpty()) repository.addWorkplace(job, s.wage)
+        repository.updateDocument { it.put("onboardingCompleted", true) }; triggerBackup()
+    } }
+    fun resetData() { viewModelScope.launch {
+        val context = getApplication<Application>()
+        com.paydaytracker.app.AutoBackup.get(context).disable()
+        repository.clearAll()
+        repository.updateDocument { it.put("nativeInitialized",true).put("onboardingCompleted",false).put("language",context.getSharedPreferences("device",0).getString("language","en")).put("loggingReminder",JSONObject().put("enabled",false)) }
+        NativeCoordinator.syncTimer(context, JSONObject())
+        context.getSharedPreferences("device",0).edit().putBoolean("reminder",false).apply()
+        com.paydaytracker.app.ReminderReceiver.schedule(context)
+        NativeCoordinator.syncShiftReminders(context,emptyList(),emptyList())
+        NativeCoordinator.syncPayslipReminder(context,emptyList(),false)
+        com.paydaytracker.app.BackupReminder.update(context,false,"en")
+        workplaceFilter.value="all"
+        selectedMonth.value=YearMonth.now().toString()
+    } }
 
     private val currentYearMonth = YearMonth.now()
     val selectedMonth = MutableStateFlow(currentYearMonth.format(DateTimeFormatter.ofPattern("yyyy-MM")))
@@ -112,48 +158,50 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         PayrollCalculator.spendingProjection(month, expList)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
-    val savingsAvailableCents: StateFlow<Long> = combine(
-        shifts,
-        expenses,
-        recurringExpenses,
-        savingsGoals,
-        savingsLedger
-    ) { s, e, r, g, l ->
+    private data class SavingsInputs(
+        val shifts: List<Shift>, val expenses: List<Expense>, val recurring: List<RecurringExpense>,
+        val goals: List<SavingsGoal>, val ledger: List<SavingsLedgerEntry>
+    )
+    private val savingsInputs = combine(shifts, expenses, recurringExpenses, savingsGoals, savingsLedger) { s, e, r, g, l ->
+        SavingsInputs(s, e, r, g, l)
+    }
+    val savingsAvailableCents: StateFlow<Long> = combine(savingsInputs, settings, workplaces) { data, appSettings, jobs ->
         PayrollCalculator.savingsAvailable(
-            now = LocalDateTime.now(),
-            shifts = s,
-            expenses = e,
-            recurringExpenses = r,
-            savingsGoals = g,
-            savingsLedger = l,
-            settings = settings.value,
-            workplaces = workplaces.value
+            now = LocalDateTime.now(), shifts = data.shifts, expenses = data.expenses,
+            recurringExpenses = data.recurring, savingsGoals = data.goals, savingsLedger = data.ledger,
+            settings = appSettings, workplaces = jobs
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0L)
 
     init {
-        viewModelScope.launch {
-            repository.reconcileShiftStatuses()
-            repository.materializeRecurringExpenses(selectedMonth.value)
-            repository.reconcileSavings()
-        }
+        viewModelScope.launch { while (true) { delay(60000); if (ready.value) { if (repository.reconcileShiftStatuses()) triggerBackup(); repository.reconcileSavings() } } }
 
+        viewModelScope.launch {
+            combine(document, ready) { raw, loaded -> if (loaded) {
+                val doc = JSONObject(raw)
+                NativeCoordinator.syncTimer(getApplication(), doc)
+                doc.optJSONObject("loggingReminder")?.let { c ->
+                    getApplication<Application>().getSharedPreferences("device", 0).edit().putBoolean("reminder", c.optBoolean("enabled")).putInt("reminderDays", c.optInt("days",62)).putInt("reminderHour",c.optInt("hour",20)).putInt("reminderMinute",c.optInt("minute",0)).apply()
+                    com.paydaytracker.app.ReminderReceiver.schedule(getApplication())
+                }
+            } }.collect {}
+        }
         // Reactive synchronization with native system services (Phase 4)
         viewModelScope.launch {
-            combine(currentMonthSummary, settings) { summary, s ->
-                NativeCoordinator.syncWidget(getApplication(), summary, s)
+            combine(shifts, workplaces, settings, ready) { shiftList, wpList, s, loaded ->
+                if (loaded) NativeCoordinator.syncWidget(getApplication(), PayrollCalculator.summary(YearMonth.now().toString(),shiftList,s,wpList), s)
             }.collect {}
         }
 
         viewModelScope.launch {
-            combine(shifts, workplaces) { shiftList, wpList ->
-                NativeCoordinator.syncShiftReminders(getApplication(), shiftList, wpList)
+            combine(shifts, workplaces, document, ready) { shiftList, wpList, doc, loaded ->
+                if (loaded) NativeCoordinator.syncShiftReminders(getApplication(), shiftList, wpList, JSONObject(doc))
             }.collect {}
         }
 
         viewModelScope.launch {
-            combine(payslips, settings) { payslipList, s ->
-                NativeCoordinator.syncPayslipReminder(getApplication(), payslipList, s.payslipReminder)
+            combine(payslips, settings, shifts, ready) { payslipList, s, shiftList, loaded ->
+                if(loaded)NativeCoordinator.syncPayslipReminder(getApplication(), payslipList, s.payslipReminder, shiftList)
             }.collect {}
         }
     }
@@ -187,8 +235,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setFilter(filter: String) {
         workplaceFilter.value = filter
+        updateDocument { it.put("workplaceFilter", filter) }
     }
 
+    fun saveShifts(shifts: List<Shift>) { viewModelScope.launch { repository.saveShifts(shifts); triggerBackup() } }
+    fun saveTimedShift(shift: Shift) { viewModelScope.launch { repository.saveTimedShift(shift); triggerBackup() } }
     fun saveShift(shift: Shift) {
         viewModelScope.launch {
             repository.saveShift(shift)

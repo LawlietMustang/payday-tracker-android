@@ -38,9 +38,11 @@ class TimerNotificationService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
-        val state = intent?.getStringExtra(EXTRA_STATE) ?: "working"
-        val elapsed = intent?.getLongExtra(EXTRA_ELAPSED, 0L) ?: 0L
-        val english = intent?.getStringExtra(EXTRA_LANGUAGE) == "en"
+        val prefs = getSharedPreferences("device", 0)
+        val state = intent?.getStringExtra(EXTRA_STATE) ?: prefs.getString("timerState", "idle")
+        if (state == "idle") { stopSelf(); return START_NOT_STICKY }
+        val elapsed = intent?.getLongExtra(EXTRA_ELAPSED, 0L) ?: (System.currentTimeMillis()-prefs.getLong("timerBase",System.currentTimeMillis())).coerceAtLeast(0)
+        val english = (intent?.getStringExtra(EXTRA_LANGUAGE) ?: prefs.getString("language","de")) == "en"
         val onBreak = state == "break"
         val status = if (english) { if (onBreak) "On break" else "Working" } else { if (onBreak) "Pause läuft" else "Arbeitszeit läuft" }
         val openApp = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java).apply {

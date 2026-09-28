@@ -31,13 +31,16 @@ import com.paydaytracker.app.data.Workplace
         ShiftTemplate::class,
         MonthlyBudget::class,
         AppSettings::class,
-        UserProfile::class
+        UserProfile::class,
+        NativeDocument::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
 abstract class WageTrackDatabase : RoomDatabase() {
+
+    abstract fun documentDao(): NativeDocumentDao
 
     abstract fun workplaceDao(): WorkplaceDao
     abstract fun shiftDao(): ShiftDao
@@ -61,7 +64,11 @@ abstract class WageTrackDatabase : RoomDatabase() {
                     context.applicationContext,
                     WageTrackDatabase::class.java,
                     "wagetrack.db"
-                ).build()
+                ).addMigrations(object : androidx.room.migration.Migration(1, 2) {
+                    override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                        db.execSQL("CREATE TABLE IF NOT EXISTS native_document (id INTEGER NOT NULL PRIMARY KEY, json TEXT NOT NULL)")
+                    }
+                }).build()
                 INSTANCE = instance
                 instance
             }

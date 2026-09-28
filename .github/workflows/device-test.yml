@@ -35,8 +35,9 @@ jobs:
           disable-animations: true
           script: |
             adb logcat -c
-            timeout 480s gradle --no-daemon connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.paydaytracker.app.DeviceSmoke || { adb logcat -d > device-logcat.txt; exit 1; }
+            timeout 480s gradle --no-daemon connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.paydaytracker.app.DeviceSmoke,com.paydaytracker.app.UpgradeSmoke || { adb logcat -d > device-logcat.txt; adb pull /sdcard/Download/native-screens native-screens; exit 1; }
             adb logcat -d > device-logcat.txt
+            adb pull /sdcard/Download/native-screens native-screens
       - name: Upload native test results
         uses: actions/upload-artifact@v4
         if: always()
@@ -46,3 +47,4 @@ jobs:
             app/build/reports/androidTests/
             app/build/outputs/androidTest-results/
             device-logcat.txt
+            native-screens/

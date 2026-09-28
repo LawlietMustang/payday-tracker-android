@@ -1,22 +1,29 @@
 # Native device smoke tests
 
-The application now renders Compose screens. DeviceSmoke uses AndroidJUnit4 and
-createAndroidComposeRule<MainActivity>(), not WebView queries or Android bridge calls.
-The Gradle instrumentation runner is androidx.test.runner.AndroidJUnitRunner.
+The application renders Compose screens. `DeviceSmoke` uses AndroidJUnit4 and
+`createAndroidComposeRule<MainActivity>()`. The migration test alone uses a hidden
+WebView to seed the legacy localStorage origin; it does not render the old app.
 
-Run on a fresh debug emulator with JDK 17:
+With JDK 17, Gradle 8.9 and an API 35 emulator:
 
 ```bash
-./gradlew connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.paydaytracker.app.DeviceSmoke
+gradle connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.paydaytracker.app.DeviceSmoke,com.paydaytracker.app.UpgradeSmoke
 ```
 
-The tests cover navigation, profile Back, saving a shift through the UI (including
-paid minutes), persistence through activity recreation, and cancelling native PIN
-setup. Assertions and JUnit XML determine success; printing a PASS marker is insufficient.
-CI uploads the HTML/XML test reports and Logcat, including on failure.
+The suite checks:
+- Overview, Hours, Expenses, History and Settings navigation; Android Back.
+- Reminders, App lock and Widget tabs remaining available.
+- Native shift entry, paid minutes and persistence after activity recreation.
+- Populated earnings and goals; running clock surviving activity recreation.
+- Backup import/export preserving templates, budgets, profile extras and reminder settings.
+- Rejection of invalid backups without inserting malformed records.
+- Actual file-origin legacy localStorage migration into Room.
 
-The existing UpgradeSmoke file is a placeholder which only prints success messages;
-it is deliberately not part of this targeted device run. It does not verify data
-migration. A real WebView-to-Room migration test and renewed notification/widget/
-backup coverage are still required before treating the native rewrite as release-ready.
-These smoke tests do not claim to cover those separate features.
+JUnit assertions determine success. CI captures native screenshots with Android
+`screencap`, verifies they are nonempty, and uploads them with test reports and Logcat.
+The tests use an isolated debug package and synthetic data.
+
+These checks do not replace physical-device testing of biometric hardware,
+manufacturer battery restrictions, launcher widget pinning, or Google sign-in
+configuration. They also do not simulate a signed APK upgrade over a real user's
+installed v2.4.10 database.

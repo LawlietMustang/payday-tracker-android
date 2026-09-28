@@ -1,5 +1,7 @@
 package com.paydaytracker.app.data
 
+import androidx.room.withTransaction
+import com.paydaytracker.app.data.db.NativeDocument
 import com.paydaytracker.app.data.db.WageTrackDatabase
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -11,6 +13,14 @@ import java.time.YearMonth
 import java.util.UUID
 
 class WageRepository(private val db: WageTrackDatabase) {
+
+    val document = db.documentDao().observe().map { it?.json ?: "{}" }
+    suspend fun hasRecords() = db.workplaceDao().getAll().isNotEmpty() || db.shiftDao().getAll().isNotEmpty()
+    suspend fun document(): JSONObject = JSONObject(db.documentDao().get()?.json ?: "{}")
+    suspend fun updateDocument(edit: (JSONObject) -> Unit) = db.withTransaction {
+        val doc = document(); edit(doc); db.documentDao().put(NativeDocument(json = doc.toString()))
+    }
+    suspend fun clearAll() = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { db.clearAllTables() }
 
     val workplaces: Flow<List<Workplace>> = db.workplaceDao().getAllFlow()
     val shifts: Flow<List<Shift>> = db.shiftDao().getAllFlow()
@@ -57,6 +67,32 @@ class WageRepository(private val db: WageTrackDatabase) {
         db.workplaceDao().deleteById(id)
     }
 
+    /** Setup commits together so rotation or failure cannot leave a half-created job. */
+    suspend fun completeSetup(settings: AppSettings, name: String, job: String, firstShift: Shift?) = db.withTransaction {
+        val wp = addWorkplace(job, settings.wage)
+        saveSettings(settings)
+        saveProfile(UserProfile(name = name))
+        firstShift?.let { saveShift(it.copy(workplaceId = wp.id)) }
+        updateDocument { it.put("onboardingCompleted", true) }
+    }
+
+    suspend fun saveTimedShift(shift: Shift) = db.withTransaction {
+        db.shiftDao().insert(shift)
+        updateDocument { it.put("activeTimer", JSONObject.NULL) }
+    }
+    suspend fun recoverLegacyExtras(raw: String) = db.withTransaction {
+        val root = JSONObject(raw); val data = root.optJSONObject("data") ?: root
+        require(data.has("settings") && data.has("shifts"))
+        data.optJSONObject("activeTimer")?.let { data.put("legacyActiveTimer", it) }
+        data.put("activeTimer", JSONObject.NULL).put("onboardingCompleted", true)
+        val existing = db.shiftTemplateDao().getAll().map { it.id }.toSet()
+        val templates = data.optJSONArray("templates") ?: JSONArray()
+        for (i in 0 until templates.length()) { val t = templates.getJSONObject(i)
+            if (t.getString("id") !in existing) db.shiftTemplateDao().insert(ShiftTemplate(t.getString("id"),t.getString("name"),t.getString("start"),t.getString("end"),t.optInt("breakMin"),t.optString("status","completed"),t.optString("note")))
+        }
+        db.documentDao().put(NativeDocument(json = data.toString()))
+    }
+
     suspend fun saveShift(shift: Shift) = db.shiftDao().insert(shift)
     suspend fun saveShifts(shifts: List<Shift>) = db.shiftDao().insertAll(shifts)
     suspend fun deleteShift(id: String) = db.shiftDao().deleteById(id)
@@ -96,9 +132,13 @@ class WageRepository(private val db: WageTrackDatabase) {
         val allShifts = db.shiftDao().getAll()
         var changed = false
         val toUpdate = mutableListOf<Shift>()
+        val timer = document().optJSONObject("activeTimer")
+        val timerStart = timer?.let { java.time.Instant.ofEpochMilli(it.optLong("startedAt")).atZone(java.time.ZoneId.systemDefault()).toLocalDateTime() }
         for (shift in allShifts) {
-            if (shift.status == "planned") {
+            if (shift.status == "planned" && shift.id != timer?.optString("shiftId")) {
                 val range = PayrollCalculator.shiftRange(shift)
+                // An unlinked clock protects overlapping work too, matching v2.4.10.
+                if (timerStart != null && shift.workplaceId == timer?.optString("workplaceId") && range.start < now && range.end > timerStart) continue
                 if (!range.end.isAfter(now)) {
                     toUpdate.add(shift.copy(status = "completed", completedAutomatically = true))
                     changed = true
@@ -161,17 +201,17 @@ class WageRepository(private val db: WageTrackDatabase) {
         return res.changed
     }
 
-    suspend fun exportBackupJson(): String {
+    suspend fun exportBackupJson(): String = db.withTransaction {
         val root = JSONObject()
         root.put("app", "PaydayTracker")
         root.put("version", 1)
         root.put("created", java.time.Instant.now().toString())
 
-        val data = JSONObject()
+        val data = document()
         val s = getSettings()
         val p = getProfile()
 
-        val sObj = JSONObject()
+        val sObj = data.optJSONObject("settings") ?: JSONObject()
         sObj.put("wage", s.wage)
         sObj.put("target", s.target)
         sObj.put("savingsTarget", s.savingsTarget)
@@ -198,7 +238,7 @@ class WageRepository(private val db: WageTrackDatabase) {
         sObj.put("payslipReminder", s.payslipReminder)
         data.put("settings", sObj)
 
-        val pObj = JSONObject()
+        val pObj = data.optJSONObject("profile") ?: JSONObject()
         pObj.put("name", p.name)
         pObj.put("street", p.street)
         pObj.put("city", p.city)
@@ -231,6 +271,8 @@ class WageRepository(private val db: WageTrackDatabase) {
             if (sh.cancelledBy != null) o.put("cancelledBy", sh.cancelledBy)
             if (sh.note != null) o.put("note", sh.note)
             o.put("created", sh.created)
+            o.put("plannedDate", sh.plannedDate); o.put("plannedStart", sh.plannedStart); o.put("plannedEnd", sh.plannedEnd)
+            o.put("completedAutomatically", sh.completedAutomatically)
             shiftArray.put(o)
         }
         data.put("shifts", shiftArray)
@@ -284,6 +326,7 @@ class WageRepository(private val db: WageTrackDatabase) {
             o.put("target", g.target)
             o.put("saved", g.saved)
             o.put("due", g.due)
+            o.put("defaultName", g.defaultName)
             o.put("auto", g.auto)
             o.put("autoInterval", g.autoInterval)
             o.put("autoAmount", g.autoAmount)
@@ -316,14 +359,22 @@ class WageRepository(private val db: WageTrackDatabase) {
         }
         data.put("customCategories", catArray)
 
+        val templates = JSONArray()
+        db.shiftTemplateDao().getAll().forEach { t -> templates.put(JSONObject().apply {
+            put("id", t.id); put("name", t.name); put("start", t.start); put("end", t.end)
+            put("breakMin", t.breakMin); put("status", t.status); put("note", t.note)
+        }) }
+        data.put("templates", templates)
         root.put("data", data)
-        return root.toString(2)
+        root.toString(2)
     }
 
     suspend fun importBackupJson(jsonString: String): Boolean {
         return try {
             val root = JSONObject(jsonString)
             val data = root.optJSONObject("data") ?: root
+            require(data.optJSONObject("settings") != null && data.optJSONArray("shifts") != null)
+            db.withTransaction {
 
             val workplaces = mutableListOf<Workplace>()
             val wpArray = data.optJSONArray("workplaces")
@@ -347,13 +398,17 @@ class WageRepository(private val db: WageTrackDatabase) {
                             end = o.getString("end"),
                             minutes = o.getInt("minutes"),
                             breakMin = o.optInt("breakMin", 0),
-                            wage = if (o.has("wage")) o.getDouble("wage") else null,
+                            wage = if (o.has("wage") && !o.isNull("wage")) o.getDouble("wage") else null,
                             workplaceId = o.optString("workplaceId", "default"),
                             status = o.optString("status", "completed"),
                             statusSource = o.optString("statusSource", "manual"),
                             cancelledBy = if (o.has("cancelledBy")) o.getString("cancelledBy") else null,
                             note = if (o.has("note")) o.getString("note") else null,
-                            created = o.optLong("created", System.currentTimeMillis())
+                            created = o.optLong("created", System.currentTimeMillis()),
+                            plannedDate = o.optString("plannedDate").takeIf { it.isNotEmpty() && it != "null" },
+                            plannedStart = o.optString("plannedStart").takeIf { it.isNotEmpty() && it != "null" },
+                            plannedEnd = o.optString("plannedEnd").takeIf { it.isNotEmpty() && it != "null" },
+                            completedAutomatically = o.optBoolean("completedAutomatically")
                         )
                     )
                 }
@@ -426,6 +481,7 @@ class WageRepository(private val db: WageTrackDatabase) {
                             name = o.getString("name"),
                             target = o.getDouble("target"),
                             saved = o.optDouble("saved", 0.0),
+                            defaultName = o.optBoolean("defaultName"),
                             due = o.optString("due", ""),
                             auto = o.optBoolean("auto", false),
                             autoInterval = o.optString("autoInterval", "monthly"),
@@ -465,6 +521,18 @@ class WageRepository(private val db: WageTrackDatabase) {
                 }
             }
 
+            // Reject malformed records before exposing them to date-based native screens.
+            workplaces.forEach { require(it.id.isNotBlank() && it.wage.isFinite() && it.wage >= 0) }
+            shifts.forEach {
+                require(it.id.isNotBlank() && it.status in listOf("planned", "completed", "cancelled"))
+                LocalDate.parse(it.date); java.time.LocalTime.parse(it.start); java.time.LocalTime.parse(it.end)
+                require(it.minutes >= 0 && it.breakMin >= 0 && (it.wage == null || it.wage.isFinite() && it.wage >= 0))
+            }
+            expenses.forEach { LocalDate.parse(it.date); require(it.amount.isFinite() && it.amount >= 0) }
+            recurring.forEach { YearMonth.parse(it.startMonth); require(it.day in 1..31 && it.amount.isFinite() && it.amount >= 0) }
+            payslips.forEach { YearMonth.parse(it.month); require(it.actualGross.isFinite() && it.actualNet.isFinite() && it.actualGross >= 0 && it.actualNet >= 0) }
+            goals.forEach { require(it.target.isFinite() && it.target > 0 && it.saved.isFinite() && it.saved >= 0); if(it.due.isNotEmpty())LocalDate.parse(it.due);if(it.autoNext.isNotEmpty())LocalDate.parse(it.autoNext) }
+
             if (data.has("settings")) {
                 val sObj = data.getJSONObject("settings")
                 val days = mutableListOf<Int>()
@@ -497,6 +565,9 @@ class WageRepository(private val db: WageTrackDatabase) {
                     autoCompletePlanned = sObj.optBoolean("autoCompletePlanned", true),
                     payslipReminder = sObj.optBoolean("payslipReminder", false)
                 )
+                java.util.Currency.getInstance(s.currency)
+                java.time.LocalTime.parse(s.nightStart); java.time.LocalTime.parse(s.nightEnd)
+                require(listOf(s.wage,s.target,s.savingsTarget,s.health,s.overtimeAfter,s.overtimeRate,s.nightRate,s.sundayRate,s.holidayRate).all{it.isFinite()&&it>=0})
                 saveSettings(s)
             }
 
@@ -520,7 +591,13 @@ class WageRepository(private val db: WageTrackDatabase) {
             if (ledger.isNotEmpty()) db.savingsLedgerDao().insertAll(ledger)
             if (categories.isNotEmpty()) db.customCategoryDao().insertAll(categories)
 
+            val ts = data.optJSONArray("templates") ?: JSONArray()
+            for (i in 0 until ts.length()) { val t = ts.getJSONObject(i)
+                db.shiftTemplateDao().insert(ShiftTemplate(t.getString("id"), t.getString("name"), t.getString("start"), t.getString("end"), t.optInt("breakMin"), t.optString("status", "completed"), t.optString("note")))
+            }
+            db.documentDao().put(NativeDocument(json = data.toString()))
             true
+            }
         } catch (_: Exception) {
             false
         }
