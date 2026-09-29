@@ -12,6 +12,8 @@ gradle connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.cl
 
 The suite checks:
 - Overview, Hours, Expenses, History and Settings navigation; Android Back.
+- Four-step onboarding, visible restore action, country/tax selection and saved profile.
+- Native month picker cancellation preserving the selected month.
 - Reminders, App lock and Widget tabs remaining available.
 - Native shift entry, paid minutes and persistence after activity recreation.
 - Populated earnings and goals; running clock surviving activity recreation.

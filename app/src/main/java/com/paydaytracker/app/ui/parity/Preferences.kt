@@ -1,6 +1,10 @@
 package com.paydaytracker.app.ui.parity
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.*
@@ -13,9 +17,27 @@ import com.paydaytracker.app.ui.common.Formatters as F
 
 @Composable fun Preferences(vm:MainViewModel,route:String,navigate:(String)->Unit) {
     val settings by vm.settings.collectAsState();val profile by vm.profile.collectAsState();val document by vm.document.collectAsState();val extraProfile=org.json.JSONObject(document).optJSONObject("profile") ?: org.json.JSONObject();val workplaces by vm.workplaces.collectAsState()
-    var deletion by remember{mutableStateOf(false)};var workplaceEdit by remember{mutableStateOf<Workplace?>(null)};var wpOpen by remember{mutableStateOf(false)};var wpDelete by remember{mutableStateOf<Workplace?>(null)}
+    var deletion by remember{mutableStateOf(false)};var workplaceEdit by remember{mutableStateOf<Workplace?>(null)};var wpOpen by remember{mutableStateOf(route=="new-workplace")};var wpDelete by remember{mutableStateOf<Workplace?>(null)}
     Page{when(route){
-        "settings" -> {WageCard{listOf("profile" to L("Profile","Profil"),"pay" to L("Pay & tax","Lohn & Steuern"),"workplaces" to L("Workplaces","Arbeitsplätze"),"planning" to L("Budgets & goals","Budgets & Sparziele"),"reminders" to L("Reminders & widget","Erinnerungen & Widget"),"lock" to L("App lock","App-Sperre"),"backup" to L("Backup & restore","Sichern & wiederherstellen"),"appearance" to L("App appearance","App-Darstellung")).forEach{(id,label)->LinkRow(label,icon=id){navigate(id)};HorizontalDivider()};LinkRow(L("Delete data","Daten löschen")){deletion=true}}
+        "settings" -> {
+            var appearanceOpen by remember{mutableStateOf(false)}
+            Surface(shape=RoundedCornerShape(24.dp),color=MaterialTheme.colorScheme.surface,contentColor=MaterialTheme.colorScheme.onSurface) {
+                Column {
+                    listOf("profile" to L("Profile","Profil"),"pay" to L("Pay & tax","Lohn & Steuern"),"workplaces" to L("Workplaces","Arbeitsplätze"),"planning" to L("Budgets & goals","Budgets & Sparziele"),"reminders" to L("Reminders & widget","Erinnerungen & Widget"),"lock" to L("App lock","App-Sperre"),"backup" to L("Backup & restore","Sichern & wiederherstellen"),"appearance" to L("App appearance","App-Darstellung"),"delete" to L("Delete data","Daten löschen")).forEach{(id,label)->
+                        Row(Modifier.fillMaxWidth().clickable{when(id){"delete"->deletion=true;"appearance"->appearanceOpen=!appearanceOpen;else->navigate(id)}}.padding(horizontal=22.dp,vertical=20.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(16.dp)){
+                            val tint=if(id=="delete")Color(0xFFAA2447)else LocalContentColor.current
+                            Mark(id,Modifier.size(24.dp),tint);Text(label,Modifier.weight(1f),color=tint,fontSize=16.sp,fontWeight=FontWeight.Medium);Text(if(id=="appearance"&&appearanceOpen)"⌄"else "›",color=tint,fontSize=24.sp)
+                        }
+                        HorizontalDivider(color=MaterialTheme.colorScheme.outline.copy(alpha=.5f))
+                        if(id=="appearance"&&appearanceOpen)Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
+                            Choice(L("Language","Sprache"),LocalLanguage.current,listOf("en" to "English","de" to "Deutsch")){language->vm.updateDocument{it.put("language",language)}}
+                            Choice(L("Theme","Darstellung"),settings.theme,listOf("system" to L("System","System"),"light" to L("Light cards","Helle Karten"),"dark" to L("Dark","Dunkel"))){vm.saveSettings(settings.copy(theme=it))}
+                            CurrencyChoice(settings.currency){vm.saveSettings(settings.copy(currency=it))}
+                        }
+                    }
+                    Column(Modifier.padding(22.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){GoogleAccountPanel()}
+                }
+            }
             Text("WageTrack ${com.paydaytracker.app.BuildConfig.VERSION_NAME}",fontSize=11.sp,color=Lavender)
         }
         "profile" -> {var name by remember(profile){mutableStateOf(profile.name)};var street by remember(profile){mutableStateOf(profile.street)};var city by remember(profile){mutableStateOf(profile.city)};var tax by remember(profile){mutableStateOf(profile.taxId)}
@@ -26,7 +48,7 @@ import com.paydaytracker.app.ui.common.Formatters as F
             WageCard{Heading(L("Personal information","Persönliche Angaben"));Field(L("Name","Name"),name,{name=it});Field(L("Street & number","Straße & Hausnummer"),street,{street=it});Field(L("Postcode","Postleitzahl"),postcode,{postcode=it});Field(L("City","Stadt"),city,{city=it});Field(L("Country","Land"),country,{country=it});Field(L("Email","E-Mail"),email,{email=it});Field(L("Phone","Telefon"),phone,{phone=it});Field(L("Tax ID (optional)","Steuer-ID (optional)"),tax,{tax=it});Action(L("Save profile","Profil speichern"),primary=true){vm.saveProfile(UserProfile(name=name.trim(),street=street.trim(),city=city.trim(),taxId=tax.trim()));vm.updateDocument{it.put("profile",(it.optJSONObject("profile") ?: org.json.JSONObject()).put("postcode",postcode.trim()).put("country",country.trim()).put("email",email.trim()).put("phone",phone.trim()))}}}
         }
         "appearance" -> WageCard{Choice(L("Language","Sprache"),LocalLanguage.current,listOf("en" to "English","de" to "Deutsch")){language->vm.updateDocument{it.put("language",language)}};Choice(L("Theme","Darstellung"),settings.theme,listOf("system" to L("System","System"),"light" to L("Light cards","Helle Karten"),"dark" to L("Dark","Dunkel"))){vm.saveSettings(settings.copy(theme=it))};CurrencyChoice(settings.currency){vm.saveSettings(settings.copy(currency=it))};Text(L("One currency for all workplaces. No automatic conversion.","Eine Währung für alle Arbeitsplätze. Keine automatische Umrechnung."),fontSize=12.sp)}
-        "workplaces" -> {Action(L("+ New workplace","+ Neuer Arbeitsplatz"),primary=true){workplaceEdit=null;wpOpen=true};workplaces.forEach{w->WageCard{Heading(w.name);Text(F.formatMoney(w.wage,settings.currency)+"/h");Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Action(L("Edit","Bearbeiten")){workplaceEdit=w;wpOpen=true};Action(L("Delete","Löschen"),enabled=workplaces.size>1){wpDelete=w}}}}}
+        "workplaces","new-workplace" -> {Action(L("+ New workplace","+ Neuer Arbeitsplatz"),primary=true){workplaceEdit=null;wpOpen=true};workplaces.forEach{w->WageCard{Heading(w.name);Text(F.formatMoney(w.wage,settings.currency)+"/h");Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Action(L("Edit","Bearbeiten")){workplaceEdit=w;wpOpen=true};Action(L("Delete","Löschen"),enabled=workplaces.size>1){wpDelete=w}}}}}
         "pay" -> {var draft by remember(settings){mutableStateOf(settings)}
             var nightStart by remember(settings){mutableStateOf(settings.nightStart)}
             var nightEnd by remember(settings){mutableStateOf(settings.nightEnd)}

@@ -31,7 +31,7 @@ fun MainApp(viewModel: MainViewModel) {
     val vm = viewModel
     val settings by vm.settings.collectAsState(); val document by vm.document.collectAsState()
     val ready by vm.ready.collectAsState(); val error by vm.startupError.collectAsState()
-    val places by vm.workplaces.collectAsState(); val shifts by vm.shifts.collectAsState()
+    val profile by vm.profile.collectAsState(); val places by vm.workplaces.collectAsState(); val shifts by vm.shifts.collectAsState()
     val doc = remember(document) { JSONObject(document) }
     val context = LocalContext.current
     val language = doc.optString("language", context.getSharedPreferences("device", 0).getString("language", "de"))
@@ -54,24 +54,26 @@ fun MainApp(viewModel: MainViewModel) {
         } }; return@WageTrackTheme }
         if (onboard) { Onboarding(vm); return@WageTrackTheme }
         BackHandler(drawer.isOpen || route != "dashboard") { if(drawer.isOpen) scope.launch { drawer.close() } else back() }
-        val labels = mapOf("dashboard" to L("Your overview","Deine Übersicht"), "shifts" to L("Shift calendar","Schichtkalender"), "expenses" to L("Expenses","Ausgaben"), "history" to L("Monthly history","Monatsverlauf"), "settings" to L("Settings","Einstellungen"), "profile" to L("Profile","Profil"), "pay" to L("Pay & tax","Lohn & Steuern"), "planning" to L("Budgets & goals","Budgets & Sparziele"), "workplaces" to L("Workplaces","Arbeitsplätze"), "reminders" to L("Reminders & widget","Erinnerungen & Widget"), "lock" to L("App lock","App-Sperre"), "backup" to L("Backup & restore","Sichern & wiederherstellen"), "appearance" to L("App appearance","App-Darstellung"))
+        val labels = mapOf("dashboard" to (profile.name.trim().split(" ").firstOrNull()?.takeIf{it.isNotBlank()}?.let{L("Hey $it 👋","Hallo $it 👋")} ?: L("Your overview","Deine Übersicht")), "shifts" to L("Shift calendar","Schichtkalender"), "expenses" to L("Expenses","Ausgaben"), "history" to L("Monthly history","Monatsverlauf"), "settings" to L("Settings","Einstellungen"), "profile" to L("Profile","Profil"), "pay" to L("Pay & tax","Lohn & Steuern"), "planning" to L("Budgets & goals","Budgets & Sparziele"), "new-workplace" to L("Workplaces","Arbeitsplätze"), "workplaces" to L("Workplaces","Arbeitsplätze"), "reminders" to L("Reminders & widget","Erinnerungen & Widget"), "lock" to L("App lock","App-Sperre"), "backup" to L("Backup & restore","Sichern & wiederherstellen"), "appearance" to L("App appearance","App-Darstellung"))
         ModalNavigationDrawer(drawerState=drawer, drawerContent={ ModalDrawerSheet(drawerContainerColor=Purple,drawerContentColor=WhiteInk) {
-            Row(Modifier.padding(24.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)) { Image(painterResource(R.drawable.app_icon),null,Modifier.size(42.dp)); Heading("WageTrack") }
-            listOf("dashboard","shifts","expenses","history","settings").forEach { id -> NavigationDrawerItem(label={Text(labels[id]!!)},selected=route==id,onClick={navigate(id);scope.launch{drawer.close()}}, modifier=Modifier.padding(horizontal=12.dp), colors=NavigationDrawerItemDefaults.colors(unselectedContainerColor=Purple,unselectedTextColor=WhiteInk,selectedContainerColor=Lime,selectedTextColor=Ink)) }
-            Spacer(Modifier.weight(1f))
-            val backup = JSONObject(AutoBackup.get(context).state())
-            Column(Modifier.padding(24.dp)) { LinkRow(if(backup.optString("status")=="saved") L("Backed up","Gesichert") else L("Manage backup","Sicherung verwalten"), icon="backup") { navigate("backup");scope.launch{drawer.close()} }; Text("WageTrack ${com.paydaytracker.app.BuildConfig.VERSION_NAME}",fontSize=11.sp,color=Lavender) }
+            Column(Modifier.fillMaxHeight().widthIn(max=320.dp).verticalScroll(rememberScrollState()).padding(18.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
+                Row(Modifier.fillMaxWidth().padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)) {Image(painterResource(R.drawable.app_icon),null,Modifier.size(40.dp));Text("WageTrack",Modifier.weight(1f),fontSize=24.sp,fontWeight=FontWeight.Bold);IconButton({scope.launch{drawer.close()}},Modifier.semantics{contentDescription="Close menu"}){Mark("close")}}
+                HorizontalDivider(color=Lavender.copy(alpha=.3f));Spacer(Modifier.height(4.dp))
+                listOf("dashboard","shifts","expenses","history","settings").forEach { id ->
+                    val label=when(id){"dashboard"->L("Overview","Übersicht");"shifts"->L("Work hours","Arbeitszeiten");else->labels[id]!!}
+                    Surface(onClick={navigate(id);scope.launch{drawer.close()}},shape=RoundedCornerShape(16.dp),color=if(route==id)Lime else Purple,contentColor=if(route==id)Ink else WhiteInk) {
+                        Row(Modifier.fillMaxWidth().padding(horizontal=16.dp,vertical=18.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(16.dp)){Mark(when(id){"dashboard"->"home";"shifts"->"hours";else->id},Modifier.size(24.dp));Text(label,Modifier.weight(1f),fontSize=16.sp);Text("›",fontSize=24.sp)}
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                val backup=JSONObject(AutoBackup.get(context).state())
+                Surface(onClick={navigate("backup");scope.launch{drawer.close()}},shape=RoundedCornerShape(14.dp),color=Purple,contentColor=WhiteInk,border=BorderStroke(1.dp,Lavender.copy(alpha=.3f))){Row(Modifier.padding(14.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)){Mark("backup");Column{Text(if(backup.optString("status")=="saved")L("Backed up","Gesichert")else L("Set up backup","Sicherung einrichten"),fontSize=17.sp);Text(L("Manage backup","Sicherung verwalten"),fontSize=14.sp,color=Lavender)}}}
+                Text("WageTrack ${com.paydaytracker.app.BuildConfig.VERSION_NAME}",fontSize=11.sp,color=Lavender)
+            }
         } }) {
             Scaffold(containerColor=MaterialTheme.colorScheme.background, contentColor=WhiteInk,
                 contentWindowInsets=WindowInsets.safeDrawing,
-                topBar={ Column(Modifier.statusBarsPadding().padding(horizontal=16.dp,vertical=12.dp)) {
-                    Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)) {
-                        OutlinedIconButton({scope.launch{drawer.open()}},Modifier.size(46.dp).semantics{contentDescription="Menu"},shape=RoundedCornerShape(16.dp),border=BorderStroke(1.dp,Color(0xFF59437C))) { Mark("menu",tint=WhiteInk) }
-                        Column(Modifier.weight(1f)) { val hour=LocalTime.now().hour; Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(5.dp)){Mark(if(hour<18)"sun"else "moon",Modifier.size(14.dp),Lime);Text(when { hour<12 -> L("Good morning","Guten Morgen");hour<18 -> L("Good afternoon","Guten Tag");else -> L("Good evening","Guten Abend") },fontSize=11.sp,color=Lavender,fontWeight=FontWeight.SemiBold)}; Text(labels[route] ?: "WageTrack",fontSize=23.sp,fontWeight=FontWeight.SemiBold) }
-                        if(route in listOf("dashboard","shifts","expenses","history","planning")) HeaderMonth(vm)
-                    }
-
-                } }, bottomBar={
+bottomBar={
                     Surface(Modifier.navigationBarsPadding().padding(horizontal=12.dp,vertical=10.dp),shape=RoundedCornerShape(30.dp),color=Purple,border=BorderStroke(1.dp,Color(0xFF59437C))) {
                         Row(Modifier.fillMaxWidth().padding(horizontal=8.dp,vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
                             val nav=listOf("dashboard" to L("Overview","Übersicht"),"shifts" to L("Hours","Zeiten"),"add" to "", "expenses" to L("Expenses","Ausgaben"),"history" to L("History","Verlauf"))
@@ -80,16 +82,22 @@ fun MainApp(viewModel: MainViewModel) {
                         }
                     }
                 }) { padding -> Box(Modifier.padding(padding).fillMaxSize().testTag("screen-$route")) {
-                when(route) {
+                CompositionLocalProvider(LocalPageHeader provides {
+                    Row(Modifier.fillMaxWidth().padding(top=16.dp,bottom=4.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+                        OutlinedIconButton({scope.launch{drawer.open()}},Modifier.size(46.dp).semantics{contentDescription="Menu"},shape=RoundedCornerShape(16.dp),border=BorderStroke(1.dp,Color(0xFF59437C))){Mark("menu",tint=WhiteInk)}
+                        Column(Modifier.weight(1f)){val hour=LocalTime.now().hour;Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(4.dp)){Mark(if(hour in 6..17)"sun"else "moon",Modifier.size(14.dp),Color(0xFFFFD400));Text(when{hour<12->L("Good morning","Guten Morgen");hour<18->L("Good afternoon","Guten Tag");else->L("Good evening","Guten Abend")},fontSize=11.sp,color=Lavender,fontWeight=FontWeight.SemiBold)};Text(labels[route] ?: "WageTrack",fontSize=23.sp,fontWeight=FontWeight.SemiBold)}
+                        if(route in listOf("dashboard","shifts","expenses","history","planning"))HeaderMonth(vm)
+                    }
+                }) { key(route) { when(route) {
                     "dashboard" -> Overview(vm,::navigate,{add()},::edit)
                     "shifts" -> Hours(vm,::add,::edit){navigate("workplaces")}
                     "expenses" -> Expenses(vm)
                     "history" -> History(vm){navigate("workplaces")}
                     "planning" -> Planning(vm)
-                    "settings","profile","pay","workplaces","appearance" -> Preferences(vm,route,::navigate)
+                    "settings","profile","pay","workplaces","new-workplace","appearance" -> Preferences(vm,route,::navigate)
                     "reminders","lock" -> DevicePage(vm,route)
                     "backup" -> BackupPage(vm)
-                }
+                } } }
             } }
         }
         if(shiftOpen) ShiftEditor(vm,editShift,shiftDate,template,{shiftOpen=false})
@@ -99,17 +107,8 @@ fun MainApp(viewModel: MainViewModel) {
 @Composable private fun HeaderMonth(vm: MainViewModel) {
     val month by vm.selectedMonth.collectAsState()
     var open by remember { mutableStateOf(false) }
-    Surface(onClick = { open = true }, color = Raised, contentColor = WhiteInk, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Lavender.copy(alpha=.4f))) {
+    Surface(onClick = { open = true }, modifier=Modifier.semantics{contentDescription="Select month"}, color = Raised, contentColor = WhiteInk, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Lavender.copy(alpha=.4f))) {
         Text(java.time.YearMonth.parse(month).format(java.time.format.DateTimeFormatter.ofPattern("MMM yyyy", Formatters.locale))+" ⌄", Modifier.padding(horizontal=12.dp,vertical=15.dp),fontSize=12.sp)
     }
-    if(open) AlertDialog(onDismissRequest={open=false},title={Text(L("Select month","Monat auswählen"))},text={
-        Column {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically) {
-                TextButton(vm::prevMonth){Text("‹")};Text(Formatters.formatMonthTitle(month));TextButton(vm::nextMonth){Text("›")}
-            }
-            val ym=java.time.YearMonth.parse(month)
-            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){TextButton({vm.setMonth(ym.minusYears(1).toString())}){Text("− 1 "+L("year","Jahr"))};TextButton({vm.setMonth(ym.plusYears(1).toString())}){Text("+ 1 "+L("year","Jahr"))}}
-            TextButton({vm.setMonth(java.time.YearMonth.now().toString());open=false}){Text(L("This month","Dieser Monat"))}
-        }
-    },confirmButton={TextButton({open=false}){Text(L("Done","Fertig"))}})
+    if(open) MonthChooser(month,{open=false}) {vm.setMonth(it);open=false}
 }

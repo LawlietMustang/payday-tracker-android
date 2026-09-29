@@ -26,17 +26,18 @@ val Lime = Color(0xFFCFFF3D)
 val Pink = Color(0xFFFF4F8B)
 val Lavender = Color(0xFFB7A6DE)
 val WhiteInk = Color(0xFFF3ECFF)
+val LocalPageHeader = compositionLocalOf<(@Composable () -> Unit)?> { null }
 val LocalLanguage = compositionLocalOf { "en" }
 @Composable fun L(en: String, de: String) = if (LocalLanguage.current == "en") en else de
 
-@Composable fun WageCard(modifier: Modifier = Modifier, color: Color = MaterialTheme.colorScheme.surface, content: @Composable ColumnScope.() -> Unit) {
+@Composable fun WageCard(modifier: Modifier = Modifier, color: Color = MaterialTheme.colorScheme.surface, padding: Dp = 20.dp, content: @Composable ColumnScope.() -> Unit) {
     Surface(modifier.fillMaxWidth().drawBehind { drawRoundRect(Color(0xFF0E082A), topLeft = Offset(3.dp.toPx(), 5.dp.toPx()), cornerRadius = CornerRadius(24.dp.toPx())) },
-        shape = RoundedCornerShape(24.dp), color = color, contentColor = if (color == Lime) Ink else MaterialTheme.colorScheme.onSurface) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
+        shape = RoundedCornerShape(24.dp), color = color, contentColor = if (color == Lime) Ink else if(color == Purple || color == Raised) WhiteInk else MaterialTheme.colorScheme.onSurface, border=if(color == Purple || color == Raised) BorderStroke(1.dp,Lavender.copy(alpha=.3f)) else null) {
+        Column(Modifier.padding(padding), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
     }
 }
 @Composable fun Page(content: @Composable ColumnScope.() -> Unit) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(18.dp), content = content)
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) { LocalPageHeader.current?.invoke(); content() }
 }
 @Composable fun Action(label: String, modifier: Modifier = Modifier, primary: Boolean = false, enabled: Boolean = true, compact: Boolean = false, onClick: () -> Unit) {
     Button(onClick, modifier.heightIn(min = 44.dp), enabled = enabled, shape = RoundedCornerShape(14.dp),
@@ -76,7 +77,7 @@ val LocalLanguage = compositionLocalOf { "en" }
     }
 }
 @Composable fun Mark(kind: String, modifier: Modifier = Modifier.size(24.dp), tint: Color = LocalContentColor.current) {
-    val res = when (kind) { "sun" -> R.drawable.wt_sun; "moon" -> R.drawable.wt_moon; "profile" -> R.drawable.wt_profile; "workplaces" -> R.drawable.wt_workplaces; "planning" -> R.drawable.wt_budgets_goals; "reminders" -> R.drawable.wt_reminders_widget; "lock" -> R.drawable.wt_lock; "backup" -> R.drawable.wt_cloud_sync; "info" -> R.drawable.wt_info; else -> null }
+    val res = when (kind) { "pay" -> null; "appearance" -> R.drawable.wt_sun; "sun" -> R.drawable.wt_sun; "moon" -> R.drawable.wt_moon; "profile" -> R.drawable.wt_profile; "workplaces" -> R.drawable.wt_workplaces; "planning" -> R.drawable.wt_budgets_goals; "reminders" -> R.drawable.wt_reminders_widget; "lock" -> R.drawable.wt_lock; "backup" -> R.drawable.wt_cloud_sync; "info" -> R.drawable.wt_info; else -> null }
     if (res != null) { Icon(painterResource(res), null, modifier, tint); return }
     Canvas(modifier) {
         val s = size.minDimension / 24f
@@ -84,8 +85,11 @@ val LocalLanguage = compositionLocalOf { "en" }
         when(kind) {
             "home" -> { val p = Path().apply { moveTo(3*s,10*s); lineTo(12*s,3*s); lineTo(21*s,10*s); lineTo(21*s,22*s); lineTo(3*s,22*s); close() }; drawPath(p,tint, style=Stroke(1.8f*s)) }
             "hours" -> { drawCircle(tint,10*s, Offset(12*s,12*s), style=Stroke(1.8f*s)); line(12f,6f,12f,12f); line(12f,12f,16f,15f) }
-            "expenses" -> { drawArc(tint,60f,240f,false,Offset(7*s,2*s),Size(14*s,20*s), style=Stroke(1.8f*s,cap=StrokeCap.Round)); line(3f,9f,17f,9f); line(3f,15f,17f,15f) }
+            "expenses", "pay" -> { drawArc(tint,60f,240f,false,Offset(7*s,2*s),Size(14*s,20*s), style=Stroke(1.8f*s,cap=StrokeCap.Round)); line(3f,9f,17f,9f); line(3f,15f,17f,15f) }
             "history" -> { drawRect(tint,Offset(4*s,2*s),Size(16*s,20*s), style=Stroke(1.8f*s)); line(8f,7f,16f,7f); line(8f,12f,16f,12f); line(8f,17f,13f,17f) }
+            "settings" -> { drawCircle(tint,7*s,Offset(12*s,12*s),style=Stroke(1.8f*s));drawCircle(tint,2.5f*s,Offset(12*s,12*s),style=Stroke(1.8f*s));for(i in 0..7){val a=i*Math.PI/4;drawLine(tint,Offset((12+7*kotlin.math.cos(a)).toFloat()*s,(12+7*kotlin.math.sin(a)).toFloat()*s),Offset((12+10*kotlin.math.cos(a)).toFloat()*s,(12+10*kotlin.math.sin(a)).toFloat()*s),2*s)}}
+            "close" -> { drawCircle(tint,9*s,Offset(12*s,12*s),style=Stroke(1.8f*s));line(9f,9f,15f,15f);line(15f,9f,9f,15f) }
+            "delete" -> {line(7f,7f,17f,17f);line(17f,7f,7f,17f)}
             "add" -> { line(12f,3f,12f,21f); line(3f,12f,21f,12f) }
             "menu" -> { line(3f,5f,21f,5f); line(3f,12f,21f,12f); line(3f,19f,21f,19f) }
             else -> { drawCircle(tint,9*s,style=Stroke(1.8f*s)); line(12f,8f,12f,16f) }
@@ -94,10 +98,15 @@ val LocalLanguage = compositionLocalOf { "en" }
 }
 @Composable fun WorkplacePicker(vm: MainViewModel, manage: () -> Unit) {
     val filter by vm.workplaceFilter.collectAsState(); val places by vm.workplaces.collectAsState()
-    Surface(color = Purple, contentColor = WhiteInk, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color(0xFF493666))) {
-        Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.weight(1f)) { Choice("", filter, listOf("all" to L("All workplaces", "Alle Arbeitsplätze")) + places.map { it.id to it.name }, vm::setFilter) }
-            IconButton(manage) { Mark("workplaces") }
+    Surface(color=Purple,contentColor=WhiteInk,shape=RoundedCornerShape(16.dp),border=BorderStroke(1.dp,Lavender.copy(alpha=.3f))) {
+        Row(Modifier.padding(10.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+            Text(L("WORKPLACE","ARBEITSPLATZ"),fontSize=9.sp,fontWeight=FontWeight.SemiBold,color=Lavender)
+            Surface(Modifier.weight(1f),color=Raised,contentColor=WhiteInk,shape=RoundedCornerShape(12.dp)){Choice("",filter,listOf("all" to L("All workplaces","Alle Arbeitsplätze"))+places.map{it.id to it.name},vm::setFilter)}
         }
+    }
+}
+@Composable fun PurpleAction(label:String,modifier:Modifier=Modifier,icon:String?=null,accent:Boolean=false,onClick:()->Unit) {
+    Surface(onClick=onClick,modifier=modifier.heightIn(min=46.dp),shape=RoundedCornerShape(16.dp),color=Raised,contentColor=if(accent)Lime else Lavender,border=BorderStroke(1.dp,Lavender.copy(alpha=.3f))) {
+        Row(Modifier.padding(horizontal=10.dp,vertical=12.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.Center){if(icon!=null){Mark(icon,Modifier.size(20.dp));Spacer(Modifier.width(7.dp))};Text(label,fontSize=12.sp,fontWeight=FontWeight.SemiBold)}
     }
 }

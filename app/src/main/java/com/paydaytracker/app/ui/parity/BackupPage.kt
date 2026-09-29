@@ -25,16 +25,13 @@ import org.json.JSONObject
                     while(n>=0){require(out.size()+n<=8*1024*1024);out.write(buffer,0,n);n=input.read(buffer)}
                     out.toString("UTF-8")}};val root=JSONObject(raw);val data=root.optJSONObject("data") ?: root;require(data.has("settings")&&data.has("shifts"));pending=raw}catch(e:Exception){message=failed};busy=false}}
     val folder=rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()){result->if(result.resultCode==Activity.RESULT_OK)result.data?.let{intent->intent.data?.let{uri->auto.configure(uri,intent.flags);scope.launch{delay(300);NativeCoordinator.syncAutoBackup(context,vm.repository,scope)}}}}
-    var accountEvent by remember{mutableStateOf("")};val account=remember{GoogleAccount(context as Activity){accountEvent=it}}
-    DisposableEffect(account){onDispose{account.destroy()}}
-    val accountState=remember(accountEvent){JSONObject(account.state())}
     Page {
         WageCard{Heading(L("Automatic backup","Automatische Sicherung"));Text(when(status.optString("status")){"saved"->L("Up to date","Aktuell");"pending","saving"->L("Changes waiting to be saved","Änderungen werden gesichert");"error"->L("Backup needs attention","Sicherung prüfen");else->L("Choose a folder once","Einmal einen Ordner auswählen")});if(status.optString("folder").isNotEmpty())Text(status.optString("folder"),fontSize=12.sp);Text(L("Changes are saved automatically to a current backup and one previous copy.","Änderungen werden automatisch in einer aktuellen und einer vorherigen Sicherung gespeichert."),fontSize=12.sp)
             Action(L("Choose backup folder","Sicherungsordner wählen"),primary=true){folder.launch(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION))}
             if(status.optBoolean("enabled")){Action(L("Back up now","Jetzt sichern")){NativeCoordinator.syncAutoBackup(context,vm.repository,scope);auto.flush()};TextButton({auto.disable()}){Text(L("Turn off automatic backup","Automatische Sicherung ausschalten"))}}
         }
         WageCard{Heading(L("Backup & restore","Sichern & wiederherstellen"));Action(L("Export backup","Sicherung exportieren"),enabled=!busy){export.launch("WageTrack-backup.json")};Action(L("Restore from file / Drive","Aus Datei / Drive wiederherstellen"),enabled=!busy){restore.launch(arrayOf("application/json","application/octet-stream","text/plain"))};Text(L("Choose Google Drive in the Android file picker to save or restore a cloud file.","Wähle Google Drive in der Android-Dateiauswahl, um eine Cloud-Datei zu sichern oder wiederherzustellen."),fontSize=12.sp)}
-        WageCard{Heading(L("Google account","Google-Konto"));if(accountState.optString("email").isNotEmpty()){Text(accountState.optString("email"));Action(L("Sign out","Abmelden")){account.signOut()}}else{Action(L("Sign in with Google","Mit Google anmelden"),enabled=!accountState.optBoolean("busy")){account.signIn()};if(!accountState.optBoolean("configured"))Text(L("Google sign-in is not configured in this build. File and folder backups work without sign-in.","Google-Anmeldung ist in diesem Build nicht eingerichtet. Datei- und Ordnersicherungen funktionieren ohne Anmeldung."),fontSize=12.sp)};if(accountEvent in listOf("error","verifyError"))Text(L("Sign-in failed. Please try again.","Anmeldung fehlgeschlagen. Bitte erneut versuchen."))}
+        WageCard{GoogleAccountPanel()}
         CsvExport(vm)
         if(message.isNotEmpty())Text(message,fontSize=13.sp)
     }
@@ -67,4 +64,12 @@ import org.json.JSONObject
         Action(L("Export CSV", "CSV exportieren")) { export.launch("WageTrack-$month.csv") }
         if (message.isNotEmpty()) Text(message)
     }
+}
+
+@Composable fun GoogleAccountPanel(){
+    val context=LocalContext.current
+    var accountEvent by remember{mutableStateOf("")};val account=remember{GoogleAccount(context as Activity){accountEvent=it}}
+    DisposableEffect(account){onDispose{account.destroy()}}
+    val accountState=remember(accountEvent){JSONObject(account.state())}
+Heading(L("Google account","Google-Konto"));if(accountState.optString("email").isNotEmpty()){Text(accountState.optString("email"));Action(L("Sign out","Abmelden")){account.signOut()}}else{Action(L("Sign in with Google","Mit Google anmelden"),enabled=!accountState.optBoolean("busy")){account.signIn()};if(!accountState.optBoolean("configured"))Text(L("Google sign-in is not configured in this build. File and folder backups work without sign-in.","Google-Anmeldung ist in diesem Build nicht eingerichtet. Datei- und Ordnersicherungen funktionieren ohne Anmeldung."),fontSize=12.sp)};if(accountEvent in listOf("error","verifyError"))Text(L("Sign-in failed. Please try again.","Anmeldung fehlgeschlagen. Bitte erneut versuchen."))
 }

@@ -24,6 +24,9 @@ class DeviceSmoke {
         compose.waitUntil(15000) { compose.onAllNodesWithTag("screen-dashboard").fetchSemanticsNodes().isNotEmpty() }
     }
     private fun screenshot(name: String) {
+        compose.activityRule.scenario.onActivity { activity ->
+            androidx.core.view.WindowCompat.getInsetsController(activity.window,activity.window.decorView).hide(androidx.core.view.WindowInsetsCompat.Type.ime())
+        }
         compose.waitForIdle()
         // Wait for the submitted frame to reach SurfaceFlinger before taking a device screenshot.
         Thread.sleep(250)
@@ -41,8 +44,16 @@ class DeviceSmoke {
             compose.onNodeWithTag("screen-$route").assertExists()
             screenshot(route)
         }
-        compose.onNodeWithContentDescription("Menu").performClick()
+        val monthLabel=compose.onNodeWithContentDescription("Select month").fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.Text].joinToString()
+        compose.onNodeWithContentDescription("Select month").performScrollTo().performClick()
+        compose.onNodeWithText("Set month").assertIsDisplayed()
+        screenshot("month-picker")
+        compose.onNodeWithText("Cancel").performClick()
+        Assert.assertEquals(monthLabel,compose.onNodeWithContentDescription("Select month").fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.Text].joinToString())
+        compose.onNodeWithContentDescription("Menu").performScrollTo().performClick()
+        screenshot("drawer-layout")
         compose.onNodeWithText("Settings",useUnmergedTree=true).performClick()
+        screenshot("settings-layout")
         compose.onNodeWithText("Reminders & widget").performScrollTo().performClick()
         compose.onNodeWithText("Upcoming shifts").assertExists()
         screenshot("reminders")
@@ -83,7 +94,10 @@ class DeviceSmoke {
             compose.onNodeWithText("Earnings, progress & recent shifts",substring=true).performScrollTo().performClick()
             compose.onNodeWithTag("earnings-row").performScrollTo()
             screenshot("earnings-populated")
-            compose.onNodeWithContentDescription("Menu").performClick()
+            compose.onNodeWithTag("bonus-card").performScrollTo();screenshot("bonus-layout")
+            compose.onNodeWithTag("progress-card").performScrollTo();screenshot("progress-layout")
+            compose.onNodeWithTag("deductions-card").performScrollTo();screenshot("deductions-layout")
+            compose.onNodeWithContentDescription("Menu").performScrollTo().performClick()
             compose.onNodeWithText("Settings",useUnmergedTree=true).performClick()
             compose.onNodeWithText("Budgets & goals").performClick()
             compose.waitUntil(10000){compose.onAllNodesWithText("Holiday fund").fetchSemanticsNodes().isNotEmpty()}
@@ -102,6 +116,46 @@ class DeviceSmoke {
             repository.deleteShifts(records.map{it.id})
             repository.deleteSavingsGoal("visual-goal")
             repository.saveSettings(previous)
+        }
+    }
+    @Test fun setupMatchesReferenceAndSavesSelections() = runBlocking {
+        val originalSettings=repository.getSettings()
+        val oldProfile=repository.profile.first()
+        val originalDoc=repository.document()
+        val oldPlaces=repository.workplaces.first().map{it.id}.toSet()
+        repository.saveSettings(originalSettings.copy(theme="light"))
+        repository.updateDocument{it.put("onboardingCompleted",false).put("language","en")}
+        try {
+            compose.waitUntil(10000){compose.onAllNodesWithTag("setup-step-0").fetchSemanticsNodes().isNotEmpty()}
+            compose.onNodeWithText("Restore a backup").assertIsDisplayed()
+            compose.onNodeWithText("Your name").performTextInput("Fahad")
+            screenshot("setup-welcome")
+            compose.onNodeWithText("Get started →").performClick()
+            compose.onNodeWithText("e.g. Burger King").performTextInput("Layout test job")
+            compose.onNodeWithText("e.g. 14.50").performScrollTo().performTextInput("14.50")
+            compose.onNodeWithText("e.g. 80").performScrollTo().performTextInput("80")
+            compose.onNodeWithText("Workplace name").performScrollTo()
+            screenshot("setup-workplace")
+            compose.onNodeWithText("Choose your country").performScrollTo().performClick()
+            compose.onNodeWithText("Search country").performTextInput("Germany")
+            compose.onNode(hasText("Germany") and hasSetTextAction().not()).performClick()
+            compose.onNodeWithText("III").performScrollTo().performClick()
+            screenshot("setup-tax")
+            compose.onNodeWithText("Next →").performClick()
+            compose.onNodeWithText("30 min").performScrollTo().performClick()
+            compose.onNodeWithText("7 h 30 min").performScrollTo().assertExists()
+            screenshot("setup-shift")
+            compose.onNodeWithText("Skip this step").performScrollTo().performClick()
+            screenshot("setup-notifications")
+            compose.onNodeWithText("Continue to app →").performClick()
+            compose.waitUntil(15000){compose.onAllNodesWithTag("screen-dashboard").fetchSemanticsNodes().isNotEmpty()}
+            Assert.assertEquals("III",repository.getSettings().taxclass)
+            Assert.assertEquals("DE",repository.document().getJSONObject("settings").getString("country"))
+            Assert.assertEquals("Fahad",repository.profile.first().name)
+        } finally {
+            repository.workplaces.first().filter{it.id !in oldPlaces}.forEach{repository.deleteWorkplace(it.id)}
+            repository.saveSettings(originalSettings);repository.saveProfile(oldProfile)
+            repository.updateDocument{d->d.put("onboardingCompleted",true);d.put("settings",originalDoc.optJSONObject("settings") ?: JSONObject());d.put("profile",originalDoc.optJSONObject("profile") ?: JSONObject())}
         }
     }
     private fun repositoryDocument() = runBlocking { repository.document() }
