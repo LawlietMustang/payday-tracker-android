@@ -58,7 +58,7 @@ import java.util.Locale
     var restore by rememberSaveable{mutableStateOf(false)}
     var name by rememberSaveable{mutableStateOf("")};var country by rememberSaveable{mutableStateOf("")}
     var job by rememberSaveable{mutableStateOf("")};var wage by rememberSaveable{mutableStateOf("")};var target by rememberSaveable{mutableStateOf("")}
-    var currency by rememberSaveable{mutableStateOf("EUR")};var taxMode by rememberSaveable{mutableStateOf("germany")};var taxClass by rememberSaveable{mutableStateOf("I")};var deduction by rememberSaveable{mutableStateOf("0")}
+    var currency by rememberSaveable{mutableStateOf("EUR")};var taxMode by rememberSaveable{mutableStateOf("manual")};var taxClass by rememberSaveable{mutableStateOf("I")};var deduction by rememberSaveable{mutableStateOf("0")}
     var firstShift by rememberSaveable{mutableStateOf(true)};var start by rememberSaveable{mutableStateOf("09:00")};var end by rememberSaveable{mutableStateOf("17:00")};var nextDay by rememberSaveable{mutableStateOf(false)}
     var pause by rememberSaveable{mutableStateOf("0")};var date by rememberSaveable{mutableStateOf(LocalDate.now().toString())}
     var busy by remember{mutableStateOf(false)};var error by remember{mutableStateOf("")};val scope=rememberCoroutineScope();val context=LocalContext.current
@@ -137,7 +137,7 @@ import java.util.Locale
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){
                 if(step>0)Action(L("Back","Zurück"),Modifier.widthIn(min=90.dp),enabled=!busy){step--;error=""}
                 val invalid=L("Check the required fields and times.","Pflichtfelder und Uhrzeiten prüfen.")
-                Action(if(step==0)L("Get started →","Los geht’s →")else if(step==3)L("Continue to app →","Zur App →")else L("Next →","Weiter →"),if(step==0)Modifier.fillMaxWidth()else Modifier.widthIn(min=120.dp).testTag("setup-next"),primary=true,enabled=!busy,compact=step==3){
+                Action(if(step==0)L("Get started →","Los geht’s →")else if(step==3)L("Continue to app →","Zur App →")else L("Next →","Weiter →"),if(step==0)Modifier.fillMaxWidth()else Modifier.width(if(step==3)168.dp else 120.dp).testTag("setup-next"),primary=true,enabled=!busy,compact=step==3){
                     val w=wage.replace(',','.').toDoubleOrNull();val t=target.replace(',','.').toDoubleOrNull();val d=deduction.replace(',','.').toDoubleOrNull()
                     val valid=w!=null&&w.isFinite()&&w>0&&t!=null&&t.isFinite()&&t>0&&job.isNotBlank()&&d!=null&&d.isFinite()&&d in 0.0..100.0
                     if(step==1&&!valid||step==2&&paidMinutes==null)error=invalid else if(step<3){if(step==2)firstShift=true;error="";step++}else if(valid){busy=true;scope.launch{try{
