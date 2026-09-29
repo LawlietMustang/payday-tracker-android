@@ -44,6 +44,12 @@ class DeviceSmoke {
             compose.onNodeWithTag("screen-$route").assertExists()
             screenshot(route)
         }
+        val monthLabel=compose.onNodeWithContentDescription("Select month").fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.Text].joinToString()
+        compose.onNodeWithContentDescription("Select month").performScrollTo().performClick()
+        compose.onNodeWithText("Set month").assertIsDisplayed()
+        screenshot("month-picker")
+        compose.onNodeWithText("Cancel").performClick()
+        Assert.assertEquals(monthLabel,compose.onNodeWithContentDescription("Select month").fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.Text].joinToString())
         compose.onNodeWithContentDescription("Menu").performScrollTo().performClick()
         screenshot("drawer-layout")
         compose.onNodeWithText("Settings",useUnmergedTree=true).performClick()
