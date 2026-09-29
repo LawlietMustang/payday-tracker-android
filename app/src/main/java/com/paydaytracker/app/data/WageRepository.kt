@@ -68,12 +68,12 @@ class WageRepository(private val db: WageTrackDatabase) {
     }
 
     /** Setup commits together so rotation or failure cannot leave a half-created job. */
-    suspend fun completeSetup(settings: AppSettings, name: String, job: String, firstShift: Shift?) = db.withTransaction {
+    suspend fun completeSetup(settings: AppSettings, name: String, job: String, firstShift: Shift?, country: String = "") = db.withTransaction {
         val wp = addWorkplace(job, settings.wage)
         saveSettings(settings)
         saveProfile(UserProfile(name = name))
         firstShift?.let { saveShift(it.copy(workplaceId = wp.id)) }
-        updateDocument { it.put("onboardingCompleted", true) }
+        updateDocument { it.put("onboardingCompleted", true); it.put("settings", (it.optJSONObject("settings") ?: JSONObject()).put("country", country)); it.put("profile", (it.optJSONObject("profile") ?: JSONObject()).put("country", country)) }
     }
 
     suspend fun saveTimedShift(shift: Shift) = db.withTransaction {

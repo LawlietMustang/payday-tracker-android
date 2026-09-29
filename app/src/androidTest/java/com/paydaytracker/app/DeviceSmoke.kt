@@ -41,8 +41,10 @@ class DeviceSmoke {
             compose.onNodeWithTag("screen-$route").assertExists()
             screenshot(route)
         }
-        compose.onNodeWithContentDescription("Menu").performClick()
+        compose.onNodeWithContentDescription("Menu").performScrollTo().performClick()
+        screenshot("drawer-layout")
         compose.onNodeWithText("Settings",useUnmergedTree=true).performClick()
+        screenshot("settings-layout")
         compose.onNodeWithText("Reminders & widget").performScrollTo().performClick()
         compose.onNodeWithText("Upcoming shifts").assertExists()
         screenshot("reminders")
@@ -83,7 +85,10 @@ class DeviceSmoke {
             compose.onNodeWithText("Earnings, progress & recent shifts",substring=true).performScrollTo().performClick()
             compose.onNodeWithTag("earnings-row").performScrollTo()
             screenshot("earnings-populated")
-            compose.onNodeWithContentDescription("Menu").performClick()
+            compose.onNodeWithTag("bonus-card").performScrollTo();screenshot("bonus-layout")
+            compose.onNodeWithTag("progress-card").performScrollTo();screenshot("progress-layout")
+            compose.onNodeWithTag("deductions-card").performScrollTo();screenshot("deductions-layout")
+            compose.onNodeWithContentDescription("Menu").performScrollTo().performClick()
             compose.onNodeWithText("Settings",useUnmergedTree=true).performClick()
             compose.onNodeWithText("Budgets & goals").performClick()
             compose.waitUntil(10000){compose.onAllNodesWithText("Holiday fund").fetchSemanticsNodes().isNotEmpty()}
@@ -102,6 +107,44 @@ class DeviceSmoke {
             repository.deleteShifts(records.map{it.id})
             repository.deleteSavingsGoal("visual-goal")
             repository.saveSettings(previous)
+        }
+    }
+    @Test fun setupMatchesReferenceAndSavesSelections() = runBlocking {
+        val originalSettings=repository.getSettings()
+        val oldProfile=repository.profile.first()
+        val originalDoc=repository.document()
+        val oldPlaces=repository.workplaces.first().map{it.id}.toSet()
+        repository.updateDocument{it.put("onboardingCompleted",false).put("language","en")}
+        try {
+            compose.waitUntil(10000){compose.onAllNodesWithTag("setup-step-0").fetchSemanticsNodes().isNotEmpty()}
+            compose.onNodeWithText("Restore a backup").assertIsDisplayed()
+            compose.onNodeWithText("Your name",useUnmergedTree=true).performTextInput("Fahad")
+            screenshot("setup-welcome")
+            compose.onNodeWithText("Get started →").performClick()
+            compose.onNodeWithText("e.g. Burger King",useUnmergedTree=true).performTextInput("Layout test job")
+            compose.onNodeWithText("e.g. 14.50",useUnmergedTree=true).performScrollTo().performTextInput("14.50")
+            compose.onNodeWithText("e.g. 80",useUnmergedTree=true).performScrollTo().performTextInput("80")
+            screenshot("setup-workplace")
+            compose.onNodeWithText("Choose your country").performScrollTo().performClick()
+            compose.onNodeWithText("Search country").performTextInput("Germany")
+            compose.onNodeWithText("Germany",useUnmergedTree=true).performClick()
+            compose.onNodeWithText("III").performScrollTo().performClick()
+            screenshot("setup-tax")
+            compose.onNodeWithText("Next →").performClick()
+            compose.onNodeWithText("30 min").performScrollTo().performClick()
+            compose.onNodeWithText("7 h 30 min").performScrollTo().assertExists()
+            screenshot("setup-shift")
+            compose.onNodeWithText("Skip this step").performScrollTo().performClick()
+            screenshot("setup-notifications")
+            compose.onNodeWithText("Continue to app →").performClick()
+            compose.waitUntil(15000){compose.onAllNodesWithTag("screen-dashboard").fetchSemanticsNodes().isNotEmpty()}
+            Assert.assertEquals("III",repository.getSettings().taxclass)
+            Assert.assertEquals("DE",repository.document().getJSONObject("settings").getString("country"))
+            Assert.assertEquals("Fahad",repository.profile.first().name)
+        } finally {
+            repository.workplaces.first().filter{it.id !in oldPlaces}.forEach{repository.deleteWorkplace(it.id)}
+            repository.saveSettings(originalSettings);repository.saveProfile(oldProfile)
+            repository.updateDocument{d->d.put("onboardingCompleted",true);d.put("settings",originalDoc.optJSONObject("settings") ?: JSONObject());d.put("profile",originalDoc.optJSONObject("profile") ?: JSONObject())}
         }
     }
     private fun repositoryDocument() = runBlocking { repository.document() }
