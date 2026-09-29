@@ -101,13 +101,13 @@ fun clock(ms: Long): String { val s=ms/1000;return "%02d:%02d:%02d".format(s/360
 }
 @Composable fun Metric(label:String,value:String,foot:String,modifier:Modifier=Modifier,badge:String="",trailingFoot:String="") {
     WageCard(modifier,padding=14.dp) {
-        Column(Modifier.heightIn(min=100.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
-            Row(Modifier.fillMaxWidth().height(32.dp),verticalAlignment=Alignment.Top,horizontalArrangement=Arrangement.spacedBy(4.dp)) {
+        Column(Modifier.heightIn(min=88.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth().height(28.dp),verticalAlignment=Alignment.Top,horizontalArrangement=Arrangement.spacedBy(4.dp)) {
                 Text(label.uppercase(),Modifier.weight(1f),fontSize=10.sp,fontWeight=FontWeight.SemiBold,lineHeight=14.sp)
                 if(badge.isNotEmpty())Text(badge.uppercase(),fontSize=8.sp,lineHeight=10.sp,color=if(badge==L("To date","Bisher"))Color(0xFF5831BD)else Color(0xFF85590B),modifier=Modifier.background(if(badge==L("To date","Bisher"))Color(0xFFEADFFF)else Color(0xFFFFF0C6),RoundedCornerShape(20.dp)).padding(horizontal=5.dp,vertical=4.dp))
             }
-            Text(value,fontSize=23.sp,fontWeight=FontWeight.Medium,maxLines=1)
-            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text(foot,Modifier.weight(1f),fontSize=10.sp,color=LocalContentColor.current.copy(alpha=.65f));if(trailingFoot.isNotEmpty())Text(trailingFoot,fontSize=10.sp,color=LocalContentColor.current.copy(alpha=.65f))}
+            Text(value,fontSize=23.sp,lineHeight=28.sp,fontWeight=FontWeight.Medium,maxLines=1)
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text(foot,Modifier.weight(1f),fontSize=10.sp,lineHeight=14.sp,color=LocalContentColor.current.copy(alpha=.65f));if(trailingFoot.isNotEmpty())Text(trailingFoot,fontSize=10.sp,lineHeight=14.sp,color=LocalContentColor.current.copy(alpha=.65f))}
         }
     }
 }
