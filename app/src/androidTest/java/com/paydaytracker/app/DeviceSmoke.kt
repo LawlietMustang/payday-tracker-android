@@ -24,6 +24,9 @@ class DeviceSmoke {
         compose.waitUntil(15000) { compose.onAllNodesWithTag("screen-dashboard").fetchSemanticsNodes().isNotEmpty() }
     }
     private fun screenshot(name: String) {
+        compose.activityRule.scenario.onActivity { activity ->
+            androidx.core.view.WindowCompat.getInsetsController(activity.window,activity.window.decorView).hide(androidx.core.view.WindowInsetsCompat.Type.ime())
+        }
         compose.waitForIdle()
         // Wait for the submitted frame to reach SurfaceFlinger before taking a device screenshot.
         Thread.sleep(250)
@@ -114,16 +117,17 @@ class DeviceSmoke {
         val oldProfile=repository.profile.first()
         val originalDoc=repository.document()
         val oldPlaces=repository.workplaces.first().map{it.id}.toSet()
+        repository.saveSettings(originalSettings.copy(theme="light"))
         repository.updateDocument{it.put("onboardingCompleted",false).put("language","en")}
         try {
             compose.waitUntil(10000){compose.onAllNodesWithTag("setup-step-0").fetchSemanticsNodes().isNotEmpty()}
             compose.onNodeWithText("Restore a backup").assertIsDisplayed()
-            compose.onNodeWithText("Your name",useUnmergedTree=true).performTextInput("Fahad")
+            compose.onNodeWithText("Your name").performTextInput("Fahad")
             screenshot("setup-welcome")
             compose.onNodeWithText("Get started →").performClick()
-            compose.onNodeWithText("e.g. Burger King",useUnmergedTree=true).performTextInput("Layout test job")
-            compose.onNodeWithText("e.g. 14.50",useUnmergedTree=true).performScrollTo().performTextInput("14.50")
-            compose.onNodeWithText("e.g. 80",useUnmergedTree=true).performScrollTo().performTextInput("80")
+            compose.onNodeWithText("e.g. Burger King").performTextInput("Layout test job")
+            compose.onNodeWithText("e.g. 14.50").performScrollTo().performTextInput("14.50")
+            compose.onNodeWithText("e.g. 80").performScrollTo().performTextInput("80")
             screenshot("setup-workplace")
             compose.onNodeWithText("Choose your country").performScrollTo().performClick()
             compose.onNodeWithText("Search country").performTextInput("Germany")

@@ -34,6 +34,8 @@ jobs:
           target: google_apis
           disable-animations: true
           script: |
+            adb shell wm size 1080x2340
+            adb shell wm density 440
             adb logcat -c
             timeout 480s gradle --no-daemon connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.paydaytracker.app.DeviceSmoke,com.paydaytracker.app.UpgradeSmoke || { adb logcat -d > device-logcat.txt; adb pull /sdcard/Download/native-screens native-screens; exit 1; }
             adb logcat -d > device-logcat.txt
