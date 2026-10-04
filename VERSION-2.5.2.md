@@ -1,5 +1,6 @@
 # WageTrack 2.5.2 (43)
 
+- Restore the original purple card and raised-field colours in dark mode.
 - Restore the original purple Hours calendar, month arrows, workplace actions, status colours and legend.
 - Restore the shift editor card with a fixed Cancel/Save footer and an inline calendar for selecting one or multiple dates.
 - Start and End now open native Compose clock pickers instead of editable text fields. Cancel and Back retain the existing time.

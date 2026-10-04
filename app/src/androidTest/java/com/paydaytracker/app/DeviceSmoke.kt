@@ -2,6 +2,7 @@ package com.paydaytracker.app
 
 import androidx.compose.ui.test.*
 import android.graphics.Bitmap
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -73,18 +74,18 @@ class DeviceSmoke {
         compose.onAllNodes(hasSetTextAction() and hasAnyAncestor(hasTestTag("time-dialog"))).assertCountEquals(0)
         screenshot("shift-time-picker")
         // The 24-hour dial exposes each hour, then each five-minute mark.
-        compose.onNodeWithText("9", useUnmergedTree=true).performClick()
-        compose.onNodeWithText("0", useUnmergedTree=true).performClick()
+        compose.onNodeWithContentDescription("9 hours").performClick()
+        compose.onNodeWithContentDescription("0 minutes").performClick()
         compose.onNodeWithTag("confirm-time").performClick()
         compose.onNodeWithTag("shift-start-time").assertTextContains("09:00")
         compose.onNodeWithTag("shift-end-time").performClick()
-        compose.onNodeWithText("17", useUnmergedTree=true).performClick()
-        compose.onNodeWithText("0", useUnmergedTree=true).performClick()
+        compose.onNodeWithContentDescription("17 hours").performClick()
+        compose.onNodeWithContentDescription("0 minutes").performClick()
         compose.onNodeWithTag("confirm-time").performClick()
         compose.onNodeWithTag("shift-end-time").assertTextContains("17:00")
         // Changes on a dial must not leak into the editor when cancelled.
         compose.onNodeWithTag("shift-start-time").performClick()
-        compose.onNodeWithText("10", useUnmergedTree=true).performClick()
+        compose.onNodeWithContentDescription("10 hours").performClick()
         compose.onNode(hasText("Cancel") and hasAnyAncestor(hasTestTag("time-dialog"))).performClick()
         compose.onNodeWithTag("shift-start-time").assertTextContains("09:00")
         compose.onNodeWithText("Unpaid break (minutes)").performScrollTo().performTextReplacement("30")
@@ -130,11 +131,15 @@ class DeviceSmoke {
             compose.onNodeWithTag("picker-day-${month.atDay(13)}").performClick()
             compose.onNodeWithTag("picker-day-${month.atDay(12)}").assertIsSelected()
             compose.onNodeWithTag("picker-day-${month.atDay(13)}").assertIsNotSelected()
-            compose.onNodeWithText("2 days selected").assertExists()
+            compose.onNodeWithText("2 days selected").performScrollTo().assertIsDisplayed()
             compose.onNodeWithTag("save-shift").assertIsDisplayed()
             screenshot("shift-multiple-days-light")
             repository.saveSettings(prior.copy(theme="dark"))
-            compose.waitForIdle()
+            compose.waitUntil(10000) {
+                val image=compose.onNodeWithTag("shift-editor").captureToImage()
+                val color=image.toPixelMap()[image.width/2,20]
+                color.red < .25f && color.blue < .5f
+            }
             screenshot("shift-multiple-days-dark")
             compose.onNodeWithText("Note (optional)").performScrollTo().performTextReplacement(note)
             compose.onNodeWithTag("save-shift").performClick()

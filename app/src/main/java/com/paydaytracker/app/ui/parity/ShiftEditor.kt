@@ -83,7 +83,7 @@ import java.util.UUID
                         Heading(if (shift == null) L("Add shift", "Schicht hinzufügen") else L("Edit shift", "Schicht bearbeiten"))
                     }
                     val close = L("Close shift editor", "Schichtfenster schließen")
-                    OutlinedIconButton(dismiss, Modifier.size(44.dp).semantics { contentDescription = close }, shape = RoundedCornerShape(14.dp)) { Mark("close") }
+                    OutlinedIconButton(dismiss, Modifier.size(44.dp).semantics { contentDescription = close }, shape = RoundedCornerShape(14.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) { Mark("close") }
                 }
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).testTag("shift-editor-content"), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     if (templates.isNotEmpty()) Choice(L("Shift template", "Schichtvorlage"), "", listOf("" to L("No template", "Keine Vorlage")) + templates.map { it.id to it.name }) { id ->

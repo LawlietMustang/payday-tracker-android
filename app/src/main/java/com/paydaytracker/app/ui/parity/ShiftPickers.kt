@@ -22,7 +22,7 @@ import java.time.format.DateTimeFormatter
     Column(modifier, verticalArrangement = Arrangement.spacedBy(5.dp)) {
         if (label.isNotEmpty()) Text(label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
         Surface(onClick = onClick, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag(tag).semantics { role = Role.Button },
-            shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(14.dp), color = if (MaterialTheme.colorScheme.surface == Purple) Raised else androidx.compose.ui.graphics.Color(0xFFFFFAFF),
             contentColor = MaterialTheme.colorScheme.onSurface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) {
             Row(Modifier.padding(horizontal = 14.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(value, Modifier.weight(1f), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
