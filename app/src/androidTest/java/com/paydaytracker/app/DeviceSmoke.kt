@@ -2,6 +2,7 @@ package com.paydaytracker.app
 
 import androidx.compose.ui.test.*
 import android.graphics.Bitmap
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -67,9 +68,27 @@ class DeviceSmoke {
     @Test fun shiftEntryPersistsAndEnglishLabelsStayEnglish() {
         val note="Native parity smoke ${System.currentTimeMillis()}"
         compose.onNodeWithContentDescription("Add shift").performClick()
-        compose.onNodeWithText("Start (HH:mm)").performTextReplacement("09:00")
-        compose.onNodeWithText("End (HH:mm)").performTextReplacement("17:00")
-        compose.onNodeWithText("Unpaid break (minutes)").performTextReplacement("30")
+        compose.onNodeWithTag("shift-date").assert(hasSetTextAction().not())
+        compose.onNodeWithTag("shift-start-time").performScrollTo().assert(hasSetTextAction().not()).performClick()
+        compose.onNodeWithTag("time-picker").assertExists()
+        compose.onAllNodes(hasSetTextAction() and hasAnyAncestor(hasTestTag("time-dialog"))).assertCountEquals(0)
+        screenshot("shift-time-picker")
+        // The 24-hour dial exposes each hour, then each five-minute mark.
+        compose.onNodeWithContentDescription("9 hours").performClick()
+        compose.onNodeWithContentDescription("0 minutes").performClick()
+        compose.onNodeWithTag("confirm-time").performClick()
+        compose.onNodeWithTag("shift-start-time").assertTextContains("09:00")
+        compose.onNodeWithTag("shift-end-time").performClick()
+        compose.onNodeWithContentDescription("17 hours").performClick()
+        compose.onNodeWithContentDescription("0 minutes").performClick()
+        compose.onNodeWithTag("confirm-time").performClick()
+        compose.onNodeWithTag("shift-end-time").assertTextContains("17:00")
+        // Changes on a dial must not leak into the editor when cancelled.
+        compose.onNodeWithTag("shift-start-time").performClick()
+        compose.onNodeWithContentDescription("10 hours").performClick()
+        compose.onNode(hasText("Cancel") and hasAnyAncestor(hasTestTag("time-dialog"))).performClick()
+        compose.onNodeWithTag("shift-start-time").assertTextContains("09:00")
+        compose.onNodeWithText("Unpaid break (minutes)").performScrollTo().performTextReplacement("30")
         compose.onNodeWithText("Note (optional)").performScrollTo().performTextReplacement(note)
         compose.onNodeWithText("Save shift").performClick()
         var saved: Shift?=null
@@ -79,6 +98,66 @@ class DeviceSmoke {
         compose.waitUntil(15000){compose.onAllNodesWithTag("screen-dashboard").fetchSemanticsNodes().isNotEmpty()}
         Assert.assertEquals(saved!!.id,runBlocking{repository.shifts.first().first{it.note==note}.id})
         runBlocking{repository.deleteShift(saved!!.id)}
+    }
+    @Test fun calendarAndMultiDayPickerMatchReference() = runBlocking {
+        val wp=repository.workplaces.first().first()
+        val month=java.time.YearMonth.now().plusMonths(2)
+        val prior=repository.getSettings()
+        val records=listOf(
+            Shift("calendar-planned",month.atDay(5).toString(),"09:00","17:00",450,30,wp.wage,wp.id,"planned","manual"),
+            Shift("calendar-done",month.atDay(6).toString(),"09:00","17:00",450,30,wp.wage,wp.id,"completed","manual"),
+            Shift("calendar-overlap-a",month.atDay(7).toString(),"09:00","17:00",450,30,wp.wage,wp.id,"planned","manual"),
+            Shift("calendar-overlap-b",month.atDay(7).toString(),"16:00","18:00",120,0,wp.wage,wp.id,"planned","manual"),
+            Shift("calendar-cancelled",month.atDay(8).toString(),"09:00","17:00",450,30,wp.wage,wp.id,"cancelled","manual")
+        )
+        val note="Calendar picker smoke ${System.currentTimeMillis()}"
+        repository.saveShifts(records)
+        repository.saveSettings(prior.copy(theme="light"))
+        try {
+            compose.onNodeWithTag("nav-shifts").performClick()
+            repeat(2){compose.onNodeWithContentDescription("Next month").performScrollTo().performClick()}
+            compose.onNodeWithTag("calendar-day-${month.atDay(7)}").assertContentDescriptionEquals("${month.atDay(7)}, Overlap")
+            compose.onNodeWithTag("calendar-day-${month.atDay(8)}").assertContentDescriptionEquals("${month.atDay(8)}, Cancelled")
+            compose.onNodeWithTag("shift-calendar").performScrollTo()
+            screenshot("hours-calendar-reference")
+            compose.onNodeWithTag("calendar-day-${month.atDay(10)}").performClick()
+            compose.onNodeWithText("+ Add shift").performClick()
+            compose.onNodeWithTag("shift-date").performClick()
+            compose.onNodeWithTag("picker-day-${month.atDay(11)}").performClick()
+            compose.onNodeWithTag("shift-date").assertTextContains(month.atDay(11).format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")))
+            compose.onNodeWithTag("multiple-shift-days").performScrollTo().performClick()
+            compose.onNodeWithTag("picker-day-${month.atDay(12)}").performScrollTo().performClick()
+            compose.onNodeWithTag("picker-day-${month.atDay(13)}").performClick()
+            compose.onNodeWithTag("picker-day-${month.atDay(13)}").performClick()
+            compose.onNodeWithTag("picker-day-${month.atDay(12)}").assertIsSelected()
+            compose.onNodeWithTag("picker-day-${month.atDay(13)}").assertIsNotSelected()
+            compose.onNodeWithText("2 days selected").performScrollTo().assertIsDisplayed()
+            compose.onNodeWithTag("save-shift").assertIsDisplayed()
+            screenshot("shift-multiple-days-light")
+            repository.saveSettings(prior.copy(theme="dark"))
+            compose.waitUntil(10000) {
+                val image=compose.onNodeWithTag("shift-editor").captureToImage()
+                val color=image.toPixelMap()[image.width/2,20]
+                color.red < .25f && color.blue < .5f
+            }
+            screenshot("shift-multiple-days-dark")
+            repository.saveSettings(prior.copy(theme="light"))
+            compose.waitUntil(10000) {
+                val image=compose.onNodeWithTag("shift-editor").captureToImage()
+                val color=image.toPixelMap()[image.width/2,20]
+                color.red > .8f && color.blue > .8f
+            }
+            screenshot("shift-multiple-days-light-return")
+            compose.onNodeWithText("Note (optional)").performScrollTo().performTextReplacement(note)
+            compose.onNodeWithTag("save-shift").performClick()
+            compose.waitUntil(10000){runBlocking{repository.shifts.first().count{it.note==note}}==2}
+            val saved=repository.shifts.first().filter{it.note==note}
+            Assert.assertEquals(setOf(month.atDay(11).toString(),month.atDay(12).toString()),saved.map{it.date}.toSet())
+            Assert.assertTrue(saved.all{it.status=="planned" && it.start=="12:00" && it.end=="20:00" && it.minutes==450})
+        } finally {
+            repository.deleteShifts(records.map{it.id}+repository.shifts.first().filter{it.note==note}.map{it.id})
+            repository.saveSettings(prior)
+        }
     }
     @Test fun populatedScreensAndTimerSurviveRecreation() = runBlocking {
         val month=java.time.YearMonth.now()

@@ -28,8 +28,10 @@ import java.time.LocalTime
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(L("Blank fields keep each shift's existing value.", "Leere Felder behalten den bisherigen Wert jeder Schicht."))
             Choice(L("Workplace", "Arbeitsplatz"), workplace, listOf("" to unchanged) + places.map { it.id to it.name }) { workplace = it }
-            Field(L("Start (HH:mm)", "Beginn (HH:mm)"), start, { start = it })
-            Field(L("End (HH:mm)", "Ende (HH:mm)"), end, { end = it })
+            ShiftTimeField(L("Start", "Beginn"), start, { start = it }, tag="bulk-start-time", placeholder=unchanged)
+            if(start.isNotEmpty()) TextButton({start=""}) { Text(L("Keep start unchanged", "Beginn unverändert lassen")) }
+            ShiftTimeField(L("End", "Ende"), end, { end = it }, tag="bulk-end-time", placeholder=unchanged)
+            if(end.isNotEmpty()) TextButton({end=""}) { Text(L("Keep end unchanged", "Ende unverändert lassen")) }
             Field(L("Unpaid break (minutes)", "Pause (Minuten)"), pause, { pause = it })
             Field(L("Hourly wage", "Stundenlohn"), wage, { wage = it })
             Choice(L("Status", "Status"), status, listOf("" to unchanged) + listOf("planned", "completed", "cancelled").map { it to statusLabel(it) }) { status = it }

@@ -90,7 +90,7 @@ bottomBar={
                     }
                 }) { key(route) { when(route) {
                     "dashboard" -> Overview(vm,::navigate,{add()},::edit)
-                    "shifts" -> Hours(vm,::add,::edit){navigate("workplaces")}
+                    "shifts" -> Hours(vm,::add,::edit,{navigate("workplaces")},{navigate("new-workplace")})
                     "expenses" -> Expenses(vm)
                     "history" -> History(vm){navigate("workplaces")}
                     "planning" -> Planning(vm)
