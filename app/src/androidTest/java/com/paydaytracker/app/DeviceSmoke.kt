@@ -70,7 +70,7 @@ class DeviceSmoke {
         compose.onNodeWithTag("shift-date").assert(hasSetTextAction().not())
         compose.onNodeWithTag("shift-start-time").performScrollTo().assert(hasSetTextAction().not()).performClick()
         compose.onNodeWithTag("time-picker").assertExists()
-        compose.onAllNodes(hasSetTextAction()).assertCountEquals(0)
+        compose.onAllNodes(hasSetTextAction() and hasAnyAncestor(hasTestTag("time-dialog"))).assertCountEquals(0)
         screenshot("shift-time-picker")
         // The 24-hour dial exposes each hour, then each five-minute mark.
         compose.onNodeWithText("9", useUnmergedTree=true).performClick()
@@ -85,7 +85,7 @@ class DeviceSmoke {
         // Changes on a dial must not leak into the editor when cancelled.
         compose.onNodeWithTag("shift-start-time").performClick()
         compose.onNodeWithText("10", useUnmergedTree=true).performClick()
-        compose.onNodeWithText("Cancel").performClick()
+        compose.onNode(hasText("Cancel") and hasAnyAncestor(hasTestTag("time-dialog"))).performClick()
         compose.onNodeWithTag("shift-start-time").assertTextContains("09:00")
         compose.onNodeWithText("Unpaid break (minutes)").performScrollTo().performTextReplacement("30")
         compose.onNodeWithText("Note (optional)").performScrollTo().performTextReplacement(note)

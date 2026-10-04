@@ -40,7 +40,7 @@ import java.time.format.DateTimeFormatter
         val initial = runCatching { LocalTime.parse(value) }.getOrDefault(LocalTime.NOON)
         val time = rememberTimePickerState(initial.hour, initial.minute, is24Hour = true)
         Dialog(onDismissRequest = { open = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-            Surface(Modifier.widthIn(max = 380.dp).fillMaxWidth().padding(12.dp), shape = RoundedCornerShape(24.dp),
+            Surface(Modifier.widthIn(max = 380.dp).fillMaxWidth().padding(12.dp).testTag("time-dialog"), shape = RoundedCornerShape(24.dp),
                 color = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.onSurface) {
                 Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(label, Modifier.fillMaxWidth().padding(bottom = 12.dp), fontSize = 21.sp, fontWeight = FontWeight.Bold)
