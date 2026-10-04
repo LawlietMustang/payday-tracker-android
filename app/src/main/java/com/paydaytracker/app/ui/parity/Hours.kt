@@ -19,7 +19,7 @@ import java.time.*
 import java.util.UUID
 
 @OptIn(ExperimentalFoundationApi::class)
-@Composable fun Hours(vm:MainViewModel,add:(String,ShiftTemplate?)->Unit,edit:(String)->Unit,manage:()->Unit) {
+@Composable fun Hours(vm:MainViewModel,add:(String,ShiftTemplate?)->Unit,edit:(String)->Unit,manage:()->Unit,newWorkplace:()->Unit) {
     val month by vm.selectedMonth.collectAsState();val all by vm.shifts.collectAsState();val workplaces by vm.workplaces.collectAsState();val filter by vm.workplaceFilter.collectAsState();val templates by vm.shiftTemplates.collectAsState()
     val document by vm.document.collectAsState()
     val calendarShifts=all.filter{filter=="all"||it.workplaceId==filter}
@@ -30,10 +30,16 @@ import java.util.UUID
     var day by remember{mutableStateOf<String?>(null)};var selected by remember(month){mutableStateOf(setOf<String>())};var delete by remember{mutableStateOf(false)}
     Page {
         WorkplacePicker(vm,manage)
-        WageCard(color=Purple){CompositionLocalProvider(LocalContentColor provides WhiteInk){Eyebrow(L("Your shifts","Deine Schichten"));Heading(F.formatMonthTitle(month));CalendarGrid(month,calendarShifts,activeDate){day=it}
-            Text(L("Planned · Completed · Active · Overlap · Cancelled","Geplant · Erledigt · Aktiv · Überschneidung · Abgesagt"),fontSize=10.sp,color=Lavender)
+        Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+            PurpleAction(L("+ New workplace","+ Neuer Arbeitsplatz"),Modifier.weight(1f),onClick=newWorkplace)
+            PurpleAction(L("Manage workplaces","Arbeitsplätze verwalten"),Modifier.weight(1f),onClick=manage)
+        }
+        WageCard(Modifier.testTag("shift-calendar"),color=Purple,padding=14.dp){CompositionLocalProvider(LocalContentColor provides WhiteInk){
+            CalendarMonthHeader(month,vm::setMonth)
+            CalendarGrid(month,calendarShifts,activeDate){day=it}
+            CalendarLegend()
             HorizontalDivider(color=Lavender.copy(alpha=.3f));Eyebrow(L("Quick shift templates","Schnelle Schichtvorlagen"))
-            Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)){templates.forEach{t->Action(t.name){add(month+"-01",t)}};Action(L("+ Shift","+ Schicht"),primary=true){add(if(LocalDate.now().toString().startsWith(month))LocalDate.now().toString()else month+"-01",null)}}
+            Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)){templates.forEach{t->PurpleAction(t.name){add(month+"-01",t)}};PurpleAction(L("+ Shift","+ Schicht")){add(if(LocalDate.now().toString().startsWith(month))LocalDate.now().toString()else month+"-01",null)}}
         }}
         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Heading(L("Your shifts","Deine Schichten"));TextButton({selected=if(selected.size==shifts.size)emptySet()else shifts.map{it.id}.toSet()}){Text(L("Select all","Alle auswählen"),color=Lime)}}
         val cancelled=shifts.filter{it.status=="cancelled"}
@@ -49,38 +55,3 @@ import java.util.UUID
     if(delete)AlertDialog(onDismissRequest={delete=false},title={Text(L("Delete selected shifts?","Ausgewählte Schichten löschen?"))},confirmButton={TextButton({vm.deleteShifts(selected.toList());selected=emptySet();delete=false}){Text(L("Delete","Löschen"))}},dismissButton={TextButton({delete=false}){Text(L("Cancel","Abbrechen"))}})
 }
 @Composable fun statusLabel(status:String)=when(status){"planned"->L("Planned","Geplant");"cancelled"->L("Cancelled","Abgesagt");else->L("Completed","Erledigt")}
-@Composable fun CalendarGrid(month:String,shifts:List<Shift>,activeDate:String?=null,select:(String)->Unit) {
-    val conflicts=remember(shifts){
-        val intervals=shifts.filter{it.status!="cancelled"}.map{it to PayrollCalculator.shiftRange(it)}.sortedBy{it.second.start}
-        buildSet<String>{for(i in intervals.indices){var j=i+1;while(j<intervals.size&&intervals[j].second.start<intervals[i].second.end){add(intervals[i].first.id);add(intervals[j].first.id);j++}}}
-    }
-    val ym=YearMonth.parse(month);val start=ym.atDay(1).minusDays((ym.atDay(1).dayOfWeek.value-1).toLong());val rows=(ym.lengthOfMonth()+ym.atDay(1).dayOfWeek.value-2)/7+1
-    Row(Modifier.fillMaxWidth()){(if(LocalLanguage.current=="en")listOf("Mon","Tue","Wed","Thu","Fri","Sat","Sun")else listOf("Mo","Di","Mi","Do","Fr","Sa","So")).forEach{Text(it,Modifier.weight(1f),fontSize=10.sp,textAlign=androidx.compose.ui.text.style.TextAlign.Center)}}
-    repeat(rows){week->Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(4.dp)){repeat(7){index->val date=start.plusDays((week*7+index).toLong());val entries=shifts.filter{it.date==date.toString()};val planned=entries.any{it.status=="planned"};val cancelled=entries.isNotEmpty()&&entries.all{it.status=="cancelled"};val color=if(entries.any{it.id in conflicts})Color(0xFFFF8A45)else if(date.toString()==activeDate)Lime else if(cancelled)Pink else if(planned)Color(0xFF4C8CFF)else Color(0xFF35D07F)
-        Surface(onClick={select(date.toString())},modifier=Modifier.weight(1f).aspectRatio(.92f),color=if(entries.isEmpty()&&date.toString()!=activeDate)Raised else color.copy(alpha=.2f),shape=RoundedCornerShape(10.dp),border=if(date==LocalDate.now())BorderStroke(1.dp,Lime)else null){Column(horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){Text(date.dayOfMonth.toString(),fontSize=14.sp,color=if(date.month==ym.month)WhiteInk else Lavender.copy(alpha=.4f));Text(if(entries.isEmpty())" "else "•".repeat(entries.size.coerceAtMost(3)),fontSize=9.sp,color=color)}}
-    }}}
-}
-@Composable fun ShiftEditor(vm:MainViewModel,shift:Shift?,initialDate:String,template:ShiftTemplate?,dismiss:()->Unit) {
-    val places by vm.workplaces.collectAsState();val settings by vm.settings.collectAsState();val templates by vm.shiftTemplates.collectAsState();val context=LocalContext.current
-    var date by remember{mutableStateOf(shift?.date ?: initialDate)};var start by remember{mutableStateOf(shift?.start ?: template?.start ?: "12:00")};var end by remember{mutableStateOf(shift?.end ?: template?.end ?: "20:00")};var pause by remember{mutableStateOf((shift?.breakMin ?: template?.breakMin ?: 30).toString())};var note by remember{mutableStateOf(shift?.note ?: template?.note ?: "")};var workplace by remember{mutableStateOf(shift?.workplaceId ?: places.firstOrNull()?.id ?: "")}
-    var manual by remember{mutableStateOf(shift?.statusSource=="manual")};var status by remember{mutableStateOf(shift?.status ?: "completed")};var cancelledBy by remember{mutableStateOf(shift?.cancelledBy?.let{if(it=="self")"me"else it} ?: "unspecified")};var wage by remember{mutableStateOf(shift?.wage?.toString() ?: "")};var error by remember{mutableStateOf(false)};var moreDates by remember{mutableStateOf(setOf<String>())};var templateName by remember{mutableStateOf("")};var confirmDelete by remember{mutableStateOf(false)}
-    val parsed=runCatching{val d=LocalDate.parse(date);val a=LocalTime.parse(start);val b=LocalTime.parse(end);val mins=Duration.between(a,b).toMinutes().let{if(it<=0)it+1440 else it};val p=pause.toInt();require(p>=0&&p<mins);require(workplace.isNotEmpty());val w=wage.takeIf{it.isNotBlank()}?.replace(',','.')?.toDouble();require(w==null||w.isFinite()&&w>0);Triple(d,mins.toInt()-p,w)}.getOrNull()
-    val effective=if(manual)status else if(runCatching{LocalDateTime.parse(date+"T"+start).isAfter(LocalDateTime.now())}.getOrDefault(false))"planned"else "completed"
-    AlertDialog(onDismissRequest=dismiss,title={Text(if(shift==null)L("Add shift","Schicht hinzufügen")else L("Edit shift","Schicht bearbeiten"))},text={Column(Modifier.verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(10.dp)){
-        if(templates.isNotEmpty())Choice(L("Shift template","Schichtvorlage"),"",listOf("" to L("No template","Keine Vorlage"))+templates.map{it.id to it.name}){id->templates.firstOrNull{it.id==id}?.let{start=it.start;end=it.end;pause=it.breakMin.toString();note=it.note}}
-        Choice(L("Workplace","Arbeitsplatz"),workplace,places.map{it.id to it.name}){workplace=it}
-        Field(L("Date (YYYY-MM-DD)","Datum (JJJJ-MM-TT)"),date,{date=it})
-        if(shift==null) {Action(L("+ More dates","+ Weitere Tage")){val d=runCatching{LocalDate.parse(date)}.getOrDefault(LocalDate.now());DatePickerDialog(context,{_,y,m,day->val chosen=LocalDate.of(y,m+1,day).toString();moreDates=if(chosen in moreDates)moreDates-chosen else moreDates+chosen},d.year,d.monthValue-1,d.dayOfMonth).show()};if(moreDates.isNotEmpty())TextButton({moreDates=emptySet()}){Text(moreDates.joinToString()+L(" · Clear"," · Leeren"),fontSize=11.sp)}}
-        Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Field(L("Start (HH:mm)","Beginn (HH:mm)"),start,{start=it},Modifier.weight(1f));Field(L("End (HH:mm)","Ende (HH:mm)"),end,{end=it},Modifier.weight(1f))}
-        Field(L("Unpaid break (minutes)","Pause (Minuten)"),pause,{pause=it})
-        Choice(L("Status","Status"),effective,listOf("planned","completed","cancelled").map{it to statusLabel(it)}){status=it;manual=true}
-        Toggle(L("Automatic status","Automatischer Status"),checked=!manual){manual=!it}
-        if(effective=="cancelled")Choice(L("Cancelled by","Abgesagt durch"),cancelledBy,listOf("unspecified" to L("Not specified","Nicht angegeben"),"employer" to L("Employer","Arbeitgeber"),"me" to L("Me","Mich"))){cancelledBy=it}
-        Field(L("Note (optional)","Notiz (optional)"),note,{note=it});Field(L("Hourly wage (optional)","Stundenlohn (optional)"),wage,{wage=it})
-        if(parsed!=null){Stat(L("Paid time","Bezahlte Zeit"),F.formatDuration(if(effective=="cancelled")0 else parsed.second));Stat(L("Base pay","Grundlohn"),F.formatMoney((if(effective=="cancelled")0 else parsed.second)/60.0*(parsed.third ?: places.firstOrNull{it.id==workplace}?.wage ?: settings.wage),settings.currency))}
-        Field(L("Template name","Vorlagenname"),templateName,{templateName=it});Action(L("Save as template","Als Vorlage speichern"),enabled=parsed!=null&&templateName.isNotBlank()){vm.saveTemplate(ShiftTemplate(UUID.randomUUID().toString(),templateName,start,end,pause.toInt(),effective,note));templateName=""}
-        templates.forEach{t->TextButton({vm.deleteTemplate(t.id)}){Text(L("Delete template: ","Vorlage löschen: ")+t.name)}}
-        if(error)Text(L("Check the date, times, break and wage.","Datum, Uhrzeiten, Pause und Lohn prüfen."),color=MaterialTheme.colorScheme.error)
-    }},confirmButton={TextButton({if(parsed==null)error=true else {for(d in moreDates+date){val autoStatus=if(manual)effective else if(LocalDateTime.parse(d+"T"+start)>LocalDateTime.now())"planned"else "completed";vm.saveShift((shift ?: Shift(UUID.randomUUID().toString(),d,start,end,parsed.second)).copy(date=d,start=start,end=end,minutes=parsed.second,breakMin=pause.toInt(),workplaceId=workplace,wage=parsed.third,status=autoStatus,statusSource=if(manual)"manual"else "auto",cancelledBy=if(autoStatus=="cancelled")cancelledBy else null,note=note,completedAutomatically=false))};dismiss()}}){Text(L("Save shift","Schicht speichern"))}},dismissButton={Row{if(shift!=null)TextButton({confirmDelete=true}){Text(L("Delete","Löschen"))};TextButton(dismiss){Text(L("Cancel","Abbrechen"))}}})
-    if(confirmDelete&&shift!=null)AlertDialog(onDismissRequest={confirmDelete=false},title={Text(L("Delete this shift?","Diese Schicht löschen?"))},confirmButton={TextButton({vm.deleteShift(shift.id);dismiss()}){Text(L("Delete","Löschen"))}},dismissButton={TextButton({confirmDelete=false}){Text(L("Cancel","Abbrechen"))}})
-}
