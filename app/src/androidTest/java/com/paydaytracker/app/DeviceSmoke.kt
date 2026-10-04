@@ -141,6 +141,13 @@ class DeviceSmoke {
                 color.red < .25f && color.blue < .5f
             }
             screenshot("shift-multiple-days-dark")
+            repository.saveSettings(prior.copy(theme="light"))
+            compose.waitUntil(10000) {
+                val image=compose.onNodeWithTag("shift-editor").captureToImage()
+                val color=image.toPixelMap()[image.width/2,20]
+                color.red > .8f && color.blue > .8f
+            }
+            screenshot("shift-multiple-days-light-return")
             compose.onNodeWithText("Note (optional)").performScrollTo().performTextReplacement(note)
             compose.onNodeWithTag("save-shift").performClick()
             compose.waitUntil(10000){runBlocking{repository.shifts.first().count{it.note==note}}==2}

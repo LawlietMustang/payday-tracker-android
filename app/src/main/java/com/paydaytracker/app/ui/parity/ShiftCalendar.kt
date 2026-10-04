@@ -7,7 +7,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
@@ -110,7 +110,7 @@ private val Cancelled = Color(0xFFAC8398)
                     val today = date == LocalDate.now()
                     val stateText = when (state) { "active" -> L("Active", "Aktiv"); "overlap" -> L("Overlap", "Überschneidung"); "empty" -> L("No shifts", "Keine Schichten"); else -> statusLabel(state) }
                     Surface(onClick = { select(key) }, modifier = Modifier.weight(1f).aspectRatio(1f)
-                        .alpha(if (YearMonth.from(date) != ym && !chosen) .35f else 1f)
+                        .graphicsLayer { alpha = if (YearMonth.from(date) != ym && !chosen) .35f else 1f }
                         .testTag("${if (picker) "picker" else "calendar"}-day-$key")
                         .semantics { contentDescription = "$key, $stateText"; selected = chosen; stateDescription = stateText },
                         color = background, contentColor = foreground, shape = RoundedCornerShape(10.dp),
