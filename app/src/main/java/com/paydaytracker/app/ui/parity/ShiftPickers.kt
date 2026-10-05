@@ -14,6 +14,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
@@ -78,7 +79,7 @@ internal fun enteredHour(hour: String, pm: Boolean): Int? {
         }
         Dialog(onDismissRequest = { open = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
             val focus = LocalFocusManager.current
-            Surface(Modifier.widthIn(max = 380.dp).fillMaxWidth().imePadding().padding(12.dp).testTag("time-dialog"), shape = RoundedCornerShape(24.dp),
+            Surface(Modifier.widthIn(max = 380.dp).fillMaxWidth().imePadding().padding(12.dp).graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }.testTag("time-dialog"), shape = RoundedCornerShape(24.dp),
                 color = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.onSurface) {
                 Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(label, Modifier.fillMaxWidth().padding(bottom = 12.dp), fontSize = 21.sp, fontWeight = FontWeight.Bold)

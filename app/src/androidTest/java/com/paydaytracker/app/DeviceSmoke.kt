@@ -134,6 +134,16 @@ class DeviceSmoke {
         compose.onNodeWithTag("confirm-time").performClick()
         compose.onNodeWithTag("shift-start-time").assertTextContains("23:59")
         compose.onNodeWithTag("shift-start-time").performClick()
+        // Verify actual pixels after repeated dialog/keyboard opens, not only semantics.
+        compose.waitUntil(10000) {
+            val pixels = compose.onNodeWithContentDescription("3 hours").captureToImage().toPixelMap()
+            var visible = 0
+            for (y in 0 until pixels.height) for (x in 0 until pixels.width) {
+                val color = pixels[x, y]
+                if (color.red > .8f && color.green > .8f && color.blue > .8f) visible++
+            }
+            visible > 20
+        }
         screenshot("clock-editable-am-pm")
         // A swipe does not select another hour or stretch the clock hand.
         compose.onNodeWithTag("time-picker").performTouchInput { swipe(centerLeft, centerRight) }
