@@ -3,6 +3,7 @@ package com.paydaytracker.app
 import androidx.compose.ui.test.*
 import android.graphics.Bitmap
 import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -24,13 +25,13 @@ class DeviceSmoke {
         repository.updateDocument { it.put("language","en").put("onboardingCompleted",true) }
         compose.waitUntil(15000) { compose.onAllNodesWithTag("screen-dashboard").fetchSemanticsNodes().isNotEmpty() }
     }
-    private fun screenshot(name: String) {
-        compose.activityRule.scenario.onActivity { activity ->
+    private fun screenshot(name: String, hideKeyboard: Boolean = true) {
+        if (hideKeyboard) compose.activityRule.scenario.onActivity { activity ->
             androidx.core.view.WindowCompat.getInsetsController(activity.window,activity.window.decorView).hide(androidx.core.view.WindowInsetsCompat.Type.ime())
         }
         compose.waitForIdle()
         // Wait for the submitted frame to reach SurfaceFlinger before taking a device screenshot.
-        Thread.sleep(250)
+        Thread.sleep(if (hideKeyboard) 250 else 1200)
         val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
         fun shell(command: String) = automation.executeShellCommand(command).use {
             android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes().decodeToString()
@@ -144,7 +145,11 @@ class DeviceSmoke {
             }
             visible > 20
         }
-        screenshot("clock-editable-am-pm")
+        val clockBitmap = compose.onNodeWithTag("time-dialog").captureToImage().asAndroidBitmap()
+        val clockFile = File("/sdcard/Download/native-screens/clock-dialog-render.png")
+        clockFile.parentFile!!.mkdirs()
+        clockFile.outputStream().use { clockBitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        screenshot("clock-editable-am-pm", hideKeyboard = false)
         // A swipe does not select another hour or stretch the clock hand.
         compose.onNodeWithTag("time-picker").performTouchInput { swipe(centerLeft, centerRight) }
         compose.onNodeWithTag("time-hour-input").assertTextEquals("11")
