@@ -146,9 +146,11 @@ class DeviceSmoke {
             visible > 20
         }
         val clockBitmap = compose.onNodeWithTag("time-dialog").captureToImage().asAndroidBitmap()
-        val clockFile = File("/sdcard/Download/native-screens/clock-dialog-render.png")
-        clockFile.parentFile!!.mkdirs()
+        val clockFile = File(compose.activity.cacheDir, "clock-dialog-render.png")
         clockFile.outputStream().use { clockBitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(
+            "run-as ${compose.activity.packageName} cat ${clockFile.absolutePath} > /sdcard/Download/native-screens/clock-dialog-render.png"
+        ).use { android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes() }
         screenshot("clock-editable-am-pm", hideKeyboard = false)
         // A swipe does not select another hour or stretch the clock hand.
         compose.onNodeWithTag("time-picker").performTouchInput { swipe(centerLeft, centerRight) }
