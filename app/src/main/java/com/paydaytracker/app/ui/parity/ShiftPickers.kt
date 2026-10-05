@@ -4,7 +4,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -12,6 +13,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
@@ -87,7 +89,7 @@ internal fun enteredHour(hour: String, pm: Boolean): Int? {
                                 hour = text
                                 text.toIntOrNull()?.let { if (it == 0) pm = false else if (it in 13..23) pm = true }
                             }
-                            Text(":", fontSize = 34.sp)
+                            Text(":", fontSize = 34.sp, modifier = Modifier.padding(bottom = 20.dp))
                             TimeNumber(minute, L("Minute", "Minute"), "time-minute-input", !selectingHour, Modifier.weight(1f),
                                 onFocus = { selectingHour = false }, onBlur = {
                                     minute.toIntOrNull()?.takeIf { it in 0..59 }?.let { minute = it.toString().padStart(2, '0') }
@@ -137,7 +139,7 @@ internal fun enteredHour(hour: String, pm: Boolean): Int? {
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         BasicTextField(field, { next ->
             if (next.text.length <= 2 && next.text.all { it in '0'..'9' }) { field = next; change(next.text) }
-        }, modifier = Modifier.fillMaxWidth().testTag(tag).onFocusChanged {
+        }, modifier = Modifier.fillMaxWidth().graphicsLayer { alpha = 1f }.testTag(tag).onFocusChanged {
             if (it.isFocused && !focused) { onFocus(); field = field.copy(selection = TextRange(0, field.text.length)) }
             if (!it.isFocused && focused) onBlur()
             focused = it.isFocused
@@ -156,7 +158,21 @@ internal fun enteredHour(hour: String, pm: Boolean): Int? {
         val diameter = maxWidth
         val radius = diameter / 2 - 26.dp
         Canvas(Modifier.fillMaxSize().pointerInput(hours) {
-            detectTapGestures { point ->
+            awaitEachGesture {
+                val down = awaitFirstDown()
+                down.consume()
+                var moved = false
+                var up: Offset? = null
+                do {
+                    val event = awaitPointerEvent()
+                    val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                    if ((change.position - down.position).getDistance() > viewConfiguration.touchSlop || change.isConsumed || event.changes.size > 1) moved = true
+                    if (!change.pressed) {
+                        if (!moved) { up = change.position; change.consume() }
+                        break
+                    }
+                } while (true)
+                val point = up ?: return@awaitEachGesture
                 val dx = point.x - size.width / 2f
                 val dy = point.y - size.height / 2f
                 val distance = sqrt(dx * dx + dy * dy)
@@ -179,7 +195,7 @@ internal fun enteredHour(hour: String, pm: Boolean): Int? {
             val number = if (hours) (if (index == 0) 12 else index) else index * 5
             val angle = index * PI / 6 - PI / 2
             Box(Modifier.offset(x = diameter / 2 + radius * cos(angle).toFloat() - 22.dp, y = diameter / 2 + radius * sin(angle).toFloat() - 22.dp)
-                .size(44.dp).clickable { select(if (hours) index else number) }
+                .size(44.dp).graphicsLayer { alpha = 1f }.clickable { select(if (hours) index else number) }
                 .semantics { contentDescription = if (hours) "$number hours" else "$number minutes" }, contentAlignment = Alignment.Center) {
                 Text(if (hours) number.toString() else number.toString().padStart(2, '0'), color = if (selectedNumber == (if (hours) index else number)) Ink else WhiteInk, fontSize = 20.sp)
             }
