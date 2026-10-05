@@ -113,6 +113,7 @@ class DeviceSmoke {
         compose.onNodeWithTag("shift-start-time").assertTextContains("17:30")
         compose.onNodeWithTag("shift-start-time").performClick()
         compose.onNodeWithTag("time-hour-input").performTextReplacement("5")
+        compose.onNodeWithTag("time-am").assertIsSelected()
         compose.onNodeWithTag("time-am").performClick()
         compose.onNodeWithTag("time-pm").performClick()
         compose.onNodeWithTag("confirm-time").performClick()

@@ -88,7 +88,7 @@ internal fun enteredHour(hour: String, pm: Boolean): Int? {
                             TimeNumber(hour, L("Hour", "Stunde"), "time-hour-input", selectingHour, Modifier.weight(1f),
                                 onFocus = { selectingHour = true }, onBlur = { normalizeHour() }, onDone = { focus.clearFocus() }) { text ->
                                 hour = text
-                                text.toIntOrNull()?.let { if (it == 0) pm = false else if (it in 13..23) pm = true }
+                                text.toIntOrNull()?.takeIf { it in 0..23 }?.let { pm = it >= 12 }
                             }
                             Text(":", fontSize = 34.sp, modifier = Modifier.padding(bottom = 20.dp))
                             TimeNumber(minute, L("Minute", "Minute"), "time-minute-input", !selectingHour, Modifier.weight(1f),
