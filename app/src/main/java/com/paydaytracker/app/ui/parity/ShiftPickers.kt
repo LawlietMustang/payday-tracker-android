@@ -3,10 +3,8 @@ package com.paydaytracker.app.ui.parity
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -17,6 +15,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.TextRange
@@ -79,7 +78,7 @@ internal fun enteredHour(hour: String, pm: Boolean): Int? {
         }
         Dialog(onDismissRequest = { open = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
             val focus = LocalFocusManager.current
-            Surface(Modifier.widthIn(max = 380.dp).fillMaxWidth().imePadding().padding(12.dp).graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }.testTag("time-dialog"), shape = RoundedCornerShape(24.dp),
+            Surface(Modifier.widthIn(max = 340.dp).fillMaxWidth().imePadding().padding(12.dp).graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }.testTag("time-dialog"), shape = RoundedCornerShape(24.dp),
                 color = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.onSurface) {
                 Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(label, Modifier.fillMaxWidth().padding(bottom = 12.dp), fontSize = 21.sp, fontWeight = FontWeight.Bold)
@@ -99,7 +98,7 @@ internal fun enteredHour(hour: String, pm: Boolean): Int? {
                                 for (isPm in listOf(false, true)) {
                                     Surface(onClick = {
                                         focus.clearFocus(); normalizeHour(); pm = isPm
-                                    }, modifier = Modifier.width(58.dp).height(40.dp).testTag(if (isPm) "time-pm" else "time-am").semantics { selected = pm == isPm },
+                                    }, modifier = Modifier.width(50.dp).height(34.dp).testTag(if (isPm) "time-pm" else "time-am").semantics { selected = pm == isPm },
                                         shape = RoundedCornerShape(10.dp), color = if (pm == isPm) Lime else Raised, contentColor = if (pm == isPm) Ink else WhiteInk) {
                                         Box(contentAlignment = Alignment.Center) { Text(if (isPm) "PM" else "AM", fontWeight = FontWeight.Bold) }
                                     }
@@ -109,14 +108,13 @@ internal fun enteredHour(hour: String, pm: Boolean): Int? {
                         if (resolvedHour == null || resolvedMinute == null) {
                             Text(L("Hours: 0–23 · Minutes: 0–59", "Stunden: 0–23 · Minuten: 0–59"), color = MaterialTheme.colorScheme.error, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
                         }
-                        Spacer(Modifier.height(16.dp))
-                        TapClock(selectingHour, if (selectingHour) (resolvedHour ?: 0) % 12 else resolvedMinute ?: 0) { number ->
-                            focus.clearFocus()
-                            if (selectingHour) {
-                                hour = (if (number == 0) 12 else number).toString().padStart(2, '0')
-                                selectingHour = false
-                            } else minute = number.toString().padStart(2, '0')
-                        }
+                        Spacer(Modifier.height(12.dp))
+                        AnalogClock(selectingHour, if (selectingHour) (resolvedHour ?: 0) % 12 else resolvedMinute ?: 0,
+                            select = { number ->
+                                focus.clearFocus()
+                                if (selectingHour) hour = (if (number == 0) 12 else number).toString().padStart(2, '0')
+                                else minute = number.toString().padStart(2, '0')
+                            }, finish = { if (selectingHour) selectingHour = false })
                     }
                     Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Action(L("Cancel", "Abbrechen"), Modifier.weight(1f)) { open = false }
@@ -145,46 +143,54 @@ internal fun enteredHour(hour: String, pm: Boolean): Int? {
             if (!it.isFocused && focused) onBlur()
             focused = it.isFocused
         }.semantics { contentDescription = label }, singleLine = true,
-            textStyle = TextStyle(fontSize = 36.sp, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center, color = if (active) Ink else WhiteInk),
+            textStyle = TextStyle(fontSize = 32.sp, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center, color = if (active) Ink else WhiteInk),
             cursorBrush = SolidColor(if (active) Ink else WhiteInk), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { onDone() }),
-            decorationBox = { inner -> Box(Modifier.background(if (active) Lime else Raised, RoundedCornerShape(12.dp)).padding(vertical = 13.dp), contentAlignment = Alignment.Center) { inner() } })
+            decorationBox = { inner -> Box(Modifier.background(if (active) Lime else Raised, RoundedCornerShape(12.dp)).padding(vertical = 10.dp), contentAlignment = Alignment.Center) { inner() } })
         Text(label, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
     }
 }
 
-/** Fixed-radius clock hand. Only taps select a value; dragging never stretches the hand. */
-@Composable private fun TapClock(hours: Boolean, selectedNumber: Int, select: (Int) -> Unit) {
-    BoxWithConstraints(Modifier.fillMaxWidth().aspectRatio(1f).testTag("time-picker")) {
-        val diameter = maxWidth
-        val radius = diameter / 2 - 26.dp
-        Canvas(Modifier.fillMaxSize().pointerInput(hours) {
+/** A circular dial with a rigid hand: angle selects the value, never the finger's radius. */
+@Composable private fun AnalogClock(hours: Boolean, selectedNumber: Int, select: (Int) -> Unit, finish: () -> Unit) {
+    val selectCurrent by rememberUpdatedState(select)
+    val finishCurrent by rememberUpdatedState(finish)
+    BoxWithConstraints(Modifier.widthIn(max = 256.dp).fillMaxWidth().aspectRatio(1f).testTag("time-picker")
+        .pointerInput(hours) {
             awaitEachGesture {
-                val down = awaitFirstDown()
+                // Own the gesture before the surrounding form can treat it as scrolling.
+                val down = awaitFirstDown(pass = PointerEventPass.Initial)
+                val center = Offset(size.width / 2f, size.height / 2f)
+                if ((down.position - center).getDistance() > size.width / 2f) return@awaitEachGesture
                 down.consume()
-                var moved = false
-                var up: Offset? = null
-                do {
-                    val event = awaitPointerEvent()
+                var chosen = false
+                fun choose(point: Offset) {
+                    val delta = point - center
+                    if (delta.getDistance() > size.width * .10f) {
+                        val angle = (atan2(delta.y, delta.x) + PI / 2 + 2 * PI) % (2 * PI)
+                        val count = if (hours) 12 else 60
+                        selectCurrent((angle / (2 * PI) * count).roundToInt() % count)
+                        chosen = true
+                    }
+                }
+                choose(down.position)
+                while (true) {
+                    val event = awaitPointerEvent(PointerEventPass.Initial)
                     val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                    if ((change.position - down.position).getDistance() > viewConfiguration.touchSlop || change.isConsumed || event.changes.size > 1) moved = true
+                    if (event.changes.size > 1) break
+                    choose(change.position)
+                    change.consume()
                     if (!change.pressed) {
-                        if (!moved) { up = change.position; change.consume() }
+                        // Switch to minutes only after release, never halfway through an hour drag.
+                        if (chosen) finishCurrent()
                         break
                     }
-                } while (true)
-                val point = up ?: return@awaitEachGesture
-                val dx = point.x - size.width / 2f
-                val dy = point.y - size.height / 2f
-                val distance = sqrt(dx * dx + dy * dy)
-                // Ignore the centre and taps outside the clock.
-                if (distance > size.width * .18f && distance <= size.width / 2f) {
-                    val angle = (atan2(dy, dx) + PI / 2 + 2 * PI) % (2 * PI)
-                    val count = if (hours) 12 else 60
-                    select((angle / (2 * PI) * count).roundToInt() % count)
                 }
             }
         }) {
+        val diameter = maxWidth
+        val radius = diameter / 2 - 26.dp
+        Canvas(Modifier.fillMaxSize()) {
             drawCircle(Raised)
             val angle = selectedNumber * 2 * PI / (if (hours) 12 else 60) - PI / 2
             val end = center + Offset(cos(angle).toFloat(), sin(angle).toFloat()) * radius.toPx()
@@ -193,12 +199,17 @@ internal fun enteredHour(hour: String, pm: Boolean): Int? {
             drawCircle(Lime, 22.dp.toPx(), end)
         }
         repeat(12) { index ->
-            val number = if (hours) (if (index == 0) 12 else index) else index * 5
+            val value = if (hours) index else index * 5
+            val number = if (hours && index == 0) 12 else value
             val angle = index * PI / 6 - PI / 2
             Box(Modifier.offset(x = diameter / 2 + radius * cos(angle).toFloat() - 22.dp, y = diameter / 2 + radius * sin(angle).toFloat() - 22.dp)
-                .size(44.dp).graphicsLayer { alpha = 1f }.clickable { select(if (hours) index else number) }
-                .semantics { contentDescription = if (hours) "$number hours" else "$number minutes" }, contentAlignment = Alignment.Center) {
-                Text(if (hours) number.toString() else number.toString().padStart(2, '0'), color = if (selectedNumber == (if (hours) index else number)) Ink else WhiteInk, fontSize = 20.sp)
+                .size(44.dp).graphicsLayer { alpha = 1f }
+                .semantics {
+                    contentDescription = if (hours) "$number hours" else "$number minutes"
+                    role = Role.Button
+                    onClick { selectCurrent(value); finishCurrent(); true }
+                }, contentAlignment = Alignment.Center) {
+                Text(if (hours) number.toString() else number.toString().padStart(2, '0'), color = if (selectedNumber == value) Ink else WhiteInk, fontSize = 18.sp)
             }
         }
     }
