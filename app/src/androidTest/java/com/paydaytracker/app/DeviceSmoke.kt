@@ -3,6 +3,7 @@ package com.paydaytracker.app
 import androidx.compose.ui.test.*
 import android.graphics.Bitmap
 import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -24,13 +25,13 @@ class DeviceSmoke {
         repository.updateDocument { it.put("language","en").put("onboardingCompleted",true) }
         compose.waitUntil(15000) { compose.onAllNodesWithTag("screen-dashboard").fetchSemanticsNodes().isNotEmpty() }
     }
-    private fun screenshot(name: String) {
-        compose.activityRule.scenario.onActivity { activity ->
+    private fun screenshot(name: String, hideKeyboard: Boolean = true) {
+        if (hideKeyboard) compose.activityRule.scenario.onActivity { activity ->
             androidx.core.view.WindowCompat.getInsetsController(activity.window,activity.window.decorView).hide(androidx.core.view.WindowInsetsCompat.Type.ime())
         }
         compose.waitForIdle()
         // Wait for the submitted frame to reach SurfaceFlinger before taking a device screenshot.
-        Thread.sleep(250)
+        Thread.sleep(if (hideKeyboard) 250 else 1200)
         val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
         fun shell(command: String) = automation.executeShellCommand(command).use {
             android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes().decodeToString()
@@ -71,15 +72,17 @@ class DeviceSmoke {
         compose.onNodeWithTag("shift-date").assert(hasSetTextAction().not())
         compose.onNodeWithTag("shift-start-time").performScrollTo().assert(hasSetTextAction().not()).performClick()
         compose.onNodeWithTag("time-picker").assertExists()
-        compose.onAllNodes(hasSetTextAction() and hasAnyAncestor(hasTestTag("time-dialog"))).assertCountEquals(0)
+        compose.onAllNodes(hasSetTextAction() and hasAnyAncestor(hasTestTag("time-dialog"))).assertCountEquals(2)
         screenshot("shift-time-picker")
-        // The 24-hour dial exposes each hour, then each five-minute mark.
+        // Tap the 12-hour face and choose the period explicitly.
+        compose.onNodeWithTag("time-am").performClick()
         compose.onNodeWithContentDescription("9 hours").performClick()
         compose.onNodeWithContentDescription("0 minutes").performClick()
         compose.onNodeWithTag("confirm-time").performClick()
         compose.onNodeWithTag("shift-start-time").assertTextContains("09:00")
         compose.onNodeWithTag("shift-end-time").performClick()
-        compose.onNodeWithContentDescription("17 hours").performClick()
+        compose.onNodeWithTag("time-pm").performClick()
+        compose.onNodeWithContentDescription("5 hours").performClick()
         compose.onNodeWithContentDescription("0 minutes").performClick()
         compose.onNodeWithTag("confirm-time").performClick()
         compose.onNodeWithTag("shift-end-time").assertTextContains("17:00")
@@ -98,6 +101,63 @@ class DeviceSmoke {
         compose.waitUntil(15000){compose.onAllNodesWithTag("screen-dashboard").fetchSemanticsNodes().isNotEmpty()}
         Assert.assertEquals(saved!!.id,runBlocking{repository.shifts.first().first{it.note==note}.id})
         runBlocking{repository.deleteShift(saved!!.id)}
+    }
+    @Test fun clockAcceptsTyped24HourAndManualPeriodWithoutSavingInvalidInput() {
+        compose.onNodeWithContentDescription("Add shift").performClick()
+        compose.onNodeWithTag("shift-start-time").performScrollTo().performClick()
+        compose.onNodeWithTag("time-hour-input").performTextReplacement("17")
+        compose.onNodeWithTag("time-pm").assertIsSelected()
+        compose.onNodeWithTag("time-minute-input").performTextReplacement("30")
+        compose.onNodeWithTag("time-hour-input").assertTextEquals("05")
+        compose.onNodeWithTag("confirm-time").performClick()
+        compose.onNodeWithTag("shift-start-time").assertTextContains("17:30")
+        compose.onNodeWithTag("shift-start-time").performClick()
+        compose.onNodeWithTag("time-hour-input").performTextReplacement("5")
+        compose.onNodeWithTag("time-am").assertIsSelected()
+        compose.onNodeWithTag("time-am").performClick()
+        compose.onNodeWithTag("time-pm").performClick()
+        compose.onNodeWithTag("confirm-time").performClick()
+        compose.onNodeWithTag("shift-start-time").assertTextContains("17:30")
+        compose.onNodeWithTag("shift-start-time").performClick()
+        compose.onNodeWithTag("time-hour-input").performTextReplacement("00")
+        compose.onNodeWithTag("time-am").assertIsSelected()
+        compose.onNodeWithTag("time-minute-input").performTextReplacement("00")
+        compose.onNodeWithTag("confirm-time").performClick()
+        compose.onNodeWithTag("shift-start-time").assertTextContains("00:00")
+        compose.onNodeWithTag("shift-start-time").performClick()
+        compose.onNodeWithTag("time-hour-input").performTextReplacement("24")
+        compose.onNodeWithTag("confirm-time").assertIsNotEnabled()
+        compose.onNodeWithTag("time-hour-input").performTextReplacement("23")
+        compose.onNodeWithTag("time-minute-input").performTextReplacement("60")
+        compose.onNodeWithTag("confirm-time").assertIsNotEnabled()
+        compose.onNodeWithTag("time-minute-input").performTextClearance()
+        compose.onNodeWithTag("confirm-time").assertIsNotEnabled()
+        compose.onNodeWithTag("time-minute-input").performTextReplacement("59")
+        compose.onNodeWithTag("confirm-time").performClick()
+        compose.onNodeWithTag("shift-start-time").assertTextContains("23:59")
+        compose.onNodeWithTag("shift-start-time").performClick()
+        // Verify actual pixels after repeated dialog/keyboard opens, not only semantics.
+        compose.waitUntil(10000) {
+            val pixels = compose.onNodeWithContentDescription("3 hours").captureToImage().toPixelMap()
+            var visible = 0
+            for (y in 0 until pixels.height) for (x in 0 until pixels.width) {
+                val color = pixels[x, y]
+                if (color.red > .8f && color.green > .8f && color.blue > .8f) visible++
+            }
+            visible > 20
+        }
+        val clockBitmap = compose.onNodeWithTag("time-dialog").captureToImage().asAndroidBitmap()
+        val clockFile = File(compose.activity.cacheDir, "clock-dialog-render.png")
+        clockFile.outputStream().use { clockBitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(
+            "run-as ${compose.activity.packageName} cat ${clockFile.absolutePath} > /sdcard/Download/native-screens/clock-dialog-render.png"
+        ).use { android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes() }
+        screenshot("clock-editable-am-pm", hideKeyboard = false)
+        // A swipe does not select another hour or stretch the clock hand.
+        compose.onNodeWithTag("time-picker").performTouchInput { swipe(centerLeft, centerRight) }
+        compose.onNodeWithTag("time-hour-input").assertTextEquals("11")
+        compose.onNode(hasText("Cancel") and hasAnyAncestor(hasTestTag("time-dialog"))).performClick()
+        compose.onNodeWithTag("shift-start-time").assertTextContains("23:59")
     }
     @Test fun calendarAndMultiDayPickerMatchReference() = runBlocking {
         val wp=repository.workplaces.first().first()
