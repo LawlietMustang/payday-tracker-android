@@ -155,8 +155,10 @@ class DeviceSmoke {
         ).use { android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes() }
         screenshot("clock-editable-am-pm", hideKeyboard = false)
         val dialBounds = compose.onNodeWithTag("time-picker").getUnclippedBoundsInRoot()
-        Assert.assertTrue("Dial remains compact", dialBounds.width.value <= 257f)
-        Assert.assertEquals("Dial remains circular", dialBounds.width.value, dialBounds.height.value, 1f)
+        val dialWidth = (dialBounds.right - dialBounds.left).value
+        val dialHeight = (dialBounds.bottom - dialBounds.top).value
+        Assert.assertTrue("Dial remains compact", dialWidth <= 257f)
+        Assert.assertEquals("Dial remains circular", dialWidth, dialHeight, 1f)
         // Real touch gestures must rotate the hand without switching modes mid-drag.
         compose.onNodeWithTag("time-picker").performTouchInput {
             down(Offset(center.x, height * .12f))
