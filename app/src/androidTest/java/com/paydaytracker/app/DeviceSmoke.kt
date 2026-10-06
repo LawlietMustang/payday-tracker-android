@@ -4,6 +4,7 @@ import androidx.compose.ui.test.*
 import android.graphics.Bitmap
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.geometry.Offset
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -153,9 +154,26 @@ class DeviceSmoke {
             "run-as ${compose.activity.packageName} cat ${clockFile.absolutePath} > /sdcard/Download/native-screens/clock-dialog-render.png"
         ).use { android.os.ParcelFileDescriptor.AutoCloseInputStream(it).readBytes() }
         screenshot("clock-editable-am-pm", hideKeyboard = false)
-        // A swipe does not select another hour or stretch the clock hand.
-        compose.onNodeWithTag("time-picker").performTouchInput { swipe(centerLeft, centerRight) }
-        compose.onNodeWithTag("time-hour-input").assertTextEquals("11")
+        val dialBounds = compose.onNodeWithTag("time-picker").getUnclippedBoundsInRoot()
+        Assert.assertTrue("Dial remains compact", dialBounds.width.value <= 257f)
+        Assert.assertEquals("Dial remains circular", dialBounds.width.value, dialBounds.height.value, 1f)
+        // Real touch gestures must rotate the hand without switching modes mid-drag.
+        compose.onNodeWithTag("time-picker").performTouchInput {
+            down(Offset(center.x, height * .12f))
+            moveTo(Offset(width * .88f, center.y), delayMillis = 300)
+        }
+        compose.onNodeWithTag("time-hour-input").assertTextEquals("03")
+        compose.onNodeWithContentDescription("3 hours").assertExists()
+        compose.onNodeWithTag("time-picker").performTouchInput { up() }
+        compose.onNodeWithContentDescription("15 minutes").assertExists()
+        compose.onNodeWithTag("time-picker").performTouchInput {
+            down(Offset(center.x, height * .12f))
+            moveTo(Offset(center.x, height * .88f), delayMillis = 300)
+            up()
+        }
+        compose.onNodeWithTag("time-minute-input").assertTextEquals("30")
+        compose.onNodeWithTag("time-pm").assertIsSelected()
+        screenshot("clock-compact-after-drag", hideKeyboard = false)
         compose.onNode(hasText("Cancel") and hasAnyAncestor(hasTestTag("time-dialog"))).performClick()
         compose.onNodeWithTag("shift-start-time").assertTextContains("23:59")
     }
