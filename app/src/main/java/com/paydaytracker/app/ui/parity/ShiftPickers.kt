@@ -47,7 +47,6 @@ import java.time.format.DateTimeFormatter
             contentColor = MaterialTheme.colorScheme.onSurface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) {
             Row(Modifier.padding(horizontal = 14.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(value, Modifier.weight(1f), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-                Text("⌄", fontSize = 17.sp)
             }
         }
     }
@@ -83,24 +82,26 @@ internal fun enteredHour(hour: String, pm: Boolean): Int? {
                 Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(label, Modifier.fillMaxWidth().padding(bottom = 12.dp), fontSize = 21.sp, fontWeight = FontWeight.Bold)
                     Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             TimeNumber(hour, L("Hour", "Stunde"), "time-hour-input", selectingHour, Modifier.weight(1f),
                                 onFocus = { selectingHour = true }, onBlur = { normalizeHour() }, onDone = { focus.clearFocus() }) { text ->
                                 hour = text
                                 text.toIntOrNull()?.takeIf { it in 0..23 }?.let { pm = it >= 12 }
                             }
-                            Text(":", fontSize = 34.sp, modifier = Modifier.padding(bottom = 20.dp))
+                            Box(Modifier.width(12.dp).height(64.dp).testTag("time-separator"), contentAlignment = Alignment.Center) {
+                                Text(":", fontSize = 32.sp, lineHeight = 38.sp, textAlign = TextAlign.Center)
+                            }
                             TimeNumber(minute, L("Minute", "Minute"), "time-minute-input", !selectingHour, Modifier.weight(1f),
                                 onFocus = { selectingHour = false }, onBlur = {
                                     minute.toIntOrNull()?.takeIf { it in 0..59 }?.let { minute = it.toString().padStart(2, '0') }
                                 }, onDone = { focus.clearFocus() }) { minute = it }
-                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Column(Modifier.width(52.dp).height(64.dp).testTag("time-period"), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 for (isPm in listOf(false, true)) {
                                     Surface(onClick = {
                                         focus.clearFocus(); normalizeHour(); pm = isPm
-                                    }, modifier = Modifier.width(50.dp).height(34.dp).testTag(if (isPm) "time-pm" else "time-am").semantics { selected = pm == isPm },
+                                    }, modifier = Modifier.fillMaxWidth().weight(1f).testTag(if (isPm) "time-pm" else "time-am").semantics { selected = pm == isPm },
                                         shape = RoundedCornerShape(10.dp), color = if (pm == isPm) Lime else Raised, contentColor = if (pm == isPm) Ink else WhiteInk) {
-                                        Box(contentAlignment = Alignment.Center) { Text(if (isPm) "PM" else "AM", fontWeight = FontWeight.Bold) }
+                                        Box(contentAlignment = Alignment.Center) { Text(if (isPm) "PM" else "AM", fontSize = 14.sp, lineHeight = 18.sp, fontWeight = FontWeight.Bold) }
                                     }
                                 }
                             }
@@ -108,7 +109,7 @@ internal fun enteredHour(hour: String, pm: Boolean): Int? {
                         if (resolvedHour == null || resolvedMinute == null) {
                             Text(L("Hours: 0–23 · Minutes: 0–59", "Stunden: 0–23 · Minuten: 0–59"), color = MaterialTheme.colorScheme.error, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
                         }
-                        Spacer(Modifier.height(12.dp))
+                        Spacer(Modifier.height(16.dp))
                         AnalogClock(selectingHour, if (selectingHour) (resolvedHour ?: 0) % 12 else resolvedMinute ?: 0,
                             select = { number ->
                                 focus.clearFocus()
@@ -138,7 +139,7 @@ internal fun enteredHour(hour: String, pm: Boolean): Int? {
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         BasicTextField(field, { next ->
             if (next.text.length <= 2 && next.text.all { it in '0'..'9' }) { field = next; change(next.text) }
-        }, modifier = Modifier.fillMaxWidth().graphicsLayer { alpha = 1f }.testTag(tag).onFocusChanged {
+        }, modifier = Modifier.fillMaxWidth().height(64.dp).graphicsLayer { alpha = 1f }.testTag(tag).onFocusChanged {
             if (it.isFocused && !focused) { onFocus(); field = field.copy(selection = TextRange(0, field.text.length)) }
             if (!it.isFocused && focused) onBlur()
             focused = it.isFocused
@@ -146,7 +147,7 @@ internal fun enteredHour(hour: String, pm: Boolean): Int? {
             textStyle = TextStyle(fontSize = 32.sp, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center, color = if (active) Ink else WhiteInk),
             cursorBrush = SolidColor(if (active) Ink else WhiteInk), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { onDone() }),
-            decorationBox = { inner -> Box(Modifier.background(if (active) Lime else Raised, RoundedCornerShape(12.dp)).padding(vertical = 10.dp), contentAlignment = Alignment.Center) { inner() } })
+            decorationBox = { inner -> Box(Modifier.background(if (active) Lime else Raised, RoundedCornerShape(12.dp)).fillMaxSize(), contentAlignment = Alignment.Center) { inner() } })
         Text(label, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
     }
 }
@@ -155,7 +156,7 @@ internal fun enteredHour(hour: String, pm: Boolean): Int? {
 @Composable private fun AnalogClock(hours: Boolean, selectedNumber: Int, select: (Int) -> Unit, finish: () -> Unit) {
     val selectCurrent by rememberUpdatedState(select)
     val finishCurrent by rememberUpdatedState(finish)
-    BoxWithConstraints(Modifier.widthIn(max = 256.dp).fillMaxWidth().aspectRatio(1f).testTag("time-picker")
+    BoxWithConstraints(Modifier.widthIn(max = 240.dp).fillMaxWidth().aspectRatio(1f).testTag("time-picker")
         .pointerInput(hours) {
             awaitEachGesture {
                 // Own the gesture before the surrounding form can treat it as scrolling.
@@ -189,27 +190,27 @@ internal fun enteredHour(hour: String, pm: Boolean): Int? {
             }
         }) {
         val diameter = maxWidth
-        val radius = diameter / 2 - 26.dp
+        val radius = diameter / 2 - 28.dp
         Canvas(Modifier.fillMaxSize()) {
             drawCircle(Raised)
             val angle = selectedNumber * 2 * PI / (if (hours) 12 else 60) - PI / 2
             val end = center + Offset(cos(angle).toFloat(), sin(angle).toFloat()) * radius.toPx()
             drawLine(Lime, center, end, strokeWidth = 2.dp.toPx())
             drawCircle(Lime, 4.dp.toPx(), center)
-            drawCircle(Lime, 22.dp.toPx(), end)
+            drawCircle(Lime, 20.dp.toPx(), end)
         }
         repeat(12) { index ->
             val value = if (hours) index else index * 5
             val number = if (hours && index == 0) 12 else value
             val angle = index * PI / 6 - PI / 2
-            Box(Modifier.offset(x = diameter / 2 + radius * cos(angle).toFloat() - 22.dp, y = diameter / 2 + radius * sin(angle).toFloat() - 22.dp)
-                .size(44.dp).graphicsLayer { alpha = 1f }
+            Box(Modifier.offset(x = diameter / 2 + radius * cos(angle).toFloat() - 20.dp, y = diameter / 2 + radius * sin(angle).toFloat() - 20.dp)
+                .size(40.dp).graphicsLayer { alpha = 1f }
                 .semantics {
                     contentDescription = if (hours) "$number hours" else "$number minutes"
                     role = Role.Button
                     onClick { selectCurrent(value); finishCurrent(); true }
                 }, contentAlignment = Alignment.Center) {
-                Text(if (hours) number.toString() else number.toString().padStart(2, '0'), color = if (selectedNumber == value) Ink else WhiteInk, fontSize = 18.sp)
+                Text(if (hours) number.toString() else number.toString().padStart(2, '0'), color = if (selectedNumber == value) Ink else WhiteInk, fontSize = 17.sp)
             }
         }
     }

@@ -70,6 +70,7 @@ class DeviceSmoke {
     @Test fun shiftEntryPersistsAndEnglishLabelsStayEnglish() {
         val note="Native parity smoke ${System.currentTimeMillis()}"
         compose.onNodeWithContentDescription("Add shift").performClick()
+        compose.onAllNodesWithText("⌄", substring = true).assertCountEquals(0)
         compose.onNodeWithTag("shift-date").assert(hasSetTextAction().not())
         compose.onNodeWithTag("shift-start-time").performScrollTo().assert(hasSetTextAction().not()).performClick()
         compose.onNodeWithTag("time-picker").assertExists()
@@ -157,8 +158,17 @@ class DeviceSmoke {
         val dialBounds = compose.onNodeWithTag("time-picker").getUnclippedBoundsInRoot()
         val dialWidth = (dialBounds.right - dialBounds.left).value
         val dialHeight = (dialBounds.bottom - dialBounds.top).value
-        Assert.assertTrue("Dial remains compact", dialWidth <= 257f)
+        Assert.assertTrue("Dial remains compact", dialWidth <= 241f)
         Assert.assertEquals("Dial remains circular", dialWidth, dialHeight, 1f)
+        val hourBounds = compose.onNodeWithTag("time-hour-input").getUnclippedBoundsInRoot()
+        for (tag in listOf("time-minute-input", "time-separator", "time-period")) {
+            val bounds = compose.onNodeWithTag(tag).getUnclippedBoundsInRoot()
+            Assert.assertEquals("$tag aligns at the top", hourBounds.top.value, bounds.top.value, 1f)
+            Assert.assertEquals("$tag aligns at the bottom", hourBounds.bottom.value, bounds.bottom.value, 1f)
+        }
+        val dialogBounds = compose.onNodeWithTag("time-dialog").getUnclippedBoundsInRoot()
+        Assert.assertEquals("Dial stays centred in dialog", (dialogBounds.left + dialogBounds.right).value / 2,
+            (dialBounds.left + dialBounds.right).value / 2, 1f)
         // Real touch gestures must rotate the hand without switching modes mid-drag.
         compose.onNodeWithTag("time-picker").performTouchInput {
             down(Offset(center.x, height * .12f))
@@ -250,7 +260,20 @@ class DeviceSmoke {
         try {
             compose.waitForIdle()
             screenshot("overview-populated")
-            compose.onNodeWithText("Earnings, progress & recent shifts",substring=true).performScrollTo().performClick()
+            compose.onNodeWithTag("earnings-toggle").performScrollTo().performClick()
+            compose.waitForIdle()
+            fun assertEarningsAtTop() {
+                val viewport = compose.onNodeWithTag("overview-scroll").getUnclippedBoundsInRoot()
+                val heading = compose.onNodeWithTag("earnings-toggle").getUnclippedBoundsInRoot()
+                Assert.assertEquals("Expanded earnings scrolls its heading to the top", viewport.top.value, heading.top.value, 2f)
+            }
+            assertEarningsAtTop()
+            screenshot("earnings-auto-scroll")
+            compose.onNodeWithTag("earnings-toggle").performClick()
+            compose.onNodeWithTag("earnings-row").assertDoesNotExist()
+            compose.onNodeWithTag("earnings-toggle").performScrollTo().performClick()
+            compose.waitForIdle()
+            assertEarningsAtTop()
             compose.onNodeWithTag("earnings-row").performScrollTo()
             screenshot("earnings-populated")
             compose.onNodeWithTag("bonus-card").performScrollTo();screenshot("bonus-layout")

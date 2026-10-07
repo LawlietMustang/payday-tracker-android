@@ -36,8 +36,8 @@ val LocalLanguage = compositionLocalOf { "en" }
         Column(Modifier.padding(padding), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
     }
 }
-@Composable fun Page(content: @Composable ColumnScope.() -> Unit) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) { LocalPageHeader.current?.invoke(); content() }
+@Composable fun Page(modifier: Modifier = Modifier, scrollState: ScrollState = rememberScrollState(), content: @Composable ColumnScope.() -> Unit) {
+    Column(modifier.fillMaxSize().verticalScroll(scrollState).padding(horizontal = 16.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) { LocalPageHeader.current?.invoke(); content() }
 }
 @Composable fun Action(label: String, modifier: Modifier = Modifier, primary: Boolean = false, enabled: Boolean = true, compact: Boolean = false, onClick: () -> Unit) {
     Button(onClick, modifier.heightIn(min = 44.dp), enabled = enabled, shape = RoundedCornerShape(14.dp),
@@ -56,7 +56,7 @@ val LocalLanguage = compositionLocalOf { "en" }
     val tint = LocalContentColor.current
     Column { if (label.isNotEmpty()) Text(label, fontSize = 12.sp, modifier = Modifier.padding(bottom = 4.dp))
         Box { OutlinedButton({ open = true }, Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = tint)) {
-            Text(choices.firstOrNull { it.first == value }?.second ?: value, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis); Text("⌄")
+            Text(choices.firstOrNull { it.first == value }?.second ?: value, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
         }; DropdownMenu(open, { open = false }) { choices.forEach { (key, name) -> DropdownMenuItem(text = { Text(name) }, onClick = { onSelect(key); open = false }) } } }
     }
 }
