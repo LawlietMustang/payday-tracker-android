@@ -1,51 +1,189 @@
-# Payday Tracker for Android
+# WageTrack
 
-Payday Tracker records shifts, breaks, gross earnings, estimated net earnings, forecasts, settings, and language choice without an internet connection. Optional Google sign-in uses a network connection when configured; it does not upload financial records.
+Track your shifts, working hours, breaks, earnings and expenses in one offline-first Android app. WageTrack was previously named **Payday Tracker**; the repository and release application ID retain their original names so existing installations can continue receiving updates.
 
-## Version 2.2.5
+**Current version: 2.5.5 · build 46** — [Release notes](VERSION-2.5.5.md)
 
-Upcoming-shift reminders support all planned shifts or selected shifts, with a lead time in hours or days. Android schedules them locally, including while the app is closed. The euro navigation icon is corrected. Native Google account authentication is implemented but requires the app owner's configuration before it can work: see [Google sign-in setup](docs/GOOGLE-SIGN-IN.md). It does not provide automatic Drive synchronization. See [release notes](VERSION-2.2.5.md).
+The visible app uses **native Kotlin and Jetpack Compose**, with Room for local records. A hidden WebView is used only to read legacy localStorage during migration from older versions; it does not render the current interface.
 
-## Version 1.8.1
+## Features
 
-Version 1.8.1 replaces browser-generated prompts with branded in-app dialogs, displays a live accumulated break counter while paused, and adds an Android foreground timer notification for background work and break tracking.
+- **Shifts and workplaces:** multiple workplaces, hourly wages, templates, calendar selection, multi-date entry and batch editing/deletion.
+- **Shift status:** planned, completed and cancelled shifts; automatic status selection and optional completion of past planned shifts.
+- **Time tracking:** clock-in, work and break timers, and an Android foreground notification for an active session.
+- **Time entry:** a draggable analogue clock, editable hour/minute fields, AM/PM selection and 24-hour input. For example, entering `17:30` selects `5:30 PM`.
+- **Earnings:** gross pay, estimated net pay, overtime/night/Sunday/holiday bonuses, monthly forecasts, progress and payslip comparisons.
+- **Expenses and goals:** recurring expenses, custom categories, budgets, savings goals and contributions.
+- **Reminders and security:** upcoming-shift reminders with hours/days of notice, weekday/time reminders, a home-screen widget and optional biometric/PIN lock.
+- **Personalisation:** English/German, light/dark/system appearance, currency selection and first-launch setup.
+- **Backup and export:** automatic folder backups, JSON import/export and monthly CSV export.
 
-Version 1.8 adds a persistent offline time clock. Users can start work, begin and end breaks, finish a timed shift, or discard an accidental session. The timer survives app closure and saves the completed session directly into work hours.
+Version 2.5.5 removes the unwanted text “v” markers from selectors, aligns the clock controls, and restores scrolling to the earnings heading when its section is expanded.
 
-Version 1.7.1 reorganizes the Add shift screen into a compact mobile-first layout. Related time fields now share rows, template management is visually secondary, and the Cancel/Save actions remain accessible while scrolling.
+## Install or update
 
-Version 1.7 adds reusable shift templates and bulk editing. Users can save named schedules, apply them while logging shifts, and update the time, break, status, wage, note, or template for multiple selected shifts in one operation.
+1. Open [Build Android APK in GitHub Actions](https://github.com/LawlietMustang/payday-tracker-android/actions/workflows/build-apk.yml).
+2. Select a successful run for the intended commit on `main`.
+3. Download the **PaydayTracker-release-apk** artifact, extract the ZIP and install `app-release.apk`. GitHub may require sign-in to download artifacts.
+4. To confirm the installed version, open the app's side menu and check the version shown at the bottom.
 
-The Android interface now uses a dedicated slide-out menu inspired by Material navigation drawers. Profile, language, and light/dark/system appearance controls live in the drawer, while the bottom bar has five evenly spaced positions without overlap.
+Updates use the release package `com.paydaytracker.app` and the same permanent signing key. Install compatible signed updates over the existing app to retain its local records. Uninstalling or clearing app storage deletes those records; restore an exported backup if reinstalling.
 
-This update fixes the mobile bottom navigation so the floating add button no longer covers Expenses. In shift selection mode, the full row is now tappable, and Deselect all appears whenever at least one shift is selected.
+Debug builds use `com.paydaytracker.app.debug`, install separately, and have their own data.
 
-- Tap any exact dates in a month-by-month calendar and add the same shift to all selected dates.
-- Long-press a logged shift to enter multi-selection mode and delete selected shifts together.
-- Record expenses such as rent, utilities, health insurance, groceries, transport, and custom costs.
-- Mark an expense as recurring to add it automatically in each applicable month.
-- Set a monthly savings target and track progress after expenses.
-- Choose light, dark, or system-default appearance.
-- Use a compact month label and a time-based sun or moon greeting icon.
-- Export the selected month's shifts through Android's native CSV save dialog.
-- Show confirmations, warnings, and deletion prompts in the selected language.
+## Build locally
 
-## Privacy and storage
+### Requirements
 
-- Internet permission is used by optional native Google authentication; the WebView blocks network loads.
-- Records are saved inside the app's private internal Android storage.
-- Other ordinary apps cannot read that storage.
-- Android automatic cloud backup and device-transfer backup are disabled. Manual file backup/restore is available through Settings.
-- Uninstalling the app or clearing its storage removes local records. Exported files in Documents or Drive can be selected to restore them.
+- Git and Android Studio with Android SDK **36**, SDK Build Tools and Platform Tools installed.
+- **JDK 17** for Gradle. The repository includes the **Gradle 8.9 wrapper**; a separate Gradle installation is not required.
+- Internet access for the initial dependency/SDK downloads. Day-to-day tracking in the installed app works offline.
 
-## Device optimization
+Open the repository root in Android Studio, select JDK 17 as the Gradle JDK, and sync the project. Android Studio can create `local.properties` with your SDK location; keep that machine-specific file out of Git.
 
-The interface is optimized for tall Xiaomi and Redmi displays, including the 6.83-inch Xiaomi 15T class. It supports safe system bars, portrait and landscape orientation, 320–600 dp phone widths, touch-sized navigation, and HyperOS WebView.
+### Clone or update with Git Bash
 
-## Build
+For a new clone:
 
-Open this folder in Android Studio, install Android SDK 35 when prompted, sync Gradle, then choose Build > Build APK(s). The debug APK is produced under app/build/outputs/apk/debug/.
+```bash
+git clone https://github.com/LawlietMustang/payday-tracker-android.git
+cd payday-tracker-android
+```
 
-Minimum Android version: Android 8.0 (API 26). Target: Android 15 (API 35).
+To update an existing clone, open Git Bash inside its folder and run:
 
-Net salary values are simplified estimates, not official German payslips. Because the app is offline, annual tax parameters do not update automatically.
+```bash
+git status
+git switch main
+git pull --ff-only origin main
+```
+
+If Git reports local changes or a diverged branch, resolve that before continuing. Do not discard your edits to force an update.
+
+### Build a debug APK
+
+From Git Bash, macOS or Linux:
+
+```bash
+./gradlew assembleDebug
+```
+
+From Windows PowerShell:
+
+```powershell
+.\gradlew.bat assembleDebug
+```
+
+Output: `app/build/outputs/apk/debug/app-debug.apk`.
+
+To build and install on a connected emulator or a phone with USB debugging enabled:
+
+```bash
+./gradlew installDebug
+```
+
+### Build a signed release APK
+
+Use the existing permanent signing key. See [Signing setup](docs/SIGNING.md) for the repository's one-time setup and key retention requirements.
+
+For a local release build, provide `PAYDAY_KEYSTORE_PATH` and `PAYDAY_KEYSTORE_PASSWORD` in your environment, using the existing keystore with alias `payday`, then run:
+
+```bash
+./gradlew assembleRelease
+```
+
+Output: `app/build/outputs/apk/release/app-release.apk`.
+
+The GitHub Actions build uses the repository secrets `PAYDAY_KEYSTORE_BASE64`, `PAYDAY_KEYSTORE_PASSWORD` and `PAYDAY_CERT_SHA256`. It verifies the release certificate and stops if signing is missing or inconsistent. Never commit the private key or password, or generate a replacement key for an ordinary update.
+
+## Where to edit the app
+
+The active screen implementation is in **`app/src/main/java/com/paydaytracker/app/ui/parity/`**. Start there when changing the current layout. The older web files in `app/src/main/assets/` are retained for legacy compatibility/reference and tests; editing their CSS or HTML does not change the visible native screens.
+
+Paths below are relative to `app/src/main/java/com/paydaytracker/app/`:
+
+| File or folder | Responsibility |
+| --- | --- |
+| `MainActivity.kt` | Android entry point, lifecycle and app-lock integration |
+| `ui/MainApp.kt` | Navigation, drawer, header and bottom bar |
+| `ui/MainViewModel.kt` | Screen state and repository actions |
+| `ui/parity/Components.kt` | Shared cards, buttons, selectors, spacing and icons |
+| `ui/parity/Overview.kt` | Dashboard, earnings, progress and live time clock |
+| `ui/parity/Hours.kt` and `ShiftCalendar.kt` | Calendar and shift browsing/date selection |
+| `ui/parity/ShiftEditor.kt` and `BulkShiftEditor.kt` | Single-shift and bulk entry/editing |
+| `ui/parity/ShiftPickers.kt` | Clock dial, editable time fields, AM/PM and picker dimensions |
+| `ui/parity/Records.kt` | Expenses, savings goals, budgets and history |
+| `ui/parity/Preferences.kt` and `Onboarding.kt` | Settings/profile and initial setup |
+| `ui/parity/DevicePage.kt` | Reminder, widget and app-lock controls |
+| `ui/parity/BackupPage.kt` | Backup, restore, account and CSV controls |
+| `ui/theme/` | Compose theme colours and typography |
+| `data/PayrollCalculator.kt` | Earnings, bonuses and net-pay estimates |
+| `data/WageRepository.kt` and `data/db/` | Record operations, backup data and Room persistence |
+| `data/DataMigration.kt` | Migration of older saved app data |
+| `NativeCoordinator.kt` | Connects saved state to Android services |
+| `ShiftReminders.kt` and `ReminderReceiver.kt` | Android reminder scheduling and delivery |
+| `AutoBackup.kt` | Automatic backup queue and file rotation |
+| `AppLock.kt`, `AppPin.kt`, `PaydayWidget.kt`, `TimerNotificationService.kt` | Native lock, PIN, widget and timer services |
+
+App icons and other Android resources live in `app/src/main/res/`. Build settings, SDK levels, `versionName` and `versionCode` are in `app/build.gradle.kts`.
+
+After a native UI change, save the file and run/build the app again. In Android Studio, use an emulator or connected phone and Logcat to inspect behaviour and errors.
+
+## Tests and debugging
+
+Local compilation and unit tests:
+
+```bash
+./gradlew assembleDebug testDebugUnitTest
+```
+
+Native UI and migration tests, with an emulator or device connected:
+
+```bash
+./gradlew connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.paydaytracker.app.DeviceSmoke,com.paydaytracker.app.UpgradeSmoke
+```
+
+Additional project/resource checks:
+
+```bash
+python3 scripts/check-project.py
+python3 scripts/embed-icon-masks.py --check
+./gradlew -PresourceAudit :app:lintDebug
+```
+
+On Windows, use `python` instead of `python3` if that is how Python is installed. In PowerShell, use `.\gradlew.bat` in place of `./gradlew`.
+
+- **Validate Android and UI:** compilation, unit tests, resource checks and retained web-asset tests.
+- **Android device smoke test:** native interaction assertions, migration checks, screenshots and Logcat on an API 35 emulator.
+- **Build Android APK:** release checks, permanent signing and the downloadable APK artifact.
+
+The v2.5.5 native suite passed all eight tests, including clock dragging/alignment, typed time validation, earnings scrolling, persistence and migration. Physical-device checks are still needed for manufacturer battery restrictions, notification delivery, biometric hardware, launcher widget pinning and configured Google sign-in. See [Device tests](docs/DEVICE-TESTS.md).
+
+## Backup, privacy and Google sign-in
+
+Records are stored in the app's private internal storage. Android's automatic cloud backup/device-transfer backup is disabled in the manifest.
+
+For automatic backups, choose a writable folder once in **Backup & restore**. Subsequent changes update `WageTrack-backup.json` and retain one previous copy, `WageTrack-previous.json`, instead of creating a new dated file for every edit. Keep the selected folder accessible and check the backup status after changes.
+
+You can also export or restore a JSON file manually. Google Drive can be selected through Android's file picker when the Drive provider is available. After reinstalling, choose the saved file to restore your records and configure the backup folder again; unattended recovery from a connected Google account is not implemented.
+
+Google sign-in is optional and requires the owner's Firebase/Google configuration. Signing in alone does not upload financial records or enable Drive synchronisation. See [Google sign-in setup](docs/GOOGLE-SIGN-IN.md). File/folder backups work without app sign-in.
+
+The `INTERNET` permission supports optional authentication; network-dependent account or cloud-file operations require a connection.
+
+## Calculation and compatibility notes
+
+- Minimum Android API: **26**. Compile and target API: **36**.
+- German net-pay figures and forecasts are simplified estimates, not official payroll calculations or payslips. Tax parameters are bundled and do not update automatically while offline.
+- Currency selection controls monetary display; it does not convert existing amounts or exchange rates.
+- Planned-shift completion is an automatic status rule, not proof that the shift was worked. Review completed/cancelled records for accurate totals.
+
+## Further documentation
+
+- [Current release notes](VERSION-2.5.5.md)
+- [Native layout and feature parity](docs/NATIVE-PARITY.md)
+- [Native device tests](docs/DEVICE-TESTS.md)
+- [Permanent signing](docs/SIGNING.md)
+- [Google sign-in configuration](docs/GOOGLE-SIGN-IN.md)
+
+Older `VERSION-*.md` files and documents under `docs/` record historical releases; use the current source and this README for the active app architecture and build requirements.
