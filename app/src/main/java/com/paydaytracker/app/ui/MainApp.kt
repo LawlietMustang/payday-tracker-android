@@ -108,7 +108,7 @@ bottomBar={
     val month by vm.selectedMonth.collectAsState()
     var open by remember { mutableStateOf(false) }
     Surface(onClick = { open = true }, modifier=Modifier.semantics{contentDescription="Select month"}, color = Raised, contentColor = WhiteInk, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Lavender.copy(alpha=.4f))) {
-        Text(java.time.YearMonth.parse(month).format(java.time.format.DateTimeFormatter.ofPattern("MMM yyyy", Formatters.locale))+" ⌄", Modifier.padding(horizontal=12.dp,vertical=15.dp),fontSize=12.sp)
+        Text(java.time.YearMonth.parse(month).format(java.time.format.DateTimeFormatter.ofPattern("MMM yyyy", Formatters.locale)), Modifier.padding(horizontal=12.dp,vertical=15.dp),fontSize=12.sp)
     }
     if(open) MonthChooser(month,{open=false}) {vm.setMonth(it);open=false}
 }

@@ -26,7 +26,7 @@ import com.paydaytracker.app.ui.common.Formatters as F
                     listOf("profile" to L("Profile","Profil"),"pay" to L("Pay & tax","Lohn & Steuern"),"workplaces" to L("Workplaces","Arbeitsplätze"),"planning" to L("Budgets & goals","Budgets & Sparziele"),"reminders" to L("Reminders & widget","Erinnerungen & Widget"),"lock" to L("App lock","App-Sperre"),"backup" to L("Backup & restore","Sichern & wiederherstellen"),"appearance" to L("App appearance","App-Darstellung"),"delete" to L("Delete data","Daten löschen")).forEach{(id,label)->
                         Row(Modifier.fillMaxWidth().clickable{when(id){"delete"->deletion=true;"appearance"->appearanceOpen=!appearanceOpen;else->navigate(id)}}.padding(horizontal=22.dp,vertical=20.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(16.dp)){
                             val tint=if(id=="delete")Color(0xFFAA2447)else LocalContentColor.current
-                            Mark(id,Modifier.size(24.dp),tint);Text(label,Modifier.weight(1f),color=tint,fontSize=16.sp,fontWeight=FontWeight.Medium);Text(if(id=="appearance"&&appearanceOpen)"⌄"else "›",color=tint,fontSize=24.sp)
+                            Mark(id,Modifier.size(24.dp),tint);Text(label,Modifier.weight(1f),color=tint,fontSize=16.sp,fontWeight=FontWeight.Medium);if(id!="appearance")Text("›",color=tint,fontSize=24.sp)
                         }
                         HorizontalDivider(color=MaterialTheme.colorScheme.outline.copy(alpha=.5f))
                         if(id=="appearance"&&appearanceOpen)Column(Modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){

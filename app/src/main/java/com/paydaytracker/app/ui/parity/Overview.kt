@@ -8,6 +8,9 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.*
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import kotlin.math.roundToInt
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.*
@@ -31,7 +34,17 @@ fun clock(ms: Long): String { val s=ms/1000;return "%02d:%02d:%02d".format(s/360
     val all = PayrollCalculator.summary(month,shifts,settings,workplaces,"all")
     val next=shifts.filter{it.status=="planned" && (filter=="all"||it.workplaceId==filter) && LocalDateTime.parse(it.date+"T"+it.start)>LocalDateTime.now()}.minByOrNull{it.date+it.start}
     var details by rememberSaveable { mutableStateOf(false) }
-    Page {
+    val scrollState = rememberScrollState()
+    var viewportTop by remember { mutableFloatStateOf(0f) }
+    var earningsTop by remember { mutableIntStateOf(0) }
+    LaunchedEffect(details) {
+        if (details) {
+            // Allow the expanded content to be measured before choosing the scroll range.
+            withFrameNanos { }
+            scrollState.animateScrollTo(earningsTop.coerceAtLeast(0))
+        }
+    }
+    Page(Modifier.testTag("overview-scroll").onGloballyPositioned { viewportTop = it.positionInRoot().y }, scrollState) {
         WorkplacePicker(vm){navigate("workplaces")}
         Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){PurpleAction(L("+ New workplace","+ Neuer Arbeitsplatz"),Modifier.weight(1f)){navigate("new-workplace")};PurpleAction(L("Manage workplaces","Arbeitsplätze verwalten"),Modifier.weight(1f)){navigate("workplaces")}}
         WageCard(color=Lime) { Row(verticalAlignment=Alignment.CenterVertically) { Text(L("AVAILABLE AFTER EXPENSES","NACH AUSGABEN VERFÜGBAR"),Modifier.weight(1f),fontSize=10.sp,fontWeight=FontWeight.Bold); Text(L("ESTIMATE","GESCHÄTZT"),fontSize=9.sp,modifier=Modifier.border(1.dp,Ink.copy(alpha=.5f),RoundedCornerShape(20.dp)).padding(5.dp)) }
@@ -54,7 +67,7 @@ fun clock(ms: Long): String { val s=ms/1000;return "%02d:%02d:%02d".format(s/360
             Text(L("Bonuses are planning estimates. Your employment or collective agreement takes precedence.","Zuschläge sind Planungsschätzungen. Dein Arbeits- oder Tarifvertrag ist maßgeblich."),fontSize=12.sp,color=LocalContentColor.current.copy(alpha=.65f))
         }
 
-        Surface(onClick={details=!details},shape=RoundedCornerShape(18.dp),color=Purple,contentColor=WhiteInk,border=BorderStroke(1.dp,Lavender.copy(alpha=.4f))) {Text((if(details)"▾ " else "▸ ")+L("Earnings, progress & recent shifts","Verdienst, Fortschritt & letzte Schichten"),Modifier.fillMaxWidth().padding(18.dp),fontSize=13.sp,fontWeight=FontWeight.SemiBold)}
+        Surface(onClick={details=!details},modifier=Modifier.testTag("earnings-toggle").onGloballyPositioned { earningsTop = (it.positionInRoot().y - viewportTop + scrollState.value).roundToInt() },shape=RoundedCornerShape(18.dp),color=Purple,contentColor=WhiteInk,border=BorderStroke(1.dp,Lavender.copy(alpha=.4f))) {Text(L("Earnings, progress & recent shifts","Verdienst, Fortschritt & letzte Schichten"),Modifier.fillMaxWidth().padding(18.dp),fontSize=13.sp,fontWeight=FontWeight.SemiBold)}
         if(details) {
             val previous=PayrollCalculator.summary(YearMonth.parse(month).minusMonths(1).toString(),shifts,settings,workplaces,filter)
             val delta=if(previous.gross>0)"%+.1f%%".format(F.locale,(summary.gross/previous.gross-1)*100)else "–"

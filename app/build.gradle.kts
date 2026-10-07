@@ -14,7 +14,7 @@ android {
     if (providers.gradleProperty("resourceAudit").isPresent) {
         lint { checkOnly += "UnusedResources"; warningsAsErrors = true }
     }
-    defaultConfig { applicationId = "com.paydaytracker.app"; minSdk = 26; targetSdk = 36; versionCode = 45; versionName = "2.5.4"; testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner" }
+    defaultConfig { applicationId = "com.paydaytracker.app"; minSdk = 26; targetSdk = 36; versionCode = 46; versionName = "2.5.5"; testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner" }
     signingConfigs {
         create("permanent") {
             System.getenv("PAYDAY_KEYSTORE_PATH")?.let { storeFile = file(it) }

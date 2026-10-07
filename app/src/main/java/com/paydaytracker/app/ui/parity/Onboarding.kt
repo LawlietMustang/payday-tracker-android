@@ -38,7 +38,7 @@ import java.util.Locale
 @Composable private fun SetupPicker(label:String,value:String,modifier:Modifier=Modifier,click:()->Unit) {
     Column(modifier,verticalArrangement=Arrangement.spacedBy(8.dp)) {
         Text(label,fontSize=15.sp,fontWeight=FontWeight.Medium)
-        OutlinedButton(click,Modifier.fillMaxWidth().heightIn(min=50.dp),shape=RoundedCornerShape(14.dp),colors=ButtonDefaults.outlinedButtonColors(contentColor=LocalContentColor.current)) {Text(value,Modifier.weight(1f),textAlign=TextAlign.Start);Text("⌄")}
+        OutlinedButton(click,Modifier.fillMaxWidth().heightIn(min=50.dp),shape=RoundedCornerShape(14.dp),colors=ButtonDefaults.outlinedButtonColors(contentColor=LocalContentColor.current)) {Text(value,Modifier.weight(1f),textAlign=TextAlign.Start)}
     }
 }
 @Composable fun CountryChoice(value:String,change:(String)->Unit) {
@@ -69,7 +69,7 @@ import java.util.Locale
     val paidMinutes=runCatching {LocalDate.parse(date);val a=LocalTime.parse(start);val b=LocalTime.parse(end);val duration=Duration.between(a,b).toMinutes()+if(nextDay)1440 else 0;val breakMin=pause.toInt();require(duration in 1..1440&&breakMin>=0&&breakMin<duration);(duration-breakMin).toInt()}.getOrNull()
     BackHandler(restore||step>0){if(restore)restore=false else{error="";step--}}
     Surface(Modifier.fillMaxSize(),color=Ink,contentColor=WhiteInk){Column(Modifier.safeDrawingPadding().imePadding().padding(horizontal=20.dp,vertical=16.dp)){
-        Row(verticalAlignment=Alignment.CenterVertically){Image(painterResource(R.drawable.app_icon),null,Modifier.size(34.dp));Spacer(Modifier.width(12.dp));Text("WageTrack",fontSize=19.sp,fontWeight=FontWeight.SemiBold);Spacer(Modifier.weight(1f));val lang=LocalLanguage.current;Surface(shape=RoundedCornerShape(14.dp),color=MaterialTheme.colorScheme.surface){TextButton({vm.updateDocument{it.put("language",if(lang=="en")"de"else "en")}}){Text(if(lang=="en")"English ⌄"else "Deutsch ⌄",color=MaterialTheme.colorScheme.onSurface)}}}
+        Row(verticalAlignment=Alignment.CenterVertically){Image(painterResource(R.drawable.app_icon),null,Modifier.size(34.dp));Spacer(Modifier.width(12.dp));Text("WageTrack",fontSize=19.sp,fontWeight=FontWeight.SemiBold);Spacer(Modifier.weight(1f));val lang=LocalLanguage.current;Surface(shape=RoundedCornerShape(14.dp),color=MaterialTheme.colorScheme.surface){TextButton({vm.updateDocument{it.put("language",if(lang=="en")"de"else "en")}}){Text(if(lang=="en")"English"else "Deutsch",color=MaterialTheme.colorScheme.onSurface)}}}
         if(restore){Box(Modifier.weight(1f)){BackupPage(vm){restore=false}};Action(L("Back","Zurück")){restore=false};return@Column}
         Row(Modifier.padding(top=18.dp,bottom=18.dp),horizontalArrangement=Arrangement.spacedBy(6.dp)){repeat(4){Box(Modifier.weight(1f).height(4.dp).background(if(it<=step)Lime else Raised,RoundedCornerShape(3.dp)))}}
         key(step){Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).testTag("setup-step-$step"),verticalArrangement=Arrangement.spacedBy(18.dp)){
