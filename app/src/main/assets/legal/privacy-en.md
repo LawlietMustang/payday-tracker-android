@@ -20,7 +20,7 @@ WageTrack has no advertising, analytics or automatic crash-reporting SDK in this
 
 ## 3. Optional account features
 
-Where Google sign-in is configured, the account controls initialize Firebase Authentication. Connecting an account sends Google credentials to Firebase for verification. The account can contain your Google-linked name, email, identifier and sign-in metadata. Firebase also processes connection information such as IP address and user agent for authentication and abuse prevention. The app does not receive your Google password. Opening account controls in a configured build can initialize this service even before you sign in.
+Where Google sign-in is configured, the account controls initialize Firebase Authentication. Connecting an account sends Google credentials to Firebase for verification. The account can contain your Google-linked name, email, profile-photo URL, identifiers and sign-in metadata. Firebase also processes connection information such as IP address and user agent for authentication and abuse prevention. The app does not receive your Google password. Opening account controls in a configured build can initialize this service even before you sign in.
 
 Google/Firebase is the authentication provider; the publisher administers the Firebase project. The relevant contracting entity and processing terms are {{FIREBASE_CONTRACTING_ENTITY_AND_PROCESSOR_DETAILS}}. Authentication is optional and is separate from the records stored on your device. Sign-in does not enable automatic Drive synchronization or upload financial records.
 

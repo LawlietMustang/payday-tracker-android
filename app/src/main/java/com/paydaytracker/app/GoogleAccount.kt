@@ -41,10 +41,12 @@ class GoogleAccount(private val activity: Activity, private val changed: (String
         return JSONObject().put("configured", firebase != null && clientId.isNotBlank()).put("busy", busy)
             .put("email", firebase?.currentUser?.email ?: "").put("name", firebase?.currentUser?.displayName ?: "").toString()
     }
-    fun signIn() {
+    fun signIn(reauthenticate: Boolean = false) {
         if (busy) return
         val firebase = auth
         if (firebase == null || clientId.isBlank()) { changed("setup"); return }
+        val existingUser = if (reauthenticate) firebase.currentUser else null
+        if (reauthenticate && existingUser == null) { changed("deleteError"); return }
         busy = true; signal = CancellationSignal(); changed("busy")
         try {
             val option = GetSignInWithGoogleOption.Builder(clientId).build()
@@ -56,8 +58,14 @@ class GoogleAccount(private val activity: Activity, private val changed: (String
                         val credential = result.credential
                         require(credential is CustomCredential && credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL)
                         val google = GoogleIdTokenCredential.createFrom(credential.data)
-                        firebase.signInWithCredential(GoogleAuthProvider.getCredential(google.idToken, null)).addOnCompleteListener(executor) { task ->
-                            busy = false; if (!activity.isDestroyed) changed(if (task.isSuccessful) "signedIn" else "verifyError")
+                        val credentialForFirebase = GoogleAuthProvider.getCredential(google.idToken, null)
+                        val operation = if (existingUser != null) existingUser.reauthenticate(credentialForFirebase)
+                            else firebase.signInWithCredential(credentialForFirebase)
+                        operation.addOnCompleteListener(executor) { task ->
+                            busy = false
+                            if (!activity.isDestroyed) changed(if (task.isSuccessful) {
+                                if (reauthenticate) "verifiedForDeletion" else "signedIn"
+                            } else if (reauthenticate) "deleteNeedsLogin" else "verifyError")
                         }
                     } catch (_: Exception) { busy = false; changed("error") }
                 }

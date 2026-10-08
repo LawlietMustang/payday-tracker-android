@@ -20,7 +20,7 @@ Diese Implementierung enthält keine Werbung, Analyse-SDKs oder automatische Abs
 
 ## 3. Optionale Anmeldung
 
-Ist die Google-Anmeldung konfiguriert, initialisieren die Kontoeinstellungen Firebase Authentication. Beim Verbinden werden Google-Anmeldedaten zur Prüfung an Firebase gesendet. Das Konto kann den mit Google verknüpften Namen, die E-Mail-Adresse, Kennungen und Anmeldemetadaten enthalten. Firebase verarbeitet außerdem Verbindungsinformationen wie IP-Adresse und User-Agent zur Anmeldung und Missbrauchsabwehr. Die App erhält dein Google-Passwort nicht. Bereits das Öffnen der Kontoeinstellungen kann in einem konfigurierten Build den Dienst initialisieren.
+Ist die Google-Anmeldung konfiguriert, initialisieren die Kontoeinstellungen Firebase Authentication. Beim Verbinden werden Google-Anmeldedaten zur Prüfung an Firebase gesendet. Das Konto kann den mit Google verknüpften Namen, die E-Mail-Adresse, Profilfoto-URL, Kennungen und Anmeldemetadaten enthalten. Firebase verarbeitet außerdem Verbindungsinformationen wie IP-Adresse und User-Agent zur Anmeldung und Missbrauchsabwehr. Die App erhält dein Google-Passwort nicht. Bereits das Öffnen der Kontoeinstellungen kann in einem konfigurierten Build den Dienst initialisieren.
 
 Google/Firebase stellt den Anmeldedienst bereit; der Anbieter verwaltet das Firebase-Projekt. Zuständige Vertragseinheit und Auftragsverarbeitungsbedingungen: {{FIREBASE_CONTRACTING_ENTITY_AND_PROCESSOR_DETAILS}}. Die Anmeldung ist freiwillig und von den lokalen Aufzeichnungen getrennt. Sie aktiviert weder automatische Drive-Synchronisierung noch das Hochladen finanzieller Einträge.
 

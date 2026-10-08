@@ -86,8 +86,9 @@ import org.json.JSONObject
     if(accountEvent in listOf("error","verifyError")) Text(L("Sign-in failed. Please try again.","Anmeldung fehlgeschlagen. Bitte erneut versuchen."))
     if(accountEvent == "deleteNeedsLogin") {
         Text(L("For security, sign in again to the same account, then choose Delete sign-in account again.", "Melde dich zur Sicherheit erneut mit demselben Konto an und wähle anschließend erneut Anmeldekonto löschen."))
-        Action(L("Verify identity", "Identität bestätigen"), enabled = !busy) { account.signIn() }
+        Action(L("Verify identity", "Identität bestätigen"), enabled = !busy) { account.signIn(reauthenticate = true) }
     }
+    if(accountEvent == "verifiedForDeletion") Text(L("Identity verified. Choose Delete sign-in account to confirm deletion.", "Identität bestätigt. Wähle Anmeldekonto löschen, um die Löschung zu bestätigen."))
     if(accountEvent == "deleteError") Text(L("Account deletion failed. Check your connection and try again.", "Das Konto konnte nicht gelöscht werden. Prüfe die Verbindung und versuche es erneut."))
     if(accountEvent == "deleted") Text(L("Sign-in account deleted. Local records and exported backups remain under your control.", "Anmeldekonto gelöscht. Lokale Einträge und exportierte Sicherungen bleiben unter deiner Kontrolle."))
     if(confirmDelete) AlertDialog(onDismissRequest = { confirmDelete = false },
