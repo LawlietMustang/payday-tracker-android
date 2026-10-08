@@ -9,6 +9,7 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException
 import org.json.JSONObject
 import java.util.concurrent.Executor
 
@@ -74,6 +75,23 @@ class GoogleAccount(private val activity: Activity, private val changed: (String
             override fun onResult(result: Void?) { busy = false; if (!activity.isDestroyed) changed("signedOut") }
             override fun onError(e: ClearCredentialException) { busy = false; if (!activity.isDestroyed) changed("signedOut") }
         })
+    }
+    fun deleteAccount() {
+        if (busy) return
+        val user = auth?.currentUser ?: return
+        busy = true; changed("busy")
+        user.delete().addOnCompleteListener(executor) { task ->
+            busy = false
+            if (activity.isDestroyed) return@addOnCompleteListener
+            if (task.isSuccessful) {
+                manager.clearCredentialStateAsync(ClearCredentialStateRequest(), null, executor,
+                    object : CredentialManagerCallback<Void?, ClearCredentialException> {
+                        override fun onResult(result: Void?) { if (!activity.isDestroyed) changed("deleted") }
+                        override fun onError(e: ClearCredentialException) { if (!activity.isDestroyed) changed("deleted") }
+                    })
+                changed("deleted")
+            } else changed(if (task.exception is FirebaseAuthRecentLoginRequiredException) "deleteNeedsLogin" else "deleteError")
+        }
     }
     fun destroy() { signal?.cancel() }
 }

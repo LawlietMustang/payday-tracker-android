@@ -24,6 +24,8 @@ class DeviceSmoke {
     @Before fun seed() = runBlocking {
         if (repository.workplaces.first().isEmpty()) repository.addWorkplace("Smoke workplace",15.0)
         repository.updateDocument { it.put("language","en").put("onboardingCompleted",true) }
+        Assert.assertTrue(LegalAcceptance.accept(compose.activity, "en"))
+        compose.activityRule.scenario.recreate()
         compose.waitUntil(15000) { compose.onAllNodesWithTag("screen-dashboard").fetchSemanticsNodes().isNotEmpty() }
     }
     private fun screenshot(name: String, hideKeyboard: Boolean = true) {

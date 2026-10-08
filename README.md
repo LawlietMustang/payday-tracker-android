@@ -187,3 +187,9 @@ The `INTERNET` permission supports optional authentication; network-dependent ac
 - [Google sign-in configuration](docs/GOOGLE-SIGN-IN.md)
 
 Older `VERSION-*.md` files and documents under `docs/` record historical releases; use the current source and this README for the active app architecture and build requirements.
+
+## Legal documents (draft integration)
+
+Privacy Policy and Terms are available offline in Settings and from a themed first-launch agreement. Acceptance is stored on this installation, outside exported backups. English and German texts live in `app/src/main/assets/legal/`.
+
+**These documents are review drafts, not publication-ready policies.** Publisher/contact details, distribution decisions, public URLs and Firebase arrangements must be completed before release. See the [legal release review](docs/legal/RELEASE-REVIEW.md) for the exact outstanding facts and validation steps. The first-launch button acknowledges privacy; it does not grant optional permissions or blanket data consent.
