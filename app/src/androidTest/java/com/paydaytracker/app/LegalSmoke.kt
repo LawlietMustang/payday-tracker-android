@@ -37,6 +37,10 @@ class LegalSmoke {
     }
 
     @Test fun documentsReadableBeforeAcceptanceAndBackDoesNotAccept() {
+        compose.onNodeWithTag("open-privacy").assertIsDisplayed()
+        compose.onNodeWithTag("open-terms").assertIsDisplayed()
+        compose.onNodeWithTag("legal-draft-notice").assertIsDisplayed()
+        compose.onNodeWithTag("accept-legal").assertIsDisplayed()
         screenshot("legal-welcome")
         for (kind in listOf("privacy", "terms")) {
             compose.onNodeWithTag("open-$kind").performScrollTo().performClick()

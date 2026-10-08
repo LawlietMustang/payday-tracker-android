@@ -45,7 +45,7 @@ fun LegalWelcome(onLanguage: (String) -> Unit, onAccepted: () -> Unit) {
             if (reading != null) {
                 key(reading, language) { LegalReader(reading!!) { reading = null } }
             } else {
-                Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Image(painterResource(R.drawable.app_icon), null, Modifier.size(42.dp))
                         Text("WageTrack", Modifier.weight(1f).padding(start = 12.dp), fontSize = 22.sp, fontWeight = FontWeight.Bold)
@@ -53,19 +53,17 @@ fun LegalWelcome(onLanguage: (String) -> Unit, onAccepted: () -> Unit) {
                             Text(if (language == "en") "Deutsch" else "English", color = Lime)
                         }
                     }
-                    Heading(L("Welcome to WageTrack", "Willkommen bei WageTrack"))
-                    Text(L("Your hours. Your earnings. Your control.", "Deine Zeit. Dein Verdienst. Deine Kontrolle."), color = Lavender)
+                    Heading(L("Before you start", "Bevor du startest"))
                     WageCard {
-                        Text(L("Before you start", "Bevor du startest"), fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        Text(L("Read how the app works and how your information is handled. Both documents are always available in Settings.", "Lies, wie die App funktioniert und mit deinen Daten umgeht. Beide Dokumente findest du jederzeit in den Einstellungen."), fontSize = 14.sp)
+                        Text(L("Read these documents before continuing. You can find them again in Settings.", "Lies diese Dokumente, bevor du fortfährst. Du findest sie jederzeit in den Einstellungen."), fontSize = 14.sp, lineHeight = 20.sp)
                         Action(L("Privacy policy", "Datenschutzerklärung"), Modifier.fillMaxWidth().testTag("open-privacy")) { reading = "privacy" }
                         Action(L("Terms & conditions", "Nutzungsbedingungen"), Modifier.fillMaxWidth().testTag("open-terms")) { reading = "terms" }
                     }
-                    Text(L("No account required. Notifications and Google sign-in remain optional.", "Kein Konto erforderlich. Benachrichtigungen und Google-Anmeldung bleiben freiwillig."), color = Lavender, fontSize = 13.sp)
-                    Text(L("Draft preview · Publisher details pending", "Entwurf · Anbieterangaben fehlen noch"), color = Lavender, fontSize = 12.sp)
+                    Text(L("No account required. Notifications and Google sign-in remain optional.", "Kein Konto erforderlich. Benachrichtigungen und Google-Anmeldung bleiben freiwillig."), color = Lavender, fontSize = 13.sp, lineHeight = 18.sp)
                 }
                 Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(L("By tapping Accept & continue, you agree to the Terms & conditions and acknowledge the Privacy policy. This does not give consent to optional data processing.", "Mit Akzeptieren & weiter stimmst du den Nutzungsbedingungen zu und bestätigst die Kenntnisnahme der Datenschutzerklärung. Dies ist keine Einwilligung in optionale Datenverarbeitung."), fontSize = 12.sp, color = Lavender)
+                    Text(L("Draft preview · Publisher details pending", "Entwurf · Anbieterangaben fehlen noch"), Modifier.testTag("legal-draft-notice"), color = Lavender, fontSize = 11.sp, lineHeight = 16.sp)
+                    Text(L("By tapping Accept & continue, you agree to the Terms & conditions and acknowledge the Privacy policy. This does not give consent to optional data processing.", "Mit Akzeptieren & weiter stimmst du den Nutzungsbedingungen zu und bestätigst die Kenntnisnahme der Datenschutzerklärung. Dies ist keine Einwilligung in optionale Datenverarbeitung."), fontSize = 12.sp, lineHeight = 17.sp, color = Lavender)
                     if (!available || failed) Text(L("Could not load or save the agreement. Please try again.", "Die Vereinbarung konnte nicht geladen oder gespeichert werden. Bitte erneut versuchen."), color = Pink)
                     Action(L("Accept & continue", "Akzeptieren & weiter"), Modifier.fillMaxWidth().testTag("accept-legal"), primary = true, enabled = available && !saving) {
                         saving = true
