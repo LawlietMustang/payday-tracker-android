@@ -9,6 +9,7 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException
 import org.json.JSONObject
 import java.util.concurrent.Executor
 
@@ -40,10 +41,12 @@ class GoogleAccount(private val activity: Activity, private val changed: (String
         return JSONObject().put("configured", firebase != null && clientId.isNotBlank()).put("busy", busy)
             .put("email", firebase?.currentUser?.email ?: "").put("name", firebase?.currentUser?.displayName ?: "").toString()
     }
-    fun signIn() {
+    fun signIn(reauthenticate: Boolean = false) {
         if (busy) return
         val firebase = auth
         if (firebase == null || clientId.isBlank()) { changed("setup"); return }
+        val existingUser = if (reauthenticate) firebase.currentUser else null
+        if (reauthenticate && existingUser == null) { changed("deleteError"); return }
         busy = true; signal = CancellationSignal(); changed("busy")
         try {
             val option = GetSignInWithGoogleOption.Builder(clientId).build()
@@ -55,8 +58,14 @@ class GoogleAccount(private val activity: Activity, private val changed: (String
                         val credential = result.credential
                         require(credential is CustomCredential && credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL)
                         val google = GoogleIdTokenCredential.createFrom(credential.data)
-                        firebase.signInWithCredential(GoogleAuthProvider.getCredential(google.idToken, null)).addOnCompleteListener(executor) { task ->
-                            busy = false; if (!activity.isDestroyed) changed(if (task.isSuccessful) "signedIn" else "verifyError")
+                        val credentialForFirebase = GoogleAuthProvider.getCredential(google.idToken, null)
+                        val operation = if (existingUser != null) existingUser.reauthenticate(credentialForFirebase)
+                            else firebase.signInWithCredential(credentialForFirebase)
+                        operation.addOnCompleteListener(executor) { task ->
+                            busy = false
+                            if (!activity.isDestroyed) changed(if (task.isSuccessful) {
+                                if (reauthenticate) "verifiedForDeletion" else "signedIn"
+                            } else if (reauthenticate) "deleteNeedsLogin" else "verifyError")
                         }
                     } catch (_: Exception) { busy = false; changed("error") }
                 }
@@ -74,6 +83,23 @@ class GoogleAccount(private val activity: Activity, private val changed: (String
             override fun onResult(result: Void?) { busy = false; if (!activity.isDestroyed) changed("signedOut") }
             override fun onError(e: ClearCredentialException) { busy = false; if (!activity.isDestroyed) changed("signedOut") }
         })
+    }
+    fun deleteAccount() {
+        if (busy) return
+        val user = auth?.currentUser ?: return
+        busy = true; changed("busy")
+        user.delete().addOnCompleteListener(executor) { task ->
+            busy = false
+            if (activity.isDestroyed) return@addOnCompleteListener
+            if (task.isSuccessful) {
+                manager.clearCredentialStateAsync(ClearCredentialStateRequest(), null, executor,
+                    object : CredentialManagerCallback<Void?, ClearCredentialException> {
+                        override fun onResult(result: Void?) { if (!activity.isDestroyed) changed("deleted") }
+                        override fun onError(e: ClearCredentialException) { if (!activity.isDestroyed) changed("deleted") }
+                    })
+                changed("deleted")
+            } else changed(if (task.exception is FirebaseAuthRecentLoginRequiredException) "deleteNeedsLogin" else "deleteError")
+        }
     }
     fun destroy() { signal?.cancel() }
 }

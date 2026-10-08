@@ -71,5 +71,29 @@ import org.json.JSONObject
     var accountEvent by remember{mutableStateOf("")};val account=remember{GoogleAccount(context as Activity){accountEvent=it}}
     DisposableEffect(account){onDispose{account.destroy()}}
     val accountState=remember(accountEvent){JSONObject(account.state())}
-Heading(L("Google account","Google-Konto"));if(accountState.optString("email").isNotEmpty()){Text(accountState.optString("email"));Action(L("Sign out","Abmelden")){account.signOut()}}else{Action(L("Sign in with Google","Mit Google anmelden"),enabled=!accountState.optBoolean("busy")){account.signIn()};if(!accountState.optBoolean("configured"))Text(L("Google sign-in is not configured in this build. File and folder backups work without sign-in.","Google-Anmeldung ist in diesem Build nicht eingerichtet. Datei- und Ordnersicherungen funktionieren ohne Anmeldung."),fontSize=12.sp)};if(accountEvent in listOf("error","verifyError"))Text(L("Sign-in failed. Please try again.","Anmeldung fehlgeschlagen. Bitte erneut versuchen."))
+    var confirmDelete by remember { mutableStateOf(false) }
+    val busy = accountState.optBoolean("busy")
+    Heading(L("Google account","Google-Konto"))
+    if(accountState.optString("email").isNotEmpty()) {
+        Text(accountState.optString("email"))
+        Action(L("Sign out","Abmelden"), enabled = !busy) { account.signOut() }
+        Action(L("Delete sign-in account", "Anmeldekonto löschen"), enabled = !busy) { confirmDelete = true }
+    } else {
+        Text(L("Optional. Google/Firebase processes your account details and connection information for sign-in. This does not upload your shifts or connect Drive backups.", "Freiwillig. Google/Firebase verarbeitet Konto- und Verbindungsdaten zur Anmeldung. Schichten werden dadurch nicht hochgeladen und Drive-Sicherungen nicht verbunden."), fontSize = 12.sp)
+        Action(L("Sign in with Google","Mit Google anmelden"), enabled = !busy && accountState.optBoolean("configured")) { account.signIn() }
+        if(!accountState.optBoolean("configured")) Text(L("Google sign-in is not configured in this build. File and folder backups work without sign-in.","Google-Anmeldung ist in diesem Build nicht eingerichtet. Datei- und Ordnersicherungen funktionieren ohne Anmeldung."), fontSize = 12.sp)
+    }
+    if(accountEvent in listOf("error","verifyError")) Text(L("Sign-in failed. Please try again.","Anmeldung fehlgeschlagen. Bitte erneut versuchen."))
+    if(accountEvent == "deleteNeedsLogin") {
+        Text(L("For security, sign in again to the same account, then choose Delete sign-in account again.", "Melde dich zur Sicherheit erneut mit demselben Konto an und wähle anschließend erneut Anmeldekonto löschen."))
+        Action(L("Verify identity", "Identität bestätigen"), enabled = !busy) { account.signIn(reauthenticate = true) }
+    }
+    if(accountEvent == "verifiedForDeletion") Text(L("Identity verified. Choose Delete sign-in account to confirm deletion.", "Identität bestätigt. Wähle Anmeldekonto löschen, um die Löschung zu bestätigen."))
+    if(accountEvent == "deleteError") Text(L("Account deletion failed. Check your connection and try again.", "Das Konto konnte nicht gelöscht werden. Prüfe die Verbindung und versuche es erneut."))
+    if(accountEvent == "deleted") Text(L("Sign-in account deleted. Local records and exported backups remain under your control.", "Anmeldekonto gelöscht. Lokale Einträge und exportierte Sicherungen bleiben unter deiner Kontrolle."))
+    if(confirmDelete) AlertDialog(onDismissRequest = { confirmDelete = false },
+        title = { Text(L("Delete sign-in account?", "Anmeldekonto löschen?")) },
+        text = { Text(accountState.optString("email") + "\n\n" + L("This permanently deletes your WageTrack Firebase sign-in account, not your Google account. Your independent records on this device and exported backup files remain. Use Settings → Delete data to remove local records; delete backup files separately.", "Dies löscht dein WageTrack-Anmeldekonto bei Firebase dauerhaft, nicht dein Google-Konto. Unabhängige Einträge auf diesem Gerät und exportierte Sicherungen bleiben erhalten. Lokale Einträge löschst du über Einstellungen → Daten löschen; Sicherungsdateien löschst du separat.")) },
+        confirmButton = { TextButton({ confirmDelete = false; account.deleteAccount() }, enabled = !busy) { Text(L("Delete account", "Konto löschen")) } },
+        dismissButton = { TextButton({ confirmDelete = false }) { Text(L("Cancel", "Abbrechen")) } })
 }

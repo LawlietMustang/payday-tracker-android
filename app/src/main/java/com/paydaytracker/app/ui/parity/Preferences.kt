@@ -38,6 +38,11 @@ import com.paydaytracker.app.ui.common.Formatters as F
                     Column(Modifier.padding(22.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){GoogleAccountPanel()}
                 }
             }
+            WageCard {
+                Heading(L("Legal", "Rechtliches"))
+                LinkRow(L("Privacy policy", "Datenschutzerklärung")) { navigate("privacy") }
+                LinkRow(L("Terms & conditions", "Nutzungsbedingungen")) { navigate("terms") }
+            }
             Text("WageTrack ${com.paydaytracker.app.BuildConfig.VERSION_NAME}",fontSize=11.sp,color=Lavender)
         }
         "profile" -> {var name by remember(profile){mutableStateOf(profile.name)};var street by remember(profile){mutableStateOf(profile.street)};var city by remember(profile){mutableStateOf(profile.city)};var tax by remember(profile){mutableStateOf(profile.taxId)}

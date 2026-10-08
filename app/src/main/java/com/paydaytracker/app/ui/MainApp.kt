@@ -34,6 +34,7 @@ fun MainApp(viewModel: MainViewModel) {
     val profile by vm.profile.collectAsState(); val places by vm.workplaces.collectAsState(); val shifts by vm.shifts.collectAsState()
     val doc = remember(document) { JSONObject(document) }
     val context = LocalContext.current
+    var legalAccepted by remember { mutableStateOf(com.paydaytracker.app.LegalAcceptance.isAccepted(context)) }
     val language = doc.optString("language", context.getSharedPreferences("device", 0).getString("language", "de"))
     val dark = settings.theme == "dark" || settings.theme == "system" && isSystemInDarkTheme()
     SideEffect { Formatters.language = language; context.getSharedPreferences("device",0).edit().putString("language",language).apply() }
@@ -52,6 +53,10 @@ fun MainApp(viewModel: MainViewModel) {
             Heading("WageTrack"); Text(error ?: L("Loading your records…", "Deine Daten werden geladen…"))
             if(error != null) Action(L("Retry", "Erneut versuchen"),primary=true) { vm.initialize() }
         } }; return@WageTrackTheme }
+        if (!legalAccepted) {
+            LegalWelcome(onLanguage = { lang -> vm.updateDocument { it.put("language", lang) } }, onAccepted = { legalAccepted = true })
+            return@WageTrackTheme
+        }
         if (onboard) { Onboarding(vm); return@WageTrackTheme }
         BackHandler(drawer.isOpen || route != "dashboard") { if(drawer.isOpen) scope.launch { drawer.close() } else back() }
         val labels = mapOf("dashboard" to (profile.name.trim().split(" ").firstOrNull()?.takeIf{it.isNotBlank()}?.let{L("Hey $it 👋","Hallo $it 👋")} ?: L("Your overview","Deine Übersicht")), "shifts" to L("Shift calendar","Schichtkalender"), "expenses" to L("Expenses","Ausgaben"), "history" to L("Monthly history","Monatsverlauf"), "settings" to L("Settings","Einstellungen"), "profile" to L("Profile","Profil"), "pay" to L("Pay & tax","Lohn & Steuern"), "planning" to L("Budgets & goals","Budgets & Sparziele"), "new-workplace" to L("Workplaces","Arbeitsplätze"), "workplaces" to L("Workplaces","Arbeitsplätze"), "reminders" to L("Reminders & widget","Erinnerungen & Widget"), "lock" to L("App lock","App-Sperre"), "backup" to L("Backup & restore","Sichern & wiederherstellen"), "appearance" to L("App appearance","App-Darstellung"))
@@ -97,6 +102,7 @@ bottomBar={
                     "settings","profile","pay","workplaces","new-workplace","appearance" -> Preferences(vm,route,::navigate)
                     "reminders","lock" -> DevicePage(vm,route)
                     "backup" -> BackupPage(vm)
+                    "privacy", "terms" -> LegalReader(route, ::back)
                 } } }
             } }
         }
