@@ -72,6 +72,10 @@ class DeviceSmoke {
             compose.onNodeWithTag("quick-info-pager").performTouchInput { swipeRight() }
             compose.onNodeWithTag("quick-info-dot-2").assertIsSelected()
             repository.updateDocument { it.put("language","de") }
+            // Room emits the new document asynchronously; wait for recomposition.
+            compose.waitUntil(5000) {
+                compose.onAllNodes(hasTestTag("quick-info-dot-2") and hasContentDescription("Geschätztes Nettoeinkommen")).fetchSemanticsNodes().isNotEmpty()
+            }
             compose.onNodeWithTag("quick-info-dot-2").assertContentDescriptionEquals("Geschätztes Nettoeinkommen")
             screenshot("quick-info-german")
             repository.saveSettings(settings.copy(theme="light"))
