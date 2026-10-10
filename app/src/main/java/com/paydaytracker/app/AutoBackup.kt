@@ -61,7 +61,11 @@ class AutoBackup private constructor(private val context: Context) {
     } }
     fun disable() { worker.execute {
         scheduled?.cancel(false); pending.delete()
-        prefs.edit().putBoolean("enabled", false).remove("queuedHash").putString("status", "off").commit()
+        val edit = prefs.edit().putBoolean("enabled", false).remove("queuedHash").putString("status", "off")
+        // A failed write may have damaged the previous current file. Disabling must not
+        // turn an unverified automatic copy green just because its old hash matches.
+        if (prefs.getString("status", "") == "error") edit.remove("hash")
+        edit.commit()
         notifyChanged()
     } }
     fun enqueue(document: String, hash: String) { worker.execute {
