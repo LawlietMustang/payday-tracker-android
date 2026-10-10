@@ -163,26 +163,27 @@ class DeviceSmoke {
         val snapshot=repository.exportBackupJson()
         try {
             auto.configure(tree,flags)
-            compose.waitUntil(5000) { JSONObject(auto.state()).optBoolean("enabled") }
+            compose.waitUntil(5000) { JSONObject(auto.updates.value).optBoolean("enabled") }
             auto.enqueue(snapshot,AutoBackup.snapshotHash(snapshot));auto.flush()
-            compose.waitUntil(10000) { JSONObject(auto.state()).optString("status")=="saved" }
+            // Preferences commit before the observable status is published. Await the UI source.
+            compose.waitUntil(10000) { JSONObject(auto.updates.value).optString("status")=="saved" }
             Assert.assertEquals("saved",JSONObject(auto.updates.value).getString("displayStatus"))
             val current=android.provider.DocumentsContract.buildDocumentUriUsingTree(tree,"root/"+AutoBackup.CURRENT)
             Assert.assertEquals(snapshot,context.contentResolver.openInputStream(current)!!.bufferedReader().use{it.readText()})
             instrumentation.context.contentResolver.call(authority,"fail-current",null,null)
             val changed=JSONObject(snapshot).apply{getJSONObject("data").put("backupSmokeRevision",3)}.toString()
             auto.enqueue(changed,AutoBackup.snapshotHash(changed));auto.flush()
-            compose.waitUntil(10000) { JSONObject(auto.state()).optString("status")=="error" }
+            compose.waitUntil(10000) { JSONObject(auto.updates.value).optString("status")=="error" }
             Assert.assertEquals("error",JSONObject(auto.updates.value).getString("displayStatus"))
             instrumentation.context.contentResolver.call(authority,"allow-writes",null,null)
             auto.retry()
-            compose.waitUntil(10000) { JSONObject(auto.state()).optString("status")=="saved" }
+            compose.waitUntil(10000) { JSONObject(auto.updates.value).optString("status")=="saved" }
             Assert.assertEquals("saved",JSONObject(auto.updates.value).getString("displayStatus"))
             Assert.assertEquals(changed,context.contentResolver.openInputStream(current)!!.bufferedReader().use{it.readText()})
         } finally {
             instrumentation.context.contentResolver.call(authority,"allow-writes",null,null)
             auto.disable()
-            compose.waitUntil(5000) { !JSONObject(auto.state()).optBoolean("enabled") }
+            compose.waitUntil(5000) { !JSONObject(auto.updates.value).optBoolean("enabled") }
         }
     }
 
