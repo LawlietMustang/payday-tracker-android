@@ -58,6 +58,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             repository.reconcileShiftStatuses()
             repository.materializeRecurringExpenses(selectedMonth.value)
             repository.reconcileSavings()
+            triggerBackup()
         } catch (e: Exception) { startupError.value = e.message ?: "Unable to load saved data" }
     } }
     fun updateDocument(edit: (JSONObject) -> Unit) { viewModelScope.launch { repository.updateDocument(edit); triggerBackup() } }
@@ -174,7 +175,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0L)
 
     init {
-        viewModelScope.launch { while (true) { delay(60000); if (ready.value) { if (repository.reconcileShiftStatuses()) triggerBackup(); repository.reconcileSavings() } } }
+        viewModelScope.launch { while (true) { delay(60000); if (ready.value) { val shiftsChanged = repository.reconcileShiftStatuses(); val savingsChanged = repository.reconcileSavings(); if (shiftsChanged || savingsChanged) triggerBackup() } } }
 
         viewModelScope.launch {
             combine(document, ready) { raw, loaded -> if (loaded) {
@@ -215,6 +216,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         selectedMonth.value = ym.format(DateTimeFormatter.ofPattern("yyyy-MM"))
         viewModelScope.launch {
             repository.materializeRecurringExpenses(selectedMonth.value)
+            triggerBackup()
         }
     }
 
@@ -223,6 +225,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         selectedMonth.value = ym.format(DateTimeFormatter.ofPattern("yyyy-MM"))
         viewModelScope.launch {
             repository.materializeRecurringExpenses(selectedMonth.value)
+            triggerBackup()
         }
     }
 
@@ -230,6 +233,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         selectedMonth.value = monthKey
         viewModelScope.launch {
             repository.materializeRecurringExpenses(selectedMonth.value)
+            triggerBackup()
         }
     }
 

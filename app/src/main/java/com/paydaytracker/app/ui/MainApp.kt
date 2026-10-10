@@ -66,8 +66,11 @@ fun MainApp(viewModel: MainViewModel) {
                     }
                 }
                 Spacer(Modifier.height(12.dp))
-                val backup=JSONObject(AutoBackup.get(context).state())
-                Surface(onClick={navigate("backup");scope.launch{drawer.close()}},shape=RoundedCornerShape(14.dp),color=Purple,contentColor=WhiteInk,border=BorderStroke(1.dp,Lavender.copy(alpha=.3f))){Row(Modifier.padding(14.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)){Mark("backup");Column{Text(if(backup.optString("status")=="saved")L("Backed up","Gesichert")else L("Set up backup","Sicherung einrichten"),fontSize=17.sp);Text(L("Manage backup","Sicherung verwalten"),fontSize=14.sp,color=Lavender)}}}
+                val backupRaw by remember(context){AutoBackup.get(context)}.updates.collectAsState()
+                val backup=remember(backupRaw){JSONObject(backupRaw)}
+                Surface(onClick={navigate("backup");scope.launch{drawer.close()}},shape=RoundedCornerShape(14.dp),color=Purple,contentColor=WhiteInk,border=BorderStroke(1.dp,Lavender.copy(alpha=.3f))){
+                    Column(Modifier.padding(14.dp)){BackupStatusContent(backup);Text(L("Manage backup","Sicherung verwalten"),Modifier.padding(top=6.dp),fontSize=12.sp,color=Lavender)}
+                }
                 Text("WageTrack ${com.paydaytracker.app.BuildConfig.VERSION_NAME}",fontSize=11.sp,color=Lavender)
             }
         } }) {

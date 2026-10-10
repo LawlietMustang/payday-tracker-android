@@ -8,6 +8,9 @@ import android.os.Looper
 import android.provider.DocumentsContract as Docs
 import android.util.AtomicFile
 import org.json.JSONObject
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import java.security.MessageDigest
 import java.io.File
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledFuture
@@ -22,15 +25,28 @@ class AutoBackup private constructor(private val context: Context) {
     private var scheduled: ScheduledFuture<*>? = null
     @Volatile var changed: (() -> Unit)? = null
     private val enabled get() = prefs.getBoolean("enabled", false)
+    private val mutableState = MutableStateFlow(state())
+    val updates = mutableState.asStateFlow()
     init { if (enabled && pending.baseFile.exists()) worker.execute { schedule(1000) } }
-    private fun notifyChanged() { Handler(Looper.getMainLooper()).post { changed?.invoke() } }
+    private fun notifyChanged() {
+        val snapshot = state()
+        mutableState.value = snapshot
+        BackupReminder.update(context, JSONObject(snapshot).optString("displayStatus") != "saved",
+            context.getSharedPreferences("device", 0).getString("language", "de") ?: "de")
+        Handler(Looper.getMainLooper()).post { changed?.invoke() }
+    }
     fun state(): String = JSONObject().apply {
         put("enabled", enabled); put("folder", prefs.getString("folder", ""))
         put("status", prefs.getString("status", if (enabled) "pending" else "off"))
         put("hash", prefs.getString("hash", "")); put("queuedHash", prefs.getString("queuedHash", ""))
         put("savedAt", prefs.getLong("savedAt", 0))
+        val current = prefs.getString("currentHash", prefs.getString("hash", "")) ?: ""
+        val manual = prefs.getString("manualHash", "") ?: ""
+        put("displayStatus", backupDisplayStatus(current, prefs.getString("hash", "") ?: "",
+            prefs.getString("status", "off") ?: "off", enabled, manual))
+        put("lastBackupAt", maxOf(prefs.getLong("savedAt", 0), prefs.getLong("manualSavedAt", 0)))
     }.toString()
-    fun configure(uri: Uri, flags: Int) { worker.execute {
+    fun configure(uri: Uri, flags: Int, onConfigured: () -> Unit = {}) { worker.execute {
         try {
             val grants = flags and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
             require(grants == (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION))
@@ -38,26 +54,34 @@ class AutoBackup private constructor(private val context: Context) {
             val root = Docs.buildDocumentUriUsingTree(uri, Docs.getTreeDocumentId(uri))
             val name = resolver.query(root, arrayOf(Docs.Document.COLUMN_DISPLAY_NAME), null, null, null)?.use { if (it.moveToFirst()) it.getString(0) else null } ?: "WageTrack"
             scheduled?.cancel(false); pending.delete()
-            prefs.edit().clear().putBoolean("enabled", true).putString("tree", uri.toString()).putString("folder", name).putString("status", "pending").commit()
+            prefs.edit().remove("hash").remove("savedAt").remove("queuedHash").putBoolean("enabled", true).putString("tree", uri.toString()).putString("folder", name).putString("status", "pending").commit()
             notifyChanged()
+            Handler(Looper.getMainLooper()).post { onConfigured() }
         } catch (_: Exception) { fail() }
     } }
     fun disable() { worker.execute {
         scheduled?.cancel(false); pending.delete()
-        prefs.edit().putBoolean("enabled", false).remove("queuedHash").putString("status", "off").commit()
+        val edit = prefs.edit().putBoolean("enabled", false).remove("queuedHash").putString("status", "off")
+        // A failed write may have damaged the previous current file. Disabling must not
+        // turn an unverified automatic copy green just because its old hash matches.
+        if (prefs.getString("status", "") == "error") edit.remove("hash")
+        edit.commit()
         notifyChanged()
     } }
     fun enqueue(document: String, hash: String) { worker.execute {
-        if (!enabled || !hash.matches(Regex("[a-f0-9]{64}"))) return@execute
+        if (!hash.matches(Regex("[a-f0-9]{64}"))) return@execute
+        val changed = hash != prefs.getString("currentHash", "")
+        prefs.edit().putString("currentHash", hash).commit()
+        if (!enabled) { if (changed) notifyChanged(); return@execute }
         try {
             validate(document.toByteArray(Charsets.UTF_8))
-            if (hash == prefs.getString("hash", "")) {
+            if (hash == prefs.getString("hash", "") && prefs.getString("status", "") != "error") {
                 // An undo can return to the saved snapshot while a newer edit is queued.
                 scheduled?.cancel(false); pending.delete()
                 prefs.edit().remove("queuedHash").putString("status", "saved").commit(); notifyChanged()
                 return@execute
             }
-            if (hash == prefs.getString("queuedHash", "")) return@execute
+            if (hash == prefs.getString("queuedHash", "")) { if (changed) notifyChanged(); return@execute }
             val bytes = JSONObject().put("hash", hash).put("document", document).toString().toByteArray(Charsets.UTF_8)
             val stream = pending.startWrite()
             try { stream.write(bytes); pending.finishWrite(stream) } catch (e: Exception) { pending.failWrite(stream); throw e }
@@ -68,6 +92,27 @@ class AutoBackup private constructor(private val context: Context) {
             prefs.edit().putString("queuedHash", hash).commit(); fail()
         }
     } }
+    // Only record success after the chosen document has been written and closed.
+    // A newer edit can already be queued: do not overwrite currentHash on completion.
+    fun saveManualBackup(uri: Uri, document: String) {
+        val bytes = document.toByteArray(Charsets.UTF_8)
+        validate(bytes)
+        val hash = snapshotHash(document)
+        enqueue(document, hash)
+        // Overwriting the last manual file can invalidate that copy even if writing fails.
+        worker.execute {
+            if (prefs.getString("manualUri", "") == uri.toString()) {
+                prefs.edit().remove("manualHash").commit()
+                notifyChanged()
+            }
+        }
+        requireNotNull(resolver.openOutputStream(uri, "wt")).use { it.write(bytes) }
+        worker.execute {
+            prefs.edit().putString("manualHash", hash).putString("manualUri", uri.toString())
+                .putLong("manualSavedAt", System.currentTimeMillis()).commit()
+            notifyChanged()
+        }
+    }
     fun flush() { worker.execute { if (enabled && pending.baseFile.exists()) schedule(0) } }
     fun retry() { worker.execute {
         if (!enabled) return@execute
@@ -102,7 +147,6 @@ class AutoBackup private constructor(private val context: Context) {
             try { Docs.deleteDocument(resolver, staged) } catch (_: Exception) { /* reused next time */ }
             prefs.edit().putString("hash", snapshot.getString("hash")).putLong("savedAt", System.currentTimeMillis()).putString("status", "saved").remove("queuedHash").commit()
             pending.delete()
-            BackupReminder.update(context, false, context.getSharedPreferences("device",0).getString("language","de") ?: "de")
             notifyChanged()
         } catch (_: Exception) { fail() }
     }
@@ -122,6 +166,9 @@ class AutoBackup private constructor(private val context: Context) {
         doc.getJSONObject("data").getJSONArray("shifts"); doc.getJSONObject("data").getJSONObject("settings")
     }
     companion object {
+        fun snapshotHash(document: String): String = MessageDigest.getInstance("SHA-256")
+            .digest(JSONObject(document).getJSONObject("data").toString().toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it) }
         const val CURRENT = "WageTrack-backup.json"
         const val PREVIOUS = "WageTrack-previous.json"
         private const val LIMIT = 10 * 1024 * 1024

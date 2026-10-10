@@ -31,7 +31,12 @@ fun clock(ms: Long): String { val s=ms/1000;return "%02d:%02d:%02d".format(s/360
     val s by vm.currentMonthSummary.collectAsState(); val forecast by vm.currentMonthForecast.collectAsState(); val settings by vm.settings.collectAsState()
     val shifts by vm.shifts.collectAsState(); val workplaces by vm.workplaces.collectAsState(); val filter by vm.workplaceFilter.collectAsState(); val month by vm.selectedMonth.collectAsState(); val expenses by vm.expenses.collectAsState()
     val summary=s ?: return; val money: (Double)->String={F.formatMoney(it,settings.currency)}
-    val all = PayrollCalculator.summary(month,shifts,settings,workplaces,"all")
+    val all = remember(month, shifts, settings, workplaces) {
+        PayrollCalculator.summary(month,shifts,settings,workplaces,"all")
+    }
+    val earned = remember(month, shifts, settings, workplaces) {
+        PayrollCalculator.summary(month,shifts,settings,workplaces,"all",includePlanned=false)
+    }
     val next=shifts.filter{it.status=="planned" && (filter=="all"||it.workplaceId==filter) && LocalDateTime.parse(it.date+"T"+it.start)>LocalDateTime.now()}.minByOrNull{it.date+it.start}
     var details by rememberSaveable { mutableStateOf(false) }
     val scrollState = rememberScrollState()
@@ -47,10 +52,8 @@ fun clock(ms: Long): String { val s=ms/1000;return "%02d:%02d:%02d".format(s/360
     Page(Modifier.testTag("overview-scroll").onGloballyPositioned { viewportTop = it.positionInRoot().y }, scrollState) {
         WorkplacePicker(vm){navigate("workplaces")}
         Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){PurpleAction(L("+ New workplace","+ Neuer Arbeitsplatz"),Modifier.weight(1f)){navigate("new-workplace")};PurpleAction(L("Manage workplaces","Arbeitsplätze verwalten"),Modifier.weight(1f)){navigate("workplaces")}}
-        WageCard(color=Lime) { Row(verticalAlignment=Alignment.CenterVertically) { Text(L("AVAILABLE AFTER EXPENSES","NACH AUSGABEN VERFÜGBAR"),Modifier.weight(1f),fontSize=10.sp,fontWeight=FontWeight.Bold); Text(L("ESTIMATE","GESCHÄTZT"),fontSize=9.sp,modifier=Modifier.border(1.dp,Ink.copy(alpha=.5f),RoundedCornerShape(20.dp)).padding(5.dp)) }
-            Text(money(all.est.net-expenses.filter{it.date.startsWith(month)}.sumOf{it.amount}),fontSize=38.sp,fontWeight=FontWeight.Bold)
-            Text(L("Includes planned shifts, minus monthly expenses","Mit geplanten Schichten, minus Monatsausgaben"),fontSize=12.sp)
-        }
+        QuickInfoCarousel(earned.gross, all.est.net,
+            expenses.filter{it.date.startsWith(month)}.sumOf{it.amount}, settings.currency)
         Row(horizontalArrangement=Arrangement.spacedBy(10.dp)) { Surface(Modifier.weight(1f),shape=RoundedCornerShape(18.dp),color=Raised,contentColor=WhiteInk){Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){Eyebrow(L("Hours this month","Stunden dieses Monats"));Text(F.formatDuration(summary.workedMinutes),fontWeight=FontWeight.Bold)}}
             Surface(onClick={if(next==null)add()else edit(next.id)},modifier=Modifier.weight(1f),shape=RoundedCornerShape(18.dp),color=Raised,contentColor=WhiteInk){Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){Eyebrow(L("Next shift","Nächste Schicht"));Text(next?.let{it.date.substring(5)+" · "+it.start} ?: L("Plan a shift →","Schicht planen →"),fontSize=13.sp,fontWeight=FontWeight.Bold)}} }
         Row(horizontalArrangement=Arrangement.spacedBy(10.dp)){PurpleAction(L("Budgets & goals ↗","Budgets & Sparziele ↗"),Modifier.weight(1f),"planning",true){navigate("planning")};PurpleAction(L("Reminders ↗","Erinnerungen ↗"),Modifier.weight(1f),"reminders",true){navigate("reminders")}}
