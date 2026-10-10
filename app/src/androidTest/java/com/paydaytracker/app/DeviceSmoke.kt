@@ -100,21 +100,21 @@ class DeviceSmoke {
         auto.enqueue(snapshot, AutoBackup.snapshotHash(snapshot))
         compose.waitUntil(5000) { JSONObject(auto.updates.value).optString("displayStatus")=="off" }
         compose.onNodeWithContentDescription("Menu").performScrollTo().performClick()
-        compose.onNodeWithTag("backup-status").performScrollTo()
+        compose.onNodeWithTag("backup-status",useUnmergedTree=true).performScrollTo()
         val file = File(context.filesDir,"manual-backup-smoke.json")
         try {
             auto.saveManualBackup(android.net.Uri.fromFile(file),snapshot)
             compose.waitUntil(5000) { JSONObject(auto.updates.value).optString("displayStatus")=="saved" }
-            compose.onNodeWithText("Backed up").assertIsDisplayed()
+            compose.onNodeWithText("Backed up",useUnmergedTree=true).assertIsDisplayed()
             Assert.assertEquals(snapshot,file.readText())
-            val pixels=compose.onNodeWithTag("backup-status-icon").captureToImage().toPixelMap()
+            val pixels=compose.onNodeWithTag("backup-status-icon",useUnmergedTree=true).captureToImage().toPixelMap()
             Assert.assertTrue("Successful backup icon must be green",(0 until pixels.width).any{x->(0 until pixels.height).any{y->val c=pixels[x,y];c.green>c.red*1.3f && c.green>c.blue*1.1f}})
             screenshot("backup-saved-green")
             val lastSaved = JSONObject(auto.updates.value).getLong("lastBackupAt")
             val changed = JSONObject(snapshot).apply{getJSONObject("data").put("backupSmokeRevision",2)}.toString()
             auto.enqueue(changed,AutoBackup.snapshotHash(changed))
             compose.waitUntil(5000) { JSONObject(auto.updates.value).optString("displayStatus")=="outdated" }
-            compose.onNodeWithText("Changes not backed up").assertIsDisplayed()
+            compose.onNodeWithText("Changes not backed up",useUnmergedTree=true).assertIsDisplayed()
             screenshot("backup-unsaved-amber")
             // A stream that cannot be opened must leave the previous success time untouched.
             try {
@@ -131,8 +131,8 @@ class DeviceSmoke {
             compose.activityRule.scenario.recreate()
             compose.waitUntil(15000) { compose.onAllNodesWithTag("screen-dashboard").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithContentDescription("Menu").performScrollTo().performClick()
-            compose.onNodeWithTag("backup-status").performScrollTo()
-            compose.onNodeWithText("Backed up").assertIsDisplayed()
+            compose.onNodeWithTag("backup-status",useUnmergedTree=true).performScrollTo()
+            compose.onNodeWithText("Backed up",useUnmergedTree=true).assertIsDisplayed()
         } finally {
             auto.disable()
             compose.waitUntil(5000) { JSONObject(auto.state()).optString("status")=="off" }
@@ -147,8 +147,15 @@ class DeviceSmoke {
         val tree=android.net.Uri.parse("content://com.paydaytracker.backup.tests/tree/root")
         val authority=android.net.Uri.parse("content://com.paydaytracker.backup.tests")
         val flags=android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-        instrumentation.context.grantUriPermission(context.packageName,tree,flags or
-            android.content.Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION or android.content.Intent.FLAG_GRANT_PREFIX_URI_PERMISSION)
+        // The test APK owns the provider; obtain its grant through an activity result,
+        // exactly as a document picker does. Instrumentation runs with the app UID.
+        compose.activityRule.scenario.onActivity { activity ->
+            activity.startActivityForResult(android.content.Intent().setClassName(
+                instrumentation.context.packageName,"com.paydaytracker.app.BackupFolderActivity"),901)
+        }
+        compose.waitUntil(5000) {
+            context.checkUriPermission(tree,android.os.Process.myPid(),android.os.Process.myUid(),flags)==android.content.pm.PackageManager.PERMISSION_GRANTED
+        }
         val snapshot=repository.exportBackupJson()
         try {
             auto.configure(tree,flags)
