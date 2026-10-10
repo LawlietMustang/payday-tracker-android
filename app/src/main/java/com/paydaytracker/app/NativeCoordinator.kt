@@ -12,7 +12,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
-import java.security.MessageDigest
 import java.time.YearMonth
 
 object NativeCoordinator {
@@ -48,17 +47,13 @@ object NativeCoordinator {
         PaydayWidget.update(context)
     }
 
-    fun syncAutoBackup(context: Context, repository: WageRepository, scope: CoroutineScope) {
+    fun syncAutoBackup(context: Context, repository: WageRepository, scope: CoroutineScope) =
         scope.launch(Dispatchers.IO) {
             val autoBackup = AutoBackup.get(context)
             val json = repository.exportBackupJson()
-            val md = MessageDigest.getInstance("SHA-256")
-            val hash = md.digest(JSONObject(json).getJSONObject("data").toString().toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
-            autoBackup.enqueue(json, hash)
-            val lang = context.getSharedPreferences("device", Context.MODE_PRIVATE).getString("language", "de") ?: "de"
-            BackupReminder.update(context, dirty = true, language = lang)
+            autoBackup.enqueue(json, AutoBackup.snapshotHash(json))
         }
-    }
+
 
     fun syncShiftReminders(context: Context, shifts: List<Shift>, workplaces: List<Workplace>, document: JSONObject = JSONObject()) {
         val doc = JSONObject()

@@ -41,6 +41,105 @@ class DeviceSmoke {
         shell("screencap -p /sdcard/Download/native-screens/$name.png")
         Assert.assertTrue("Screenshot must be nonempty", shell("wc -c /sdcard/Download/native-screens/$name.png").trim().substringBefore(' ').toLong() > 1000)
     }
+    @Test fun quickInfoSwipesAndShowsMonthlyFigures() = runBlocking {
+        val wp = repository.workplaces.first().first()
+        val month = java.time.YearMonth.now().toString()
+        val oldSettings = repository.getSettings()
+        val records = listOf(
+            Shift("quick-done", "$month-01", "09:00", "17:00", 480, 0, 20.0, wp.id, "completed", "manual"),
+            Shift("quick-plan", "$month-28", "09:00", "17:00", 480, 0, 20.0, wp.id, "planned", "manual"),
+            Shift("quick-cancel", "$month-29", "09:00", "17:00", 480, 0, 20.0, wp.id, "cancelled", "manual"))
+        repository.saveShifts(records)
+        repository.saveExpense(Expense("quick-expense", "$month-01", 45.0, "other"))
+        try {
+            val settings = repository.getSettings()
+            val shifts = repository.shifts.first()
+            val places = repository.workplaces.first()
+            val all = PayrollCalculator.summary(month, shifts, settings, places)
+            val earned = PayrollCalculator.summary(month, shifts, settings, places, includePlanned=false)
+            val spent = repository.expenses.first().filter{it.date.startsWith(month)}.sumOf{it.amount}
+            fun money(n:Double)=com.paydaytracker.app.ui.common.Formatters.formatMoney(n,settings.currency)
+            compose.onNodeWithTag("quick-info-card").performScrollTo()
+            compose.onNodeWithTag("quick-info-value-0").assertTextEquals(money(all.est.net-spent))
+            compose.onNodeWithTag("quick-info-pager").performTouchInput { swipeLeft() }
+            compose.onNodeWithTag("quick-info-dot-1").assertIsSelected()
+            compose.onNodeWithTag("quick-info-value-1").assertTextEquals(money(earned.gross))
+            screenshot("quick-info-gross")
+            compose.onNodeWithTag("quick-info-dot-2").performClick()
+            compose.onNodeWithTag("quick-info-value-2").assertTextEquals(money(all.est.net))
+            compose.onNodeWithTag("quick-info-dot-3").performClick()
+            compose.onNodeWithTag("quick-info-value-3").assertTextEquals(money(spent))
+            compose.onNodeWithTag("quick-info-pager").performTouchInput { swipeRight() }
+            compose.onNodeWithTag("quick-info-dot-2").assertIsSelected()
+            repository.updateDocument { it.put("language","de") }
+            compose.onNodeWithTag("quick-info-dot-2").assertContentDescriptionEquals("Geschätztes Nettoeinkommen")
+            screenshot("quick-info-german")
+            repository.saveSettings(settings.copy(theme="light"))
+            screenshot("quick-info-light")
+            // Horizontal paging must not prevent navigating away or scrolling the overview.
+            compose.onNodeWithTag("nav-expenses").performClick()
+            compose.onNodeWithTag("screen-expenses").assertExists()
+            compose.onNodeWithTag("nav-dashboard").performClick()
+            compose.onNodeWithTag("earnings-toggle").performScrollTo().assertIsDisplayed()
+        } finally {
+            repository.deleteShifts(records.map{it.id})
+            repository.deleteExpense("quick-expense")
+            repository.saveSettings(oldSettings)
+            repository.updateDocument { it.put("language","en") }
+        }
+    }
+
+    @Test fun backupIndicatorTracksManualSaveEditsAndWriteFailure() = runBlocking {
+        val context = compose.activity
+        val auto = AutoBackup.get(context)
+        val prefs = context.getSharedPreferences("auto-backup",0)
+        auto.disable()
+        compose.waitUntil(5000) { JSONObject(auto.state()).optString("status")=="off" }
+        prefs.edit().clear().commit()
+        val snapshot = repository.exportBackupJson()
+        auto.enqueue(snapshot, AutoBackup.snapshotHash(snapshot))
+        compose.waitUntil(5000) { JSONObject(auto.updates.value).optString("displayStatus")=="off" }
+        compose.onNodeWithContentDescription("Menu").performScrollTo().performClick()
+        compose.onNodeWithTag("backup-status").performScrollTo()
+        val file = File(context.filesDir,"manual-backup-smoke.json")
+        try {
+            auto.saveManualBackup(android.net.Uri.fromFile(file),snapshot)
+            compose.waitUntil(5000) { JSONObject(auto.updates.value).optString("displayStatus")=="saved" }
+            compose.onNodeWithText("Backed up").assertIsDisplayed()
+            Assert.assertEquals(snapshot,file.readText())
+            val pixels=compose.onNodeWithTag("backup-status-icon").captureToImage().toPixelMap()
+            Assert.assertTrue("Successful backup icon must be green",(0 until pixels.width).any{x->(0 until pixels.height).any{y->val c=pixels[x,y];c.green>c.red*1.3f && c.green>c.blue*1.1f}})
+            screenshot("backup-saved-green")
+            val lastSaved = JSONObject(auto.updates.value).getLong("lastBackupAt")
+            val changed = JSONObject(snapshot).apply{getJSONObject("data").put("backupSmokeRevision",2)}.toString()
+            auto.enqueue(changed,AutoBackup.snapshotHash(changed))
+            compose.waitUntil(5000) { JSONObject(auto.updates.value).optString("displayStatus")=="outdated" }
+            compose.onNodeWithText("Changes not backed up").assertIsDisplayed()
+            screenshot("backup-unsaved-amber")
+            // A stream that cannot be opened must leave the previous success time untouched.
+            try {
+                auto.saveManualBackup(android.net.Uri.fromFile(File(context.filesDir,"missing-smoke-folder/backup.json")),changed)
+                Assert.fail("Expected a failed export")
+            } catch (_: java.io.FileNotFoundException) { }
+            compose.waitForIdle()
+            Assert.assertEquals(lastSaved,JSONObject(auto.state()).getLong("lastBackupAt"))
+            Assert.assertEquals("outdated",JSONObject(auto.state()).getString("displayStatus"))
+            // Selecting a file and then cancelling never calls saveManualBackup; status stays dirty.
+            Assert.assertTrue(context.getSharedPreferences("device",0).getBoolean("backupDirty",false))
+            auto.saveManualBackup(android.net.Uri.fromFile(file),snapshot)
+            compose.waitUntil(5000) { JSONObject(auto.updates.value).optString("displayStatus")=="saved" }
+            compose.activityRule.scenario.recreate()
+            compose.waitUntil(15000) { compose.onAllNodesWithTag("screen-dashboard").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithContentDescription("Menu").performScrollTo().performClick()
+            compose.onNodeWithTag("backup-status").performScrollTo()
+            compose.onNodeWithText("Backed up").assertIsDisplayed()
+        } finally {
+            auto.disable()
+            compose.waitUntil(5000) { JSONObject(auto.state()).optString("status")=="off" }
+            file.delete()
+        }
+    }
+
     @Test fun originalNavigationIsRestored() {
         for(route in listOf("shifts","expenses","history","dashboard")) {
             compose.onNodeWithTag("nav-$route").performClick()
