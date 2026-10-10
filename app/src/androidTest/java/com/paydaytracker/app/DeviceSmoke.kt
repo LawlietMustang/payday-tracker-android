@@ -41,7 +41,7 @@ class DeviceSmoke {
         shell("screencap -p /sdcard/Download/native-screens/$name.png")
         Assert.assertTrue("Screenshot must be nonempty", shell("wc -c /sdcard/Download/native-screens/$name.png").trim().substringBefore(' ').toLong() > 1000)
     }
-    @Test fun quickInfoSwipesAndShowsMonthlyFigures() = runBlocking {
+    @Test fun quickInfoSwipesAndShowsMonthlyFigures() = runBlocking<Unit> {
         val wp = repository.workplaces.first().first()
         val month = java.time.YearMonth.now().toString()
         val oldSettings = repository.getSettings()
@@ -89,7 +89,7 @@ class DeviceSmoke {
         }
     }
 
-    @Test fun backupIndicatorTracksManualSaveEditsAndWriteFailure() = runBlocking {
+    @Test fun backupIndicatorTracksManualSaveEditsAndWriteFailure() = runBlocking<Unit> {
         val context = compose.activity
         val auto = AutoBackup.get(context)
         val prefs = context.getSharedPreferences("auto-backup",0)
@@ -140,7 +140,7 @@ class DeviceSmoke {
         }
     }
 
-    @Test fun automaticBackupTurnsGreenOnlyAfterVerifiedWriteAndRecoversFromFailure() = runBlocking {
+    @Test fun automaticBackupTurnsGreenOnlyAfterVerifiedWriteAndRecoversFromFailure() = runBlocking<Unit> {
         val instrumentation=InstrumentationRegistry.getInstrumentation()
         val context=compose.activity
         val auto=AutoBackup.get(context)
