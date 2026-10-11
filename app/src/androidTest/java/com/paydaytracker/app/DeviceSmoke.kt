@@ -60,16 +60,38 @@ class DeviceSmoke {
             val spent = repository.expenses.first().filter{it.date.startsWith(month)}.sumOf{it.amount}
             fun money(n:Double)=com.paydaytracker.app.ui.common.Formatters.formatMoney(n,settings.currency)
             compose.onNodeWithTag("quick-info-card").performScrollTo()
-            compose.onNodeWithTag("quick-info-value-0").assertTextEquals(money(all.est.net-spent))
-            compose.onNodeWithTag("quick-info-pager").performTouchInput { swipeLeft() }
+            compose.onNodeWithTag("quick-info-value-0",useUnmergedTree=true).assertTextEquals(money(all.est.net-spent))
+            screenshot("quick-info-compact")
+            // The heading is outside the card and must not advance it.
+            compose.onNodeWithTag("quick-info-heading").performTouchInput { click() }
+            compose.onNodeWithTag("quick-info-dot-0").assertIsSelected()
+            // Padding, title, value, badge and subtitle are all part of the tap target.
+            val taps=listOf(Offset(0.08f,0.5f),Offset(0.28f,0.2f),Offset(0.4f,0.5f),
+                Offset(0.4f,0.82f),Offset(0.85f,0.2f))
+            taps.forEachIndexed { index,point ->
+                compose.onNodeWithTag("quick-info-card").performTouchInput {
+                    click(Offset(width*point.x,height*point.y))
+                }
+                compose.onNodeWithTag("quick-info-dot-${(index+1)%4}").assertIsSelected()
+            }
+            compose.onNodeWithTag("quick-info-dot-0").performClick()
+            compose.onNodeWithTag("quick-info-pager",useUnmergedTree=true).performTouchInput { swipeRight() }
+            compose.onNodeWithTag("quick-info-dot-3").assertIsSelected()
+            compose.onNodeWithTag("quick-info-pager",useUnmergedTree=true).performTouchInput { swipeLeft() }
+            compose.onNodeWithTag("quick-info-dot-0").assertIsSelected()
+            // Keep vertical overview scrolling working when a gesture starts on the card.
+            compose.onNodeWithTag("quick-info-card").performTouchInput { swipeUp() }
+            compose.onNodeWithTag("quick-info-dot-0").assertIsSelected()
+            compose.onNodeWithTag("quick-info-card").performScrollTo()
+            compose.onNodeWithTag("quick-info-pager",useUnmergedTree=true).performTouchInput { swipeLeft() }
             compose.onNodeWithTag("quick-info-dot-1").assertIsSelected()
-            compose.onNodeWithTag("quick-info-value-1").assertTextEquals(money(earned.gross))
+            compose.onNodeWithTag("quick-info-value-1",useUnmergedTree=true).assertTextEquals(money(earned.gross))
             screenshot("quick-info-gross")
             compose.onNodeWithTag("quick-info-dot-2").performClick()
-            compose.onNodeWithTag("quick-info-value-2").assertTextEquals(money(all.est.net))
+            compose.onNodeWithTag("quick-info-value-2",useUnmergedTree=true).assertTextEquals(money(all.est.net))
             compose.onNodeWithTag("quick-info-dot-3").performClick()
-            compose.onNodeWithTag("quick-info-value-3").assertTextEquals(money(spent))
-            compose.onNodeWithTag("quick-info-pager").performTouchInput { swipeRight() }
+            compose.onNodeWithTag("quick-info-value-3",useUnmergedTree=true).assertTextEquals(money(spent))
+            compose.onNodeWithTag("quick-info-pager",useUnmergedTree=true).performTouchInput { swipeRight() }
             compose.onNodeWithTag("quick-info-dot-2").assertIsSelected()
             repository.updateDocument { it.put("language","de") }
             // Room emits the new document asynchronously; wait for recomposition.
